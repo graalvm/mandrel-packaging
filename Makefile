@@ -1,6 +1,8 @@
-.PHONY: build-image run-image
+.PHONY: all build-image run-image
 
 SCRIPT_PATH ?= src/image.java
+
+all: build-image run-image
 
 build-image:
 	cekit -v build docker --no-squash

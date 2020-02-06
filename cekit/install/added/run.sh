@@ -6,6 +6,7 @@ echo "HOME=${HOME}"
 echo "PATH=${PATH}"
 
 pushd "${HOME}"
+
 if [[ -z "${SKIP_JBANG}" ]]; then
     rm -rf jbang
     git clone https://github.com/maxandersen/jbang -depth 10 -b master
@@ -13,9 +14,16 @@ if [[ -z "${SKIP_JBANG}" ]]; then
     ./gradlew build install -x test
     popd
 fi
-
 export PATH="${HOME}/jbang/build/install/jbang/bin:${PATH}"
-jbang build.java
+
+if [[ -z "${SKIP_PACKAGING}" ]]; then
+    rm -rf mandrel-packaging
+    git clone https://github.com/galderz/mandrel-packaging -depth 10 -b master
+fi
+
+pushd mandrel-packaging
+
+jbang src/build.java
 
 #rm -rf mandrel-packaging
 #git clone -q git@github.com:galderz/mandrel-packaging.git --depth 10 -b master

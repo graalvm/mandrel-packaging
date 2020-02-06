@@ -2,7 +2,6 @@
 
 set -e
 
-SRC_DIR=$(dirname $0)/src
+ADDED_DIR=$(dirname $0)/added
 
-cp $SRC_DIR/run.sh /home/mandrel
-cp $SRC_DIR/build.java /home/mandrel
+cp $ADDED_DIR/run.sh /home/mandrel
