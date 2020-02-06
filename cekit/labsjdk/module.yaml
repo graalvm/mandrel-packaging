@@ -1,0 +1,8 @@
+schema_version: 1
+
+name: labsjdk
+version: 1.0
+description: Module installing Oracle Labs JDK
+
+execute:
+  - script: add-labsjdk.sh

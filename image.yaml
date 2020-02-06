@@ -8,5 +8,6 @@ modules:
   - path: cekit
   install:
   - name: jdk
+  - name: labsjdk
   - name: user
   - name: runner
