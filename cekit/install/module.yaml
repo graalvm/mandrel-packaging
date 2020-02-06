@@ -1,0 +1,8 @@
+schema_version: 1
+
+name: run
+version: 1.0
+description: Install scripts
+
+execute:
+- script: install.sh
