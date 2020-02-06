@@ -1,6 +1,6 @@
 schema_version: 1
 
-name: run
+name: install
 version: 1.0
 description: Install scripts
 
