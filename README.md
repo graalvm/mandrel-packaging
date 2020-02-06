@@ -11,10 +11,11 @@ $ make run-image
 [mandrel@daddd4779ded ~]$ ./run.sh
 ```
 
-For quick development, use local clones:
+For quicker turnaround when testing changes,
+an `.env` file can be added to the root of the repository with links to local Git clones, e.g.
 
 ```bash
-JBANG_CLONE=<...>/jbang PACKAGING_CLONE=<...>/mandrel-packaging \
-  make build-image run-image
-[mandrel@daddd4779ded ~]$ ./run.sh
+JBANG_CLONE=<...>
+PACKAGING_CLONE=<...>
+MANDREL_CLONE=<...>
 ```

@@ -3,6 +3,12 @@
 set -e -x
 
 setEnv() {
+    if [ -f .env ]; then
+        set -a
+        . ./.env
+        set +a
+    fi
+
     if [[ -n "${JBANG_CLONE}" ]]; then
         RUN_OPTIONS="-v ${JBANG_CLONE}:/home/mandrel/jbang ${RUN_OPTIONS}"
         SKIP_JBANG=1
