@@ -14,5 +14,7 @@ $ make run-image
 For quick development, use local clones:
 
 ```bash
-JBANG_CLONE=<...>/jbang PACKAGING_CLONE=<...>/mandrel-packaging make
+JBANG_CLONE=<...>/jbang PACKAGING_CLONE=<...>/mandrel-packaging \
+  make build-image run-image
+[mandrel@daddd4779ded ~]$ ./run.sh
 ```
