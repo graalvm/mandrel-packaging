@@ -1,6 +1,6 @@
 .PHONY: build-image run-image test
 
-SCRIPT_PATH ?= src/builder.java
+SCRIPT_PATH ?= src/image.java
 
 build-image:
 	eval `jbang ${SCRIPT_PATH} build-image-command`

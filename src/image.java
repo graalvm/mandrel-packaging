@@ -12,21 +12,21 @@ import java.io.File;
 import java.util.concurrent.Callable;
 
 @Command(
-    description = "builder"
+    description = "Image builder"
     , mixinStandardHelpOptions = true
-    , name = "builder"
+    , name = "image"
     , subcommands =
     {
         BuildImageCommand.class
         , RunImageCommand.class
     }
-    , version = "builder 0.1"
+    , version = "image builder 0.1"
 )
-class builder implements Callable<Integer>
+class image implements Callable<Integer>
 {
     public static void main(String... args)
     {
-        int exitCode = new CommandLine(new builder()).execute(args);
+        int exitCode = new CommandLine(new image()).execute(args);
         System.exit(exitCode);
     }
 
@@ -80,7 +80,8 @@ class BuildImageCommand implements Callable<Void>
     @Override
     public Void call()
     {
-        System.out.println("cekit -v build docker");
+        // --no-squash so that layers can be cached
+        System.out.println("cekit -v build docker --no-squash");
         return null;
     }
 }
