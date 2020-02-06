@@ -1,12 +1,9 @@
-.PHONY: build-image run-image test
+.PHONY: build-image run-image
 
 SCRIPT_PATH ?= src/image.java
 
 build-image:
-	eval `jbang ${SCRIPT_PATH} build-image-command`
+	cekit -v build docker --no-squash
 
 run-image:
-	eval `jbang ${SCRIPT_PATH} run-image-command`
-
-test:
-	jbang ${SCRIPT_PATH} test
+	./run-image.sh
