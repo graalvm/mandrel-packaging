@@ -21,6 +21,11 @@ if [[ -z "${SKIP_PACKAGING}" ]]; then
     git clone https://github.com/galderz/mandrel-packaging -depth 10 -b master
 fi
 
+if [[ -z "${SKIP_MANDREL}" ]]; then
+    rm -rf mandrel
+    git clone https://github.com/oracle/graal -depth 10 -b master mandrel
+fi
+
 pushd mandrel-packaging
 
 jbang src/build.java
