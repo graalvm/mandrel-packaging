@@ -9,4 +9,4 @@ modules:
   install:
   - name: jdk
   - name: user
-  - name: install
+  - name: runner

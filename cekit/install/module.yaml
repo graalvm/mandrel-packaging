@@ -1,8 +1,0 @@
-schema_version: 1
-
-name: install
-version: 1.0
-description: Install scripts
-
-execute:
-- script: install.sh

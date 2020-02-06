@@ -24,11 +24,3 @@ fi
 pushd mandrel-packaging
 
 jbang src/build.java
-
-#rm -rf mandrel-packaging
-#git clone -q git@github.com:galderz/mandrel-packaging.git --depth 10 -b master
-#sudo chown mandrel:mandrel mandrel-packaging
-#
-#cd ${HOME}/mandrel-packaging/mandrel-1.0
-#make
-
