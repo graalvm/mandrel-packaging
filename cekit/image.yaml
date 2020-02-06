@@ -1,0 +1,4 @@
+name: mandrel-packaging
+version: 1.0
+from: fedora:31
+description: Image for packaging mandrel
