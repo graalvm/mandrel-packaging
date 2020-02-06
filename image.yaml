@@ -2,3 +2,10 @@ name: mandrel-packaging
 version: 1.0
 from: fedora:31
 description: Image for packaging mandrel
+
+modules:
+  repositories:
+  - path: cekit
+  install:
+  - name: jdk
+  - name: user
