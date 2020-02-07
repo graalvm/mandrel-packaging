@@ -1,3 +1,7 @@
+Requirements:
+
+* [`CEKit`](https://github.com/cekit/cekit)
+
 Build image:
 
 ```bash
