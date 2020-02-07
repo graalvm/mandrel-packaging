@@ -1,0 +1,16 @@
+schema_version: 1
+
+name: jbang
+version: 1.0
+description: Install jbang
+
+envs:
+- name: "JBANG_BIN"
+  value: "/opt/jbang/build/install/jbang/bin"
+
+execute:
+  - script: add-jbang.sh
+
+packages:
+  install:
+  - git

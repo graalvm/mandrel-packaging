@@ -9,15 +9,6 @@ setEnv() {
         set +a
     fi
 
-    if [[ -n "${JBANG_CLONE}" ]]; then
-        RUN_OPTIONS="-v ${JBANG_CLONE}:/home/mandrel/jbang ${RUN_OPTIONS}"
-        SKIP_JBANG=1
-    fi
-
-    if [[ -n "${SKIP_JBANG}" ]]; then
-        RUN_OPTIONS="-e SKIP_JBANG=1 ${RUN_OPTIONS}"
-    fi
-
     if [[ -n "${PACKAGING_CLONE}" ]]; then
         RUN_OPTIONS="-v ${PACKAGING_CLONE}:/home/mandrel/mandrel-packaging ${RUN_OPTIONS}"
         SKIP_PACKAGING=1

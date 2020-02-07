@@ -5,4 +5,4 @@ version: 1.0
 description: Module installing Oracle Labs JDK
 
 execute:
-  - script: add-labsjdk.sh
+- script: add-labsjdk.sh

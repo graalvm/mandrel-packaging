@@ -15,7 +15,6 @@ For quicker turnaround when testing changes,
 an `.env` file can be added to the root of the repository with links to local Git clones, e.g.
 
 ```bash
-JBANG_CLONE=<...>
 PACKAGING_CLONE=<...>
 MANDREL_CLONE=<...>
 ```

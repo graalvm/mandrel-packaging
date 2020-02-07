@@ -1,0 +1,16 @@
+schema_version: 1
+
+name: mx
+version: 1.0
+description: Install mx
+
+envs:
+- name: "MX_BIN"
+  value: "/opt/mx"
+
+execute:
+  - script: add-mx.sh
+
+packages:
+  install:
+    - git
