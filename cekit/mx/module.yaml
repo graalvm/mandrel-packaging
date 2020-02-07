@@ -9,9 +9,15 @@ envs:
   value: "/opt/mx"
 
 execute:
-  - script: add-mx.sh
+- script: add-mx.sh
 
 packages:
   install:
-    - git
-    - python2
+  - git
+  - python2
+  - binutils
+  - make
+  - gcc
+  - file
+  - diffutils
+  - gcc-c++

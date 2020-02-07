@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-set -e -x
+set -e
 
 setEnv() {
     if [ -f .env ]; then

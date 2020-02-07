@@ -49,6 +49,7 @@ class SequentialBuild
     static void build()
     {
         Mx.build("sdk");
+        Mx.build("substratevm");
     }
 }
 
@@ -85,14 +86,6 @@ class Mx
             "/home/mandrel/mandrel/%s"
             , artifact
         ));
-    }
-}
-
-class Maven
-{
-    static void install(String artifact)
-    {
-
     }
 }
 

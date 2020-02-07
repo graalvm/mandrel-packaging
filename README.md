@@ -22,3 +22,7 @@ an `.env` file can be added to the root of the repository with links to local Gi
 PACKAGING_CLONE=<...>
 MANDREL_CLONE=<...>
 ```
+
+These clones are linked via volumes to the image,
+so local changes are picked up immediately,
+without the need to rebuild the image.

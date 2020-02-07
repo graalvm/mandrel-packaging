@@ -9,7 +9,7 @@ envs:
   value: "/opt/jbang/build/install/jbang/bin"
 
 execute:
-  - script: add-jbang.sh
+- script: add-jbang.sh
 
 packages:
   install:
