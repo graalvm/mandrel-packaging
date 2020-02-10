@@ -4,6 +4,7 @@ set -e
 
 export PATH="${MX_BIN}:${PATH}"
 export PATH="${JBANG_BIN}:${PATH}"
+export PATH="${MAVEN_BIN}:${PATH}"
 
 echo "HOME=${HOME}"
 echo "PATH=${PATH}"

@@ -49,12 +49,20 @@ class SequentialBuild
     static void build()
     {
         Mx.build("sdk");
+        Mx.mavenInstall("sdk");
         Mx.build("substratevm");
+        Mx.mavenInstall("substratevm");
     }
 }
 
 class Mx
 {
+    public static final OperatingSystem.EnvVar JAVA_HOME_ENV_VAR =
+        new OperatingSystem.EnvVar(
+            "JAVA_HOME"
+            , "/opt/labsjdk"
+        );
+
     static void build(String artifact)
     {
         OperatingSystem.exec()
@@ -63,7 +71,15 @@ class Mx
             .apply(artifact);
     }
 
-    static OperatingSystem.Command mxbuild(File path)
+    static void mavenInstall(String artifact)
+    {
+        OperatingSystem.exec()
+            .compose(Mx::mxMavenInstall)
+            .compose(Mx::path)
+            .apply(artifact);
+    }
+
+    private static OperatingSystem.Command mxbuild(File path)
     {
         return new OperatingSystem.Command(
             Stream.of(
@@ -72,15 +88,26 @@ class Mx
             )
             , path
             , Stream.of(
-                new OperatingSystem.EnvVar(
-                   "JAVA_HOME"
-                   , "/opt/labsjdk"
-                )
+                JAVA_HOME_ENV_VAR
             )
         );
     }
 
-    static File path(String artifact)
+    private static OperatingSystem.Command mxMavenInstall(File path)
+    {
+        return new OperatingSystem.Command(
+            Stream.of(
+                "mx"
+                , "maven-install"
+            )
+            , path
+            , Stream.of(
+                JAVA_HOME_ENV_VAR
+            )
+        );
+    }
+
+    private static File path(String artifact)
     {
         return new File(String.format(
             "/home/mandrel/mandrel/%s"

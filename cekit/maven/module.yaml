@@ -1,0 +1,12 @@
+schema_version: 1
+
+name: maven
+version: 1.0
+description: Install Maven
+
+envs:
+- name: "MAVEN_BIN"
+  value: "/opt/maven/bin"
+
+execute:
+- script: add-maven.sh
