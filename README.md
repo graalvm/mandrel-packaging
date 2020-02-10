@@ -26,3 +26,11 @@ MANDREL_CLONE=<...>
 These clones are linked via volumes to the image,
 so local changes are picked up immediately,
 without the need to rebuild the image.
+
+Maven artifacts created by the build can be installed locally,
+by providing a local Maven repository location as parameter,
+or part of the `.env` file, e.g.
+
+```bash
+MAVEN_REPOSITORY=<...>
+```

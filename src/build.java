@@ -11,6 +11,11 @@ import picocli.CommandLine;
 import picocli.CommandLine.Command;
 
 import java.io.File;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.util.List;
 import java.util.concurrent.Callable;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -48,10 +53,56 @@ class SequentialBuild
 {
     static void build()
     {
+        Replacements.groupId("sdk");
         Mx.build("sdk");
         Mx.mavenInstall("sdk");
+        Replacements.groupId("substratevm");
         Mx.build("substratevm");
         Mx.mavenInstall("substratevm");
+        // TODO commit replacements
+    }
+}
+
+class Replacements
+{
+    static void groupId(String artifactName)
+    {
+        replaceGroupId(path(artifactName));
+    }
+
+    private static void replaceGroupId(Path path)
+    {
+        try
+        {
+            try (var lines = Files.lines(path))
+            {
+                List<String> replaced = lines
+                    .map(replaceField("groupId"))
+                    .collect(Collectors.toList());
+                Files.write(path, replaced);
+            }
+        }
+        catch (IOException e)
+        {
+            throw new RuntimeException(e);
+        }
+    }
+
+    private static Function<String, String> replaceField(String field)
+    {
+        return line ->
+            line.contains(field)
+            ? line.replaceFirst("org.graalvm", "io.mandrel")
+            : line;
+    }
+
+    private static Path path(String artifactName)
+    {
+        final var file = new File(String.format(
+            "/home/mandrel/mandrel/%1$s/mx.%1$s/suite.py"
+            , artifactName
+        ));
+        return Paths.get(file.toURI());
     }
 }
 
@@ -63,20 +114,20 @@ class Mx
             , "/opt/labsjdk"
         );
 
-    static void build(String artifact)
+    static void build(String artifactName)
     {
         OperatingSystem.exec()
             .compose(Mx::mxbuild)
             .compose(Mx::path)
-            .apply(artifact);
+            .apply(artifactName);
     }
 
-    static void mavenInstall(String artifact)
+    static void mavenInstall(String artifactName)
     {
         OperatingSystem.exec()
             .compose(Mx::mxMavenInstall)
             .compose(Mx::path)
-            .apply(artifact);
+            .apply(artifactName);
     }
 
     private static OperatingSystem.Command mxbuild(File path)

@@ -26,6 +26,10 @@ setEnv() {
     if [[ -n "${SKIP_MANDREL}" ]]; then
         RUN_OPTIONS="-e SKIP_MANDREL=1 ${RUN_OPTIONS}"
     fi
+
+    if [[ -n "${MAVEN_REPOSITORY}" ]]; then
+        RUN_OPTIONS="-v ${MAVEN_REPOSITORY}:/home/mandrel/.m2/repository ${RUN_OPTIONS}"
+    fi
 }
 
 dockerRun() {
