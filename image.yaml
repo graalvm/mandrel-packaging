@@ -10,7 +10,6 @@ modules:
   - name: jdk
   - name: labsjdk
   - name: user
-  - name: jbang
   - name: mx
   # Avoid fedora maven package because it depends on Java 8.
   # The build should exclusively work with Java 11 (or higher).

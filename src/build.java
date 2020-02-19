@@ -1,51 +1,21 @@
-//usr/bin/env jbang "$0" "$@" ; exit $?
-//DEPS info.picocli:picocli:4.1.4
-//DEPS org.apache.logging.log4j:log4j-core:2.13.0
-
-import org.apache.logging.log4j.Level;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
-import org.apache.logging.log4j.core.config.Configurator;
-import org.apache.logging.log4j.core.config.DefaultConfiguration;
-import picocli.CommandLine;
-import picocli.CommandLine.Command;
-
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.List;
-import java.util.concurrent.Callable;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-@Command(
-    description = "Build mandrel bits"
-    , mixinStandardHelpOptions = true
-    , name = "build"
-    , version = "build 0.1"
-)
-public class build implements Callable<Integer>
+public class build
 {
     static final Logger logger = LogManager.getLogger(build.class);
 
     public static void main(String... args)
     {
-        Configurator.initialize(new DefaultConfiguration());
-        Configurator.setRootLevel(Level.DEBUG);
-
-        int exitCode = new CommandLine(new build()).execute(args);
-        System.exit(exitCode);
-    }
-
-    @Override
-    public Integer call()
-    {
-        logger.info("Bob the builder!");
+        logger.info("Build Mandrel");
         SequentialBuild.build();
-        return 0;
     }
 }
 
@@ -92,8 +62,8 @@ class Replacements
     {
         return line ->
             line.contains(field)
-            ? line.replaceFirst("org.graalvm", "io.mandrel")
-            : line;
+                ? line.replaceFirst("org.graalvm", "io.mandrel")
+                : line;
     }
 
     private static Path path(String artifactName)
@@ -139,8 +109,8 @@ class Mx
             )
             , path
             , Stream.of(
-                JAVA_HOME_ENV_VAR
-            )
+            JAVA_HOME_ENV_VAR
+        )
         );
     }
 
@@ -153,8 +123,8 @@ class Mx
             )
             , path
             , Stream.of(
-                JAVA_HOME_ENV_VAR
-            )
+            JAVA_HOME_ENV_VAR
+        )
         );
     }
 
@@ -179,7 +149,7 @@ class OperatingSystem
     private static Void exec(Command command)
     {
         final var commandList = command.command.collect(Collectors.toList());
-        logger.debug("Execute {} in {}", commandList, command.directory);
+        logger.debugf("Execute %s in %s", commandList, command.directory);
         try
         {
             var processBuilder = new ProcessBuilder(commandList)
@@ -232,5 +202,39 @@ class OperatingSystem
             this.name = name;
             this.value = value;
         }
+    }
+}
+
+final class Logger
+{
+    final String name;
+
+    Logger(String name)
+    {
+        this.name = name;
+    }
+
+    void debugf(String format, Object... params)
+    {
+        System.out.printf("DEBUG [%s] %s%n"
+            , name
+            , String.format(format, params)
+        );
+    }
+
+    public void info(String msg)
+    {
+        System.out.printf("INFO [%s] %s%n"
+            , name
+            , msg
+        );
+    }
+}
+
+final class LogManager
+{
+    static Logger getLogger(Class<?> clazz)
+    {
+        return new Logger(clazz.getSimpleName());
     }
 }

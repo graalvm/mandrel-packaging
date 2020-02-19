@@ -3,7 +3,6 @@
 set -e
 
 export PATH="${MX_BIN}:${PATH}"
-export PATH="${JBANG_BIN}:${PATH}"
 export PATH="${MAVEN_BIN}:${PATH}"
 
 echo "HOME=${HOME}"
@@ -23,4 +22,4 @@ fi
 
 pushd mandrel-packaging
 
-jbang src/build.java
+java src/build.java
