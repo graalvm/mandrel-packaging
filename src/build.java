@@ -1,9 +1,4 @@
 import java.io.File;
-import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.function.Function;
@@ -45,49 +40,6 @@ class SequentialBuild
         Maven.install("sdk", options);
         Mx.build("substratevm");
         Maven.install("substratevm", options);
-    }
-}
-
-class Replacements
-{
-    static void groupId(String artifactName)
-    {
-        replaceGroupId(path(artifactName));
-    }
-
-    private static void replaceGroupId(Path path)
-    {
-        try
-        {
-            try (var lines = Files.lines(path))
-            {
-                List<String> replaced = lines
-                    .map(replaceField("groupId"))
-                    .collect(Collectors.toList());
-                Files.write(path, replaced);
-            }
-        }
-        catch (IOException e)
-        {
-            throw new RuntimeException(e);
-        }
-    }
-
-    private static Function<String, String> replaceField(String field)
-    {
-        return line ->
-            line.contains(field)
-                ? line.replaceFirst("org.graalvm", "io.mandrel")
-                : line;
-    }
-
-    private static Path path(String artifactName)
-    {
-        final var file = new File(String.format(
-            "/home/mandrel/mandrel/%1$s/mx.%1$s/suite.py"
-            , artifactName
-        ));
-        return Paths.get(file.toURI());
     }
 }
 
