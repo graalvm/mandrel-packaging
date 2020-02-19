@@ -1,4 +1,4 @@
-import java.io.File;
+import java.nio.file.Path;
 import java.util.Map;
 import java.util.Objects;
 import java.util.function.Function;
@@ -62,7 +62,7 @@ class Mx
             .apply(artifactName);
     }
 
-    private static OperatingSystem.Command mxbuild(File path)
+    private static OperatingSystem.Command mxbuild(Path path)
     {
         return new OperatingSystem.Command(
             Stream.of(
@@ -81,17 +81,14 @@ class Mx
 
 class LocalPaths
 {
-    static File to(String artifact)
+    static Path to(String artifact)
     {
-        return new File(String.format(
-            "/home/mandrel/mandrel/%s"
-            , artifact
-        ));
+        return Path.of("/home", "mandrel", "mandrel", artifact);
     }
 
-    static String from(File path)
+    static String from(Path path)
     {
-        return path.getName();
+        return path.getFileName().toString();
     }
 }
 
@@ -115,7 +112,7 @@ class Maven
             .apply(artifactName);
     }
     
-    private static Function<File, OperatingSystem.Command> mvnInstall(Options options)
+    private static Function<Path, OperatingSystem.Command> mvnInstall(Options options)
     {
         return path ->
         {
@@ -134,7 +131,7 @@ class Maven
                     , "-Dpackaging=jar"
                     , String.format(
                         "-Dfile=%s/mxbuild/dists/jdk11/%s.jar"
-                        , path.getAbsolutePath()
+                        , path.toString()
                         , artifactId
                     )
                     , "-DcreateChecksum=true"
@@ -164,7 +161,7 @@ class OperatingSystem
         try
         {
             var processBuilder = new ProcessBuilder(commandList)
-                .directory(command.directory)
+                .directory(command.directory.toFile())
                 .inheritIO();
 
             command.envVars.forEach(
@@ -192,10 +189,10 @@ class OperatingSystem
     static class Command
     {
         final Stream<String> command;
-        final File directory;
+        final Path directory;
         final Stream<EnvVar> envVars;
 
-        Command(Stream<String> command, File directory, Stream<EnvVar> envVars)
+        Command(Stream<String> command, Path directory, Stream<EnvVar> envVars)
         {
             this.command = command;
             this.directory = directory;
