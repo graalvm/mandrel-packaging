@@ -4,6 +4,8 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.List;
+import java.util.Map;
+import java.util.Objects;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -14,22 +16,35 @@ public class build
 
     public static void main(String... args)
     {
+        final var version = System.getProperty("version");
+        if (Objects.isNull(version))
+            throw new IllegalArgumentException("Missing mandatory -Dversion system property");
+
+        final var options = new Options(version);
+
         logger.info("Build Mandrel");
-        SequentialBuild.build();
+        SequentialBuild.build(options);
+    }
+}
+
+class Options
+{
+    final String version;
+
+    Options(String version)
+    {
+        this.version = version;
     }
 }
 
 class SequentialBuild
 {
-    static void build()
+    static void build(Options options)
     {
-        Replacements.groupId("sdk");
         Mx.build("sdk");
-        Mx.mavenInstall("sdk");
-        Replacements.groupId("substratevm");
+        Maven.install("sdk", options);
         Mx.build("substratevm");
-        Mx.mavenInstall("substratevm");
-        // TODO commit replacements
+        Maven.install("substratevm", options);
     }
 }
 
@@ -76,27 +91,22 @@ class Replacements
     }
 }
 
-class Mx
+class EnvVars
 {
     public static final OperatingSystem.EnvVar JAVA_HOME_ENV_VAR =
         new OperatingSystem.EnvVar(
             "JAVA_HOME"
             , "/opt/labsjdk"
         );
+}
 
+class Mx
+{
     static void build(String artifactName)
     {
         OperatingSystem.exec()
             .compose(Mx::mxbuild)
-            .compose(Mx::path)
-            .apply(artifactName);
-    }
-
-    static void mavenInstall(String artifactName)
-    {
-        OperatingSystem.exec()
-            .compose(Mx::mxMavenInstall)
-            .compose(Mx::path)
+            .compose(LocalPaths::to)
             .apply(artifactName);
     }
 
@@ -106,34 +116,83 @@ class Mx
             Stream.of(
                 "mx"
                 , "build"
+                , "--no-native"
             )
             , path
             , Stream.of(
-            JAVA_HOME_ENV_VAR
-        )
-        );
-    }
-
-    private static OperatingSystem.Command mxMavenInstall(File path)
-    {
-        return new OperatingSystem.Command(
-            Stream.of(
-                "mx"
-                , "maven-install"
+                EnvVars.JAVA_HOME_ENV_VAR
             )
-            , path
-            , Stream.of(
-            JAVA_HOME_ENV_VAR
-        )
         );
     }
 
-    private static File path(String artifact)
+}
+
+class LocalPaths
+{
+    static File to(String artifact)
     {
         return new File(String.format(
             "/home/mandrel/mandrel/%s"
             , artifact
         ));
+    }
+
+    static String from(File path)
+    {
+        return path.getName();
+    }
+}
+
+class Maven
+{
+    static final Map<String, String> GROUP_IDS = Map.of(
+        "sdk", "io.mandrel.sdk"
+        , "substratevm", "io.mandrel.nativeimage"
+    );
+
+    static final Map<String, String> ARTIFACT_IDS = Map.of(
+        "sdk", "graal-sdk"
+        , "substratevm", "svm"
+    );
+
+    static void install(String artifactName, Options options)
+    {
+        OperatingSystem.exec()
+            .compose(Maven.mvnInstall(options))
+            .compose(LocalPaths::to)
+            .apply(artifactName);
+    }
+    
+    private static Function<File, OperatingSystem.Command> mvnInstall(Options options)
+    {
+        return path ->
+        {
+            final var artifactName = LocalPaths.from(path);
+            final var groupId = GROUP_IDS.get(artifactName);
+            final var artifactId = ARTIFACT_IDS.get(artifactName);
+
+            return new OperatingSystem.Command(
+                Stream.of(
+                    "mvn"
+                    // , "--debug"
+                    , "install:install-file"
+                    , String.format("-DgroupId=%s", groupId)
+                    , String.format("-DartifactId=%s", artifactId)
+                    , String.format("-Dversion=%s", options.version)
+                    , "-Dpackaging=jar"
+                    , String.format(
+                        "-Dfile=%s/mxbuild/dists/jdk11/%s.jar"
+                        , path.getAbsolutePath()
+                        , artifactId
+                    )
+                    , "-DcreateChecksum=true"
+                )
+                , path
+                , Stream.of(
+                    EnvVars.JAVA_HOME_ENV_VAR
+                )
+            );
+        };
     }
 }
 
