@@ -2,6 +2,7 @@ import java.nio.file.Path;
 import java.util.Map;
 import java.util.Objects;
 import java.util.function.Function;
+import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -11,24 +12,37 @@ public class build
 
     public static void main(String... args)
     {
-        final var version = System.getProperty("version");
-        if (Objects.isNull(version))
-            throw new IllegalArgumentException("Missing mandatory -Dversion system property");
+        final var version = requireOption("version");
+        final var verbose = Boolean.getBoolean("verbose");
 
-        final var options = new Options(version);
+        final var options = new Options(version, verbose);
 
         logger.info("Build Mandrel");
         SequentialBuild.build(options);
+    }
+
+    private static String requireOption(String name)
+    {
+        final var option = System.getProperty(name);
+        if (Objects.isNull(option))
+            throw new IllegalArgumentException(String.format(
+                "Missing mandatory -D%s system property"
+                , name
+            ));
+
+        return option;
     }
 }
 
 class Options
 {
     final String version;
+    final boolean verbose;
 
-    Options(String version)
+    Options(String version, boolean verbose)
     {
         this.version = version;
+        this.verbose = verbose;
     }
 }
 
@@ -36,7 +50,7 @@ class SequentialBuild
 {
     static void build(Options options)
     {
-        Mx.build("sdk");
+        Mx.build("sdk", options);
         Maven.install("sdk", options);
         // Mx.build("substratevm", options);
         // Maven.install("substratevm", options);
@@ -54,27 +68,29 @@ class EnvVars
 
 class Mx
 {
-    static void build(String artifactName)
+    static void build(String artifactName, Options options)
     {
         OperatingSystem.exec()
-            .compose(Mx::mxbuild)
+            .compose(Mx.mxbuild(options))
             .compose(LocalPaths::to)
             .apply(artifactName);
     }
 
-    private static OperatingSystem.Command mxbuild(Path path)
+    private static Function<Path, OperatingSystem.Command> mxbuild(Options options)
     {
-        return new OperatingSystem.Command(
-            Stream.of(
-                "mx"
-                , "build"
-                , "--no-native"
-            )
-            , path
-            , Stream.of(
-                EnvVars.JAVA_HOME_ENV_VAR
-            )
-        );
+        return path ->
+            new OperatingSystem.Command(
+                Stream.of(
+                    "mx"
+                    , options.verbose ? "-V" : ""
+                    , "build"
+                    , "--no-native"
+                )
+                , path
+                , Stream.of(
+                    EnvVars.JAVA_HOME_ENV_VAR
+                )
+            );
     }
 
 }
@@ -123,7 +139,7 @@ class Maven
             return new OperatingSystem.Command(
                 Stream.of(
                     "mvn"
-                    // , "--debug"
+                    , options.verbose ? "--debug" : ""
                     , "install:install-file"
                     , String.format("-DgroupId=%s", groupId)
                     , String.format("-DartifactId=%s", artifactId)
@@ -156,7 +172,10 @@ class OperatingSystem
 
     private static Void exec(Command command)
     {
-        final var commandList = command.command.collect(Collectors.toList());
+        final var commandList = command.command
+            .filter(Predicate.not(String::isEmpty))
+            .collect(Collectors.toList());
+
         logger.debugf("Execute %s in %s", commandList, command.directory);
         try
         {
