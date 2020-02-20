@@ -38,8 +38,8 @@ class SequentialBuild
     {
         Mx.build("sdk");
         Maven.install("sdk", options);
-        Mx.build("substratevm");
-        Maven.install("substratevm", options);
+        // Mx.build("substratevm", options);
+        // Maven.install("substratevm", options);
     }
 }
 
