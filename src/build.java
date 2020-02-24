@@ -1,4 +1,8 @@
+import java.io.IOException;
+import java.nio.file.CopyOption;
+import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
 import java.util.Map;
 import java.util.Objects;
 import java.util.function.Function;
@@ -14,8 +18,9 @@ public class build
     {
         final var version = requireOption("version");
         final var verbose = Boolean.getBoolean("verbose");
+        final var mavenProxy = System.getProperty("maven.proxy");
 
-        final var options = new Options(version, verbose);
+        final var options = new Options(version, verbose, mavenProxy);
 
         logger.info("Build Mandrel");
         SequentialBuild.build(options);
@@ -38,11 +43,13 @@ class Options
 {
     final String version;
     final boolean verbose;
+    final String mavenProxy;
 
-    Options(String version, boolean verbose)
+    Options(String version, boolean verbose, String mavenProxy)
     {
         this.version = version;
         this.verbose = verbose;
+        this.mavenProxy = mavenProxy;
     }
 }
 
@@ -50,6 +57,8 @@ class SequentialBuild
 {
     static void build(Options options)
     {
+        // TODO git checkout mx version associated with mandrel version
+        Mx.hookMavenProxy(options);
         Mx.build("sdk", options);
         Maven.install("sdk", options);
         // Mx.build("substratevm", options);
@@ -91,6 +100,73 @@ class Mx
                     EnvVars.JAVA_HOME_ENV_VAR
                 )
             );
+    }
+
+    static void hookMavenProxy(Options options)
+    {
+        if (options.mavenProxy == null)
+            return;
+
+        prependMavenProxyToMxPy(options)
+            .apply(backupOrRestoreMxPy());
+    }
+
+    private static Function<Path, Void> prependMavenProxyToMxPy(Options options)
+    {
+        return mxPy ->
+        {
+            try (var lines = Files.lines(mxPy))
+            {
+                final var replaced = lines
+                    .map(prependMavenProxy(options))
+                    .collect(Collectors.toList());
+                Files.write(mxPy, replaced);
+                return null;
+            }
+            catch (IOException e)
+            {
+                throw new RuntimeException(e);
+            }
+        };
+    }
+
+    private static Path backupOrRestoreMxPy()
+    {
+        Path backupMxPy = Path.of("/opt", "mx", "mx.py.backup");
+        Path mxPy = Path.of("/opt", "mx", "mx.py");
+        if (!backupMxPy.toFile().exists())
+        {
+            copy(mxPy, backupMxPy);
+        }
+        else
+        {
+            copy(backupMxPy, mxPy, StandardCopyOption.REPLACE_EXISTING);
+        }
+
+        return mxPy;
+    }
+
+    private static void copy(Path from, Path to, CopyOption... copyOptions)
+    {
+        try
+        {
+            Files.copy(from, to, copyOptions);
+        }
+        catch (IOException e)
+        {
+            throw new RuntimeException(e);
+        }
+    }
+
+    private static Function<String, String> prependMavenProxy(Options options)
+    {
+        return line ->
+        {
+            var mavenBaseURL = String.format("\"%s\"", options.mavenProxy);
+            return line.contains("_mavenRepoBaseURLs")
+                ? line.replaceFirst("\\[", String.format("[ %s,", mavenBaseURL))
+                : line;
+        };
     }
 
 }
