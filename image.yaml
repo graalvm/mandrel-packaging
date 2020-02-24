@@ -7,7 +7,6 @@ modules:
   repositories:
   - path: cekit
   install:
-  - name: jdk
   - name: labsjdk
   - name: user
   - name: mx

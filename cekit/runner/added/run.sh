@@ -2,6 +2,7 @@
 
 set -e
 
+export PATH="${JAVA_BIN}:${PATH}"
 export PATH="${MX_BIN}:${PATH}"
 export PATH="${MAVEN_BIN}:${PATH}"
 

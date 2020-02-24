@@ -4,5 +4,11 @@ name: labsjdk
 version: 1.0
 description: Module installing Oracle Labs JDK
 
+envs:
+- name: "JAVA_HOME"
+  value: "/opt/labsjdk"
+- name: "JAVA_BIN"
+  value: "/opt/labsjdk/bin"
+
 execute:
 - script: add-labsjdk.sh
