@@ -175,7 +175,7 @@ class LocalPaths
 {
     static Path to(String artifact)
     {
-        return Path.of("/home", "mandrel", "mandrel", artifact);
+        return Path.of("/tmp", "mandrel", artifact);
     }
 
     static String from(Path path)

@@ -19,7 +19,7 @@ setEnv() {
     fi
 
     if [[ -n "${MANDREL_CLONE}" ]]; then
-        RUN_OPTIONS="-v ${MANDREL_CLONE}:/home/mandrel/mandrel ${RUN_OPTIONS}"
+        RUN_OPTIONS="-v ${MANDREL_CLONE}:/tmp/mandrel ${RUN_OPTIONS}"
         SKIP_MANDREL=1
     fi
 
