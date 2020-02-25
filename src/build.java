@@ -93,6 +93,7 @@ class Mx
                 Stream.of(
                     "mx"
                     , options.verbose ? "-V" : ""
+                    , "--trust-http"
                     , "build"
                     , "--no-native"
                 )
