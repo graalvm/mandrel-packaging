@@ -1,4 +1,5 @@
 import java.io.IOException;
+import java.nio.file.AccessDeniedException;
 import java.nio.file.CopyOption;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -136,7 +137,7 @@ class Mx
         Path mxPy = Path.of("/opt", "mx", "mx.py");
         if (!backupMxPy.toFile().exists())
         {
-            copy(mxPy, backupMxPy);
+            copyIgnoreAccessDenied(backupMxPy, mxPy);
         }
         else
         {
@@ -144,6 +145,22 @@ class Mx
         }
 
         return mxPy;
+    }
+
+    private static void copyIgnoreAccessDenied(Path backupMxPy, Path mxPy)
+    {
+        try
+        {
+            Files.copy(mxPy, backupMxPy);
+        }
+        catch (AccessDeniedException e)
+        {
+            // Ignore if unable to get access to copy
+        }
+        catch (IOException e)
+        {
+            throw new RuntimeException(e);
+        }
     }
 
     private static void copy(Path from, Path to, CopyOption... copyOptions)
