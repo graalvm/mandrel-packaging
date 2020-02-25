@@ -179,7 +179,7 @@ class Mx
     {
         return line ->
         {
-            var mavenBaseURL = String.format("\"%s\"", options.mavenProxy);
+            var mavenBaseURL = String.format("\"%s/\"", options.mavenProxy);
             return line.contains("_mavenRepoBaseURLs")
                 ? line.replaceFirst("\\[", String.format("[ %s,", mavenBaseURL))
                 : line;
