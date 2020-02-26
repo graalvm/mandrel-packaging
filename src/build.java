@@ -20,11 +20,18 @@ public class build
         final var version = requireOption("version");
         final var verbose = Boolean.getBoolean("verbose");
         final var mavenProxy = System.getProperty("maven.proxy");
+        final var mavenGoal = readMavenGoal();
 
-        final var options = new Options(version, verbose, mavenProxy);
+        final var options = new Options(version, verbose, mavenProxy, mavenGoal);
 
         logger.info("Build Mandrel");
         SequentialBuild.build(options);
+    }
+
+    private static Maven.Goal readMavenGoal()
+    {
+        final var goal = System.getProperty("maven.goal");
+        return goal != null ? Maven.Goal.valueOf(goal) : Maven.Goal.INSTALL;
     }
 
     private static String requireOption(String name)
@@ -45,12 +52,14 @@ class Options
     final String version;
     final boolean verbose;
     final String mavenProxy;
+    final Maven.Goal mavenGoal;
 
-    Options(String version, boolean verbose, String mavenProxy)
+    Options(String version, boolean verbose, String mavenProxy, Maven.Goal mavenGoal)
     {
         this.version = version;
         this.verbose = verbose;
         this.mavenProxy = mavenProxy;
+        this.mavenGoal = mavenGoal;
     }
 }
 
@@ -240,7 +249,7 @@ class Maven
                 Stream.of(
                     "mvn"
                     , options.verbose ? "--debug" : ""
-                    , "install:install-file"
+                    , String.format("%1$s:%1$s-file", options.mavenGoal.toString().toLowerCase())
                     , String.format("-DgroupId=%s", groupId)
                     , String.format("-DartifactId=%s", artifactId)
                     , String.format("-Dversion=%s", options.version)
@@ -258,6 +267,11 @@ class Maven
                 )
             );
         };
+    }
+
+    enum Goal
+    {
+        INSTALL, DEPLOY
     }
 }
 
