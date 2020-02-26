@@ -120,6 +120,7 @@ class Mx
             try (var lines = Files.lines(mxPy))
             {
                 final var replaced = lines
+                    .filter(Mx::notMavenOrg)
                     .map(prependMavenProxy(options))
                     .collect(Collectors.toList());
                 Files.write(mxPy, replaced);
@@ -130,6 +131,11 @@ class Mx
                 throw new RuntimeException(e);
             }
         };
+    }
+
+    private static boolean notMavenOrg(String line)
+    {
+        return !line.contains("maven.org");
     }
 
     private static Path backupOrRestoreMxPy()
@@ -182,7 +188,7 @@ class Mx
         {
             var mavenBaseURL = String.format("\"%s/\"", options.mavenProxy);
             return line.contains("_mavenRepoBaseURLs")
-                ? line.replaceFirst("\\[", String.format("[ %s,", mavenBaseURL))
+                ? line.replaceFirst("\\[", String.format("[ %s", mavenBaseURL))
                 : line;
         };
     }
