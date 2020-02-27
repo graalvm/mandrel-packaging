@@ -89,15 +89,6 @@ class SequentialBuild
     }
 }
 
-class EnvVars
-{
-    public static final OperatingSystem.EnvVar JAVA_HOME_ENV_VAR =
-        new OperatingSystem.EnvVar(
-            "JAVA_HOME"
-            , "/opt/labsjdk"
-        );
-}
-
 class Mx
 {
     static void build(String artifactName, Options options)
@@ -120,9 +111,7 @@ class Mx
                     , "--no-native"
                 )
                 , path
-                , Stream.of(
-                    EnvVars.JAVA_HOME_ENV_VAR
-                )
+                , Stream.empty()
             );
     }
 
@@ -275,9 +264,7 @@ class Maven
                     , "-DcreateChecksum=true"
                 )
                 , path
-                , Stream.of(
-                    EnvVars.JAVA_HOME_ENV_VAR
-                )
+                , Stream.empty()
             );
         };
     }
