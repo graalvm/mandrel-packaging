@@ -41,7 +41,7 @@ dockerRun() {
     echo "    ./run.sh --install --version 19.3.1-redhat-1 --maven-proxy https://repo1.maven.org/maven2/ --verbose"
     echo ""
     echo " To deploy:"
-    echo "    ./run.sh --deploy --version 19.3.1 --verbose"
+    echo "    ./run.sh --deploy --version 19.3.1 --repository-id abc --verbose"
     echo ""
 
     docker run -it ${RUN_OPTIONS} --entrypoint /bin/bash mandrel-packaging

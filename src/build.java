@@ -29,28 +29,37 @@ public class build
 
 class Options
 {
+    final Action action;
     final String version;
     final boolean verbose;
     final String mavenProxy;
-    final Action action;
+    final String repositoryId;
 
-    Options(String version, boolean verbose, String mavenProxy, Action action)
+    Options(
+        Action action
+        , String version
+        , boolean verbose
+        , String mavenProxy
+        , String repositoryId
+    )
     {
+        this.action = action;
         this.version = version;
         this.verbose = verbose;
         this.mavenProxy = mavenProxy;
-        this.action = action;
+        this.repositoryId = repositoryId;
     }
 
     public static Options from(Map<String, List<String>> args)
     {
-        final var version = required("version", args);
-        final var verbose = args.containsKey("verbose");
-        final var mavenProxy = optional("maven-proxy", args);
         final var action = args.containsKey("deploy")
             ? Action.DEPLOY
             : Action.INSTALL;
-        return new Options(version, verbose, mavenProxy, action);
+        final var version = required("version", args);
+        final var verbose = args.containsKey("verbose");
+        final var mavenProxy = optional("maven-proxy", args);
+        final var repositoryId = optional("repository-id", args);
+        return new Options(action, version, verbose, mavenProxy, repositoryId);
     }
 
     private static String optional(String name, Map<String, List<String>> args)
@@ -71,7 +80,8 @@ class Options
         return option.get(0);
     }
 
-    enum Action {
+    enum Action
+    {
         INSTALL, DEPLOY
     }
 }
@@ -83,7 +93,7 @@ class SequentialBuild
         // TODO git checkout mx version associated with mandrel version
         Mx.hookMavenProxy(options);
         Mx.build("sdk", options);
-        Maven.install("sdk", options);
+        Maven.mvn("sdk", options);
         // Mx.build("substratevm", options);
         // Maven.install("substratevm", options);
     }
@@ -231,21 +241,25 @@ class Maven
         , "substratevm", "svm"
     );
 
-    static void install(String artifactName, Options options)
+    static void mvn(String artifactName, Options options)
     {
         OperatingSystem.exec()
-            .compose(Maven.mvnInstall(options))
+            .compose(Maven.mvn(options))
             .compose(LocalPaths::to)
             .apply(artifactName);
     }
-    
-    private static Function<Path, OperatingSystem.Command> mvnInstall(Options options)
+
+    private static Function<Path, OperatingSystem.Command> mvn(Options options)
     {
         return path ->
         {
             final var artifactName = LocalPaths.from(path);
             final var groupId = GROUP_IDS.get(artifactName);
             final var artifactId = ARTIFACT_IDS.get(artifactName);
+
+            final var repositoryId = Objects.nonNull(options.repositoryId)
+                ? String.format("-DrepositoryId=%s", options.repositoryId)
+                : "";
 
             return new OperatingSystem.Command(
                 Stream.of(
@@ -262,6 +276,7 @@ class Maven
                         , artifactId
                     )
                     , "-DcreateChecksum=true"
+                    , repositoryId
                 )
                 , path
                 , Stream.empty()
