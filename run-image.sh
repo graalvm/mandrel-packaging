@@ -34,7 +34,9 @@ setEnv() {
 
 dockerRun() {
     echo "Opening an interactive terminal in the latest JDG snapshot builder image"
-    echo " For building: ./run.sh "
+    echo " For building locally: ./run.sh --install --version 19.3.1 --verbose"
+    echo " For building with a maven proxy: ./run.sh --install --version 19.3.1 --maven-proxy https://repo1.maven.org/maven2/ --verbose"
+    echo " For deploying: ./run.sh --deploy --version 19.3.1 --verbose"
     echo ""
 
     docker run -it ${RUN_OPTIONS} --entrypoint /bin/bash mandrel-packaging
