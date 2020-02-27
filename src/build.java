@@ -222,8 +222,8 @@ class LocalPaths
 class Maven
 {
     static final Map<String, String> GROUP_IDS = Map.of(
-        "sdk", "io.mandrel.sdk"
-        , "substratevm", "io.mandrel.nativeimage"
+        "sdk", "org.graalvm.sdk"
+        , "substratevm", "org.graalvm.nativeimage"
     );
 
     static final Map<String, String> ARTIFACT_IDS = Map.of(
