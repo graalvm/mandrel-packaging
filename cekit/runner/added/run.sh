@@ -23,4 +23,4 @@ fi
 
 pushd mandrel-packaging
 
-java "$@" src/build.java
+java src/build.java "$@"

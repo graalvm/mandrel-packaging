@@ -4,6 +4,9 @@ import java.nio.file.CopyOption;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.function.Function;
@@ -17,33 +20,10 @@ public class build
 
     public static void main(String... args)
     {
-        final var version = requireOption("version");
-        final var verbose = Boolean.getBoolean("verbose");
-        final var mavenProxy = System.getProperty("maven.proxy");
-        final var mavenGoal = readMavenGoal();
-
-        final var options = new Options(version, verbose, mavenProxy, mavenGoal);
+        final var options = Options.from(Args.read(args));
 
         logger.info("Build Mandrel");
         SequentialBuild.build(options);
-    }
-
-    private static Maven.Goal readMavenGoal()
-    {
-        final var goal = System.getProperty("maven.goal");
-        return goal != null ? Maven.Goal.valueOf(goal) : Maven.Goal.INSTALL;
-    }
-
-    private static String requireOption(String name)
-    {
-        final var option = System.getProperty(name);
-        if (Objects.isNull(option))
-            throw new IllegalArgumentException(String.format(
-                "Missing mandatory -D%s system property"
-                , name
-            ));
-
-        return option;
     }
 }
 
@@ -52,14 +32,47 @@ class Options
     final String version;
     final boolean verbose;
     final String mavenProxy;
-    final Maven.Goal mavenGoal;
+    final Action action;
 
-    Options(String version, boolean verbose, String mavenProxy, Maven.Goal mavenGoal)
+    Options(String version, boolean verbose, String mavenProxy, Action action)
     {
         this.version = version;
         this.verbose = verbose;
         this.mavenProxy = mavenProxy;
-        this.mavenGoal = mavenGoal;
+        this.action = action;
+    }
+
+    public static Options from(Map<String, List<String>> args)
+    {
+        final var version = required("version", args);
+        final var verbose = args.containsKey("verbose");
+        final var mavenProxy = optional("maven-proxy", args);
+        final var action = args.containsKey("deploy")
+            ? Action.DEPLOY
+            : Action.INSTALL;
+        return new Options(version, verbose, mavenProxy, action);
+    }
+
+    private static String optional(String name, Map<String, List<String>> args)
+    {
+        final var option = args.get(name);
+        return option != null ? option.get(0) : null;
+    }
+
+    private static String required(String name, Map<String, List<String>> args)
+    {
+        final var option = args.get(name);
+        if (Objects.isNull(option))
+            throw new IllegalArgumentException(String.format(
+                "Missing mandatory --%s"
+                , name
+            ));
+
+        return option.get(0);
+    }
+
+    enum Action {
+        INSTALL, DEPLOY
     }
 }
 
@@ -249,7 +262,7 @@ class Maven
                 Stream.of(
                     "mvn"
                     , options.verbose ? "--debug" : ""
-                    , String.format("%1$s:%1$s-file", options.mavenGoal.toString().toLowerCase())
+                    , String.format("%1$s:%1$s-file", options.action.toString().toLowerCase())
                     , String.format("-DgroupId=%s", groupId)
                     , String.format("-DartifactId=%s", artifactId)
                     , String.format("-Dversion=%s", options.version)
@@ -267,11 +280,6 @@ class Maven
                 )
             );
         };
-    }
-
-    enum Goal
-    {
-        INSTALL, DEPLOY
     }
 }
 
@@ -369,6 +377,41 @@ final class Logger
             , name
             , msg
         );
+    }
+}
+
+final class Args
+{
+    static Map<String, List<String>> read(String... args)
+    {
+        final Map<String, List<String>> params = new HashMap<>();
+
+        List<String> options = null;
+        for (final String arg : args)
+        {
+            if (arg.startsWith("--"))
+            {
+                if (arg.length() < 3)
+                {
+                    System.err.println("Error at argument " + arg);
+                    return params;
+                }
+
+                options = new ArrayList<>();
+                params.put(arg.substring(2), options);
+            }
+            else if (options != null)
+            {
+                options.add(arg);
+            }
+            else
+            {
+                System.err.println("Illegal parameter usage");
+                return params;
+            }
+        }
+
+        return params;
     }
 }
 
