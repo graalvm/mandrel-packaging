@@ -33,21 +33,24 @@ class Options
     final String version;
     final boolean verbose;
     final String mavenProxy;
-    final String repositoryId;
+    final String mavenRepoId;
+    final String mavenURL;
 
     Options(
         Action action
         , String version
         , boolean verbose
         , String mavenProxy
-        , String repositoryId
+        , String mavenRepoId
+        , String mavenURL
     )
     {
         this.action = action;
         this.version = version;
         this.verbose = verbose;
         this.mavenProxy = mavenProxy;
-        this.repositoryId = repositoryId;
+        this.mavenRepoId = mavenRepoId;
+        this.mavenURL = mavenURL;
     }
 
     public static Options from(Map<String, List<String>> args)
@@ -58,8 +61,9 @@ class Options
         final var version = required("version", args);
         final var verbose = args.containsKey("verbose");
         final var mavenProxy = optional("maven-proxy", args);
-        final var repositoryId = optional("repository-id", args);
-        return new Options(action, version, verbose, mavenProxy, repositoryId);
+        final var mavenRepoId = optional("maven-repo-id", args);
+        final var mavenURL = optional("maven-url", args);
+        return new Options(action, version, verbose, mavenProxy, mavenRepoId, mavenURL);
     }
 
     private static String optional(String name, Map<String, List<String>> args)
@@ -257,8 +261,12 @@ class Maven
             final var groupId = GROUP_IDS.get(artifactName);
             final var artifactId = ARTIFACT_IDS.get(artifactName);
 
-            final var repositoryId = Objects.nonNull(options.repositoryId)
-                ? String.format("-DrepositoryId=%s", options.repositoryId)
+            final var repoId = Objects.nonNull(options.mavenRepoId)
+                ? String.format("-DrepositoryId=%s", options.mavenRepoId)
+                : "";
+
+            final var url = Objects.nonNull(options.mavenURL)
+                ? String.format("-Durl=%s", options.mavenURL)
                 : "";
 
             return new OperatingSystem.Command(
@@ -276,7 +284,8 @@ class Maven
                         , artifactId
                     )
                     , "-DcreateChecksum=true"
-                    , repositoryId
+                    , repoId
+                    , url
                 )
                 , path
                 , Stream.empty()
