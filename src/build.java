@@ -100,8 +100,8 @@ class SequentialBuild
         // TODO consider splitting mvn into install and deploy
         // TODO produce src jars
         Maven.mvn("sdk", options);
-        // Mx.build("substratevm", options);
-        // Maven.install("substratevm", options);
+        Mx.build("substratevm", options);
+        Maven.mvn("substratevm", options);
     }
 }
 
