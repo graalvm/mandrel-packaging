@@ -97,6 +97,8 @@ class SequentialBuild
         // TODO git checkout mx version associated with mandrel version
         Mx.hookMavenProxy(options);
         Mx.build("sdk", options);
+        // TODO consider splitting mvn into install and deploy
+        // TODO produce src jars
         Maven.mvn("sdk", options);
         // Mx.build("substratevm", options);
         // Maven.install("substratevm", options);
