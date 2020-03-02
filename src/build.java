@@ -220,7 +220,7 @@ class Mx
         Path mxPy = LocalPaths.mxHome(Path.of("mx.py"));
         if (!backupMxPy.toFile().exists())
         {
-            copy(backupMxPy, mxPy);
+            copy(mxPy, backupMxPy);
         }
         else
         {
