@@ -338,6 +338,11 @@ class Maven
                         , path.toString()
                         , artifactId
                     )
+                    , String.format(
+                        "-Dsources=%s/mxbuild/dists/jdk11/%s.src.zip"
+                        , path.toString()
+                        , artifactId
+                    )
                     , "-DcreateChecksum=true"
                     , repoId
                     , url
