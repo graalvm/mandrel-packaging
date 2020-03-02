@@ -35,13 +35,13 @@ setEnv() {
 dockerRun() {
     echo "Opening an interactive terminal in the latest JDG snapshot builder image"
     echo " To build locally:"
-    echo "   ./run.sh --install --version 19.3.1-redhat-1 --verbose"
+    echo "   ./run.sh --install --version 19.3.1.redhat-00001 --verbose"
     echo ""
     echo " To build with a maven proxy:"
-    echo "    ./run.sh --install --version 19.3.1-redhat-1 --maven-proxy https://repo1.maven.org/maven2/ --verbose"
+    echo "    ./run.sh --install --version 19.3.1.redhat-00001 --maven-proxy https://repo1.maven.org/maven2/ --verbose"
     echo ""
     echo " To deploy:"
-    echo "    ./run.sh --deploy --version 19.3.1 --maven-repo-id abc --maven-url http://1.2.3.4 --verbose"
+    echo "    ./run.sh --deploy --version 19.3.1.redhat-00001 --maven-repo-id abc --maven-url http://1.2.3.4 --verbose"
     echo ""
 
     docker run -it ${RUN_OPTIONS} --entrypoint /bin/bash mandrel-packaging
