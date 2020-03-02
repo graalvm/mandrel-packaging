@@ -3,6 +3,6 @@
 set -e
 
 pushd /opt
-git clone https://github.com/graalvm/mx --depth 10 -b master
+git clone https://github.com/graalvm/mx
 sudo chown -R mandrel:mandrel mx
 popd

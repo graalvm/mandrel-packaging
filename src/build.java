@@ -1,5 +1,4 @@
 import java.io.IOException;
-import java.nio.file.AccessDeniedException;
 import java.nio.file.CopyOption;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -11,6 +10,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.function.Function;
 import java.util.function.Predicate;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -94,25 +94,75 @@ class SequentialBuild
 {
     static void build(Options options)
     {
-        // TODO git checkout mx version associated with mandrel version
         Mx.hookMavenProxy(options);
         Mx.build("sdk", options);
         // TODO consider splitting mvn into install and deploy
         // TODO produce src jars
         Maven.mvn("sdk", options);
-        Mx.build("substratevm", options);
-        Maven.mvn("substratevm", options);
+        // Mx.build("substratevm", options);
+        // Maven.mvn("substratevm", options);
     }
 }
 
 class Mx
 {
+    private static final Pattern VERSION_PATTERN = Pattern.compile("\"([0-9]\\.[0-9]{1,3}\\.[0-9]{1,2})\"");
+
     static void build(String artifactName, Options options)
     {
         OperatingSystem.exec()
             .compose(Mx.mxbuild(options))
-            .compose(LocalPaths::to)
-            .apply(artifactName);
+            .compose(Mx.checkout(artifactName))
+            .compose(LocalPaths::graalHome)
+            .apply(Path.of(artifactName));
+    }
+
+    private static Function<Path, Path> checkout(String artifactName)
+    {
+        return path -> {
+            OperatingSystem.exec()
+                .compose(Git.checkout(LocalPaths.MX_HOME))
+                .compose(Mx::mxVersion)
+                .compose(LocalPaths::graalHome)
+                .compose(Mx::suitePy)
+                .apply(artifactName);
+
+            return path;
+        };
+    }
+
+    private static Path suitePy(String artifactName)
+    {
+        return Path.of(
+            artifactName
+            , String.format("mx.%s", artifactName)
+            , "suite.py"
+        );
+    }
+
+    private static String mxVersion(Path suitePy)
+    {
+        try (var lines = Files.lines(suitePy))
+        {
+            return lines
+                .filter(line -> line.contains("mxversion"))
+                .map(Mx::extractMxVersion)
+                .findFirst()
+                .orElse(null);
+        }
+        catch (IOException e)
+        {
+            throw new RuntimeException(e);
+        }
+    }
+
+    private static String extractMxVersion(String line)
+    {
+        final var matcher = VERSION_PATTERN.matcher(line);
+        return matcher.results()
+            .findFirst()
+            .map(result -> result.group(1))
+            .orElse(null);
     }
 
     private static Function<Path, OperatingSystem.Command> mxbuild(Options options)
@@ -167,11 +217,11 @@ class Mx
 
     private static Path backupOrRestoreMxPy()
     {
-        Path backupMxPy = Path.of("/opt", "mx", "mx.py.backup");
-        Path mxPy = Path.of("/opt", "mx", "mx.py");
+        Path backupMxPy = LocalPaths.mxHome(Path.of("mx.py.backup"));
+        Path mxPy = LocalPaths.mxHome(Path.of("mx.py"));
         if (!backupMxPy.toFile().exists())
         {
-            copyIgnoreAccessDenied(backupMxPy, mxPy);
+            copy(backupMxPy, mxPy);
         }
         else
         {
@@ -179,34 +229,6 @@ class Mx
         }
 
         return mxPy;
-    }
-
-    private static void copyIgnoreAccessDenied(Path backupMxPy, Path mxPy)
-    {
-        try
-        {
-            Files.copy(mxPy, backupMxPy);
-        }
-        catch (AccessDeniedException e)
-        {
-            // Ignore if unable to get access to copy
-        }
-        catch (IOException e)
-        {
-            throw new RuntimeException(e);
-        }
-    }
-
-    private static void copy(Path from, Path to, CopyOption... copyOptions)
-    {
-        try
-        {
-            Files.copy(from, to, copyOptions);
-        }
-        catch (IOException e)
-        {
-            throw new RuntimeException(e);
-        }
     }
 
     private static Function<String, String> prependMavenProxy(Options options)
@@ -220,18 +242,49 @@ class Mx
         };
     }
 
+    private static void copy(Path from, Path to, CopyOption... copyOptions)
+    {
+        try
+        {
+            Files.copy(from, to, copyOptions);
+        }
+        catch (IOException e)
+        {
+            throw new RuntimeException(e);
+        }
+    }
+}
+
+class Git
+{
+    static Function<String, OperatingSystem.Command> checkout(Path directory)
+    {
+        return branch ->
+            new OperatingSystem.Command(
+                Stream.of(
+                    "git"
+                    , "checkout"
+                    , branch
+                )
+                , directory
+                , Stream.empty()
+            );
+    }
 }
 
 class LocalPaths
 {
-    static Path to(String artifact)
+    private static final Path GRAAL_HOME = Path.of("/tmp", "mandrel");
+    static final Path MX_HOME = Path.of("/opt", "mx");
+
+    static Path graalHome(Path path)
     {
-        return Path.of("/tmp", "mandrel", artifact);
+        return GRAAL_HOME.resolve(path);
     }
 
-    static String from(Path path)
+    static Path mxHome(Path path)
     {
-        return path.getFileName().toString();
+        return MX_HOME.resolve(path);
     }
 }
 
@@ -251,15 +304,15 @@ class Maven
     {
         OperatingSystem.exec()
             .compose(Maven.mvn(options))
-            .compose(LocalPaths::to)
-            .apply(artifactName);
+            .compose(LocalPaths::graalHome)
+            .apply(Path.of(artifactName));
     }
 
     private static Function<Path, OperatingSystem.Command> mvn(Options options)
     {
         return path ->
         {
-            final var artifactName = LocalPaths.from(path);
+            final var artifactName = path.getFileName().toString();
             final var groupId = GROUP_IDS.get(artifactName);
             final var artifactId = ARTIFACT_IDS.get(artifactName);
 
