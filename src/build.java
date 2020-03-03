@@ -94,12 +94,26 @@ class SequentialBuild
 {
     static void build(Options options)
     {
-        Mx.hookMavenProxy(options);
-        Mx.build("sdk", options);
         // TODO consider splitting mvn into install and deploy
+
+        Mx.build("sdk", options);
         Maven.mvn("sdk", options);
         // Mx.build("substratevm", options);
         // Maven.mvn("substratevm", options);
+    }
+}
+
+class Artifact
+{
+    final Path rootPath;
+    final Path suitePyPath;
+    final String mxVersion;
+
+    Artifact(Path rootPath, Path suitePyPath, String mxVersion)
+    {
+        this.rootPath = rootPath;
+        this.suitePyPath = suitePyPath;
+        this.mxVersion = mxVersion;
     }
 }
 
@@ -111,23 +125,17 @@ class Mx
     {
         OperatingSystem.exec()
             .compose(Mx.mxbuild(options))
-            .compose(Mx.checkout(artifactName))
-            .compose(LocalPaths::graalHome)
-            .apply(Path.of(artifactName));
+            .compose(Mx.hookMavenProxy(options))
+            .compose(Mx::artifact)
+            .apply(artifactName);
     }
 
-    private static Function<Path, Path> checkout(String artifactName)
+    private static Artifact artifact(String artifactName)
     {
-        return path -> {
-            OperatingSystem.exec()
-                .compose(Git.checkout(LocalPaths.MX_HOME))
-                .compose(Mx::mxVersion)
-                .compose(LocalPaths::graalHome)
-                .compose(Mx::suitePy)
-                .apply(artifactName);
-
-            return path;
-        };
+        var rootPath = LocalPaths.GRAAL_HOME.resolve(artifactName);
+        var suitePyPath = LocalPaths.GRAAL_HOME.resolve(suitePy(artifactName));
+        final var mxVersion = mxVersion(suitePyPath);
+        return new Artifact(rootPath, suitePyPath, mxVersion);
     }
 
     private static Path suitePy(String artifactName)
@@ -164,29 +172,33 @@ class Mx
             .orElse(null);
     }
 
-    private static Function<Path, OperatingSystem.Command> mxbuild(Options options)
+    private static Function<Artifact, OperatingSystem.Command> mxbuild(Options options)
     {
-        return path ->
+        return artifact ->
             new OperatingSystem.Command(
                 Stream.of(
-                    "mx"
+                    LocalPaths.mxHome(artifact.mxVersion).resolve("mx").toString()
                     , options.verbose ? "-V" : ""
                     , "--trust-http"
                     , "build"
                     , "--no-native"
                 )
-                , path
+                , artifact.rootPath
                 , Stream.empty()
             );
     }
 
-    static void hookMavenProxy(Options options)
+    static Function<Artifact, Artifact> hookMavenProxy(Options options)
     {
-        if (options.mavenProxy == null)
-            return;
+        return artifact -> {
+            if (options.mavenProxy != null) {
+                Mx.prependMavenProxyToMxPy(options)
+                    .compose(Mx::backupOrRestoreMxPy)
+                    .apply(artifact);
+            }
 
-        prependMavenProxyToMxPy(options)
-            .apply(backupOrRestoreMxPy());
+            return artifact;
+        };
     }
 
     private static Function<Path, Void> prependMavenProxyToMxPy(Options options)
@@ -214,10 +226,10 @@ class Mx
         return !line.contains("maven.org");
     }
 
-    private static Path backupOrRestoreMxPy()
+    private static Path backupOrRestoreMxPy(Artifact artifact)
     {
-        Path backupMxPy = LocalPaths.mxHome(Path.of("mx.py.backup"));
-        Path mxPy = LocalPaths.mxHome(Path.of("mx.py"));
+        Path backupMxPy = LocalPaths.mxHome(artifact.mxVersion).resolve("mx.py.backup");
+        Path mxPy = LocalPaths.mxHome(artifact.mxVersion).resolve("mx.py");
         if (!backupMxPy.toFile().exists())
         {
             copy(mxPy, backupMxPy);
@@ -273,17 +285,16 @@ class Git
 
 class LocalPaths
 {
-    private static final Path GRAAL_HOME = Path.of("/tmp", "mandrel");
-    static final Path MX_HOME = Path.of("/opt", "mx");
+    static final Path GRAAL_HOME = Path.of("/tmp", "mandrel");
 
-    static Path graalHome(Path path)
+    static Path graalHome(Path other)
     {
-        return GRAAL_HOME.resolve(path);
+        return GRAAL_HOME.resolve(other);
     }
 
-    static Path mxHome(Path path)
+    static Path mxHome(String mxVersion)
     {
-        return MX_HOME.resolve(path);
+        return Path.of("/opt", String.format("mx-%s", mxVersion));
     }
 }
 
