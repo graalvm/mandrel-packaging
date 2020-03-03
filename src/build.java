@@ -294,7 +294,7 @@ class LocalPaths
 
     static Path mxHome(String mxVersion)
     {
-        return Path.of("/opt", String.format("mx-%s", mxVersion));
+        return Path.of("/opt", "mx", mxVersion);
     }
 }
 
