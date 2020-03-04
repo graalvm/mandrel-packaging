@@ -4,10 +4,12 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.regex.Pattern;
@@ -29,12 +31,16 @@ public class build
 
 class Options
 {
+    private static final List<String> DEFAULT_ARTIFACTS =
+        Arrays.asList("sdk", "substratevm");
+
     final Action action;
     final String version;
     final boolean verbose;
     final String mavenProxy;
     final String mavenRepoId;
     final String mavenURL;
+    final List<String> artifacts;
 
     Options(
         Action action
@@ -43,6 +49,7 @@ class Options
         , String mavenProxy
         , String mavenRepoId
         , String mavenURL
+        , List<String> artifacts
     )
     {
         this.action = action;
@@ -51,6 +58,7 @@ class Options
         this.mavenProxy = mavenProxy;
         this.mavenRepoId = mavenRepoId;
         this.mavenURL = mavenURL;
+        this.artifacts = artifacts;
     }
 
     public static Options from(Map<String, List<String>> args)
@@ -63,7 +71,21 @@ class Options
         final var mavenProxy = optional("maven-proxy", args);
         final var mavenRepoId = optional("maven-repo-id", args);
         final var mavenURL = optional("maven-url", args);
-        return new Options(action, version, verbose, mavenProxy, mavenRepoId, mavenURL);
+
+        final var artifactsArg = args.get("artifacts");
+        final var artifacts = artifactsArg == null
+            ? DEFAULT_ARTIFACTS
+            : artifactsArg;
+
+        return new Options(
+            action
+            , version
+            , verbose
+            , mavenProxy
+            , mavenRepoId
+            , mavenURL
+            , artifacts
+        );
     }
 
     private static String optional(String name, Map<String, List<String>> args)
@@ -94,12 +116,9 @@ class SequentialBuild
 {
     static void build(Options options)
     {
-        // TODO consider splitting mvn into install and deploy
-
-        Mx.build("sdk", options);
-        Maven.mvn("sdk", options);
-        Mx.build("substratevm", options);
-        Maven.mvn("substratevm", options);
+        // Only invoke mvn if all mx builds succeeded
+        options.artifacts.forEach(Mx.build(options));
+        options.artifacts.forEach(Maven.mvn(options));
     }
 }
 
@@ -121,13 +140,14 @@ class Mx
 {
     private static final Pattern VERSION_PATTERN = Pattern.compile("\"([0-9]\\.[0-9]{1,3}\\.[0-9]{1,2})\"");
 
-    static void build(String artifactName, Options options)
+    static Consumer<String> build(Options options)
     {
-        OperatingSystem.exec()
-            .compose(Mx.mxbuild(options))
-            .compose(Mx.hookMavenProxy(options))
-            .compose(Mx::artifact)
-            .apply(artifactName);
+        return artifactName ->
+            OperatingSystem.exec()
+                .compose(Mx.mxbuild(options))
+                .compose(Mx.hookMavenProxy(options))
+                .compose(Mx::artifact)
+                .apply(artifactName);
     }
 
     private static Artifact artifact(String artifactName)
@@ -310,15 +330,17 @@ class Maven
         , "substratevm", "svm"
     );
 
-    static void mvn(String artifactName, Options options)
+    static Consumer<String> mvn(Options options)
     {
-        OperatingSystem.exec()
-            .compose(Maven.mvn(options))
-            .compose(LocalPaths::graalHome)
-            .apply(Path.of(artifactName));
+        // TODO consider splitting mvn into install and deploy
+        return artifactName ->
+            OperatingSystem.exec()
+                .compose(Maven.mavenMvn(options))
+                .compose(LocalPaths::graalHome)
+                .apply(Path.of(artifactName));
     }
 
-    private static Function<Path, OperatingSystem.Command> mvn(Options options)
+    private static Function<Path, OperatingSystem.Command> mavenMvn(Options options)
     {
         return path ->
         {
