@@ -126,6 +126,156 @@ class Mx
 {
     private static final Pattern VERSION_PATTERN = Pattern.compile("\"([0-9]\\.[0-9]{1,3}\\.[0-9]{1,2})\"");
 
+    private static final String SVM_DEPENDENCIES = String.join(","
+        , "SVM"
+        , "com.oracle.svm.graal"
+        , "com.oracle.svm.truffle"
+        , "com.oracle.svm.hosted"
+        , "com.oracle.svm.truffle.nfi"
+        , "com.oracle.svm.truffle.nfi.posix"
+        , "com.oracle.svm.truffle.nfi.windows"
+        , "com.oracle.svm.core.jdk11"
+        , "com.oracle.svm.core"
+        , "com.oracle.svm.core.graal.amd64"
+        , "com.oracle.svm.core.graal.aarch64"
+        , "com.oracle.svm.core.posix.jdk11"
+        , "com.oracle.svm.core.posix"
+        , "com.oracle.svm.core.windows"
+        , "com.oracle.svm.core.genscavenge"
+        , "com.oracle.svm.jni"
+        , "com.oracle.svm.reflect"
+        , "com.oracle.svm.util" // svm.core dependency
+        , "com.oracle.svm.core.graal" // svm.hosted dependency
+        // , "SVM_HOSTED_NATIVE" // -- do not even try to download native dependencies
+        // , "GRAAL_SDK" // -- previously built and available as mvn dependency
+        , "OBJECTFILE"
+        , "com.oracle.objectfile"
+        , "POINTSTO"
+        , "com.oracle.graal.pointsto"
+        // , "JUNIT_TOOL" // -- don't need test tools in production artifacts
+        , "TRUFFLE_NFI"
+        , "com.oracle.truffle.nfi"
+        , "com.oracle.truffle.nfi.spi"
+
+        , "TRUFFLE_API"
+        , "com.oracle.truffle.api"
+        , "com.oracle.truffle.api.dsl"
+        , "com.oracle.truffle.api.profiles"
+        , "com.oracle.truffle.api.debug"
+        , "com.oracle.truffle.api.utilities"
+        , "com.oracle.truffle.object"
+        , "com.oracle.truffle.api.object.dsl"
+        , "com.oracle.truffle.polyglot"
+        , "com.oracle.truffle.api.interop" // api.polyglot dependency
+        , "com.oracle.truffle.api.instrumentation" // api.polyglot dependency
+        , "com.oracle.truffle.api.utilities" // api.polyglot dependency
+        , "com.oracle.truffle.api.profiles" // api.interop dependency
+        , "com.oracle.truffle.api.library" // api.interop dependency
+        , "com.oracle.truffle.api.object" // truffle.object dependency
+
+        , "TRUFFLE_DSL_PROCESSOR"
+        , "truffle:ANTLR4"
+        , "com.oracle.truffle.dsl.processor"
+        , "com.oracle.truffle.object.dsl.processor"
+        , "com.oracle.truffle.dsl.processor.interop"
+
+        , "GRAAL"
+        , "org.graalvm.libgraal"
+        , "org.graalvm.compiler.options"
+        , "org.graalvm.compiler.nodeinfo"
+        , "org.graalvm.compiler.serviceprovider"
+        , "org.graalvm.compiler.api.replacements"
+        , "org.graalvm.compiler.api.runtime"
+        , "org.graalvm.compiler.graph"
+        , "org.graalvm.compiler.core"
+        , "org.graalvm.compiler.replacements"
+        , "org.graalvm.compiler.runtime"
+        , "org.graalvm.compiler.code"
+        , "org.graalvm.compiler.printer"
+        , "org.graalvm.compiler.core.aarch64"
+        , "org.graalvm.compiler.replacements.aarch64"
+        , "org.graalvm.compiler.core.amd64"
+        , "org.graalvm.compiler.replacements.amd64"
+        , "org.graalvm.compiler.core.sparc"
+        , "org.graalvm.compiler.replacements.sparc"
+        , "org.graalvm.compiler.hotspot.aarch64"
+        , "org.graalvm.compiler.hotspot.amd64"
+        , "org.graalvm.compiler.hotspot.sparc"
+        , "org.graalvm.compiler.hotspot"
+        , "org.graalvm.compiler.lir.aarch64"
+        , "org.graalvm.compiler.truffle.compiler.amd64"
+        , "org.graalvm.compiler.truffle.runtime.serviceprovider"
+        , "org.graalvm.compiler.truffle.runtime.hotspot"
+        , "org.graalvm.compiler.truffle.runtime.hotspot.java"
+        , "org.graalvm.compiler.truffle.runtime.hotspot.libgraal"
+        , "org.graalvm.compiler.truffle.compiler.hotspot.amd64"
+        , "org.graalvm.compiler.truffle.compiler.hotspot.sparc"
+        , "org.graalvm.compiler.truffle.compiler.hotspot.aarch64"
+        , "org.graalvm.compiler.api.directives" // compiler.replacements dependency
+        , "org.graalvm.compiler.java" // compiler.replacements dependency
+        , "org.graalvm.compiler.loop.phases" // compiler.replacements dependency
+        , "org.graalvm.compiler.word" // compiler.replacements dependency
+        , "org.graalvm.compiler.nodes" // compiler.word dependency
+        , "org.graalvm.compiler.lir" // compiler.nodes dependency
+        , "org.graalvm.compiler.asm" // compiler.lir dependency
+        , "org.graalvm.compiler.code" // compiler.lir dependency
+        , "org.graalvm.compiler.nodeinfo" // compiler.graph dependency
+        , "org.graalvm.compiler.core.common" // compiler.graph dependency
+        , "org.graalvm.compiler.bytecode" // compiler.graph dependency
+        , "org.graalvm.compiler.loop" // compiler.loop.phases dependency
+        , "org.graalvm.compiler.phases.common" // compiler.loop.phases dependency
+        , "org.graalvm.compiler.phases" // compiler.phases.common dependency
+        , "org.graalvm.compiler.lir" // compiler.lir.aarch64 dependency
+        , "org.graalvm.compiler.asm.aarch64" // compiler.lir.aarch64 dependency
+        , "org.graalvm.compiler.lir.amd64" // compiler.core.amd64 dependency
+        , "org.graalvm.compiler.asm.amd64" // compiler.lir.amd64 dependency
+        , "org.graalvm.compiler.lir.sparc" // compiler.hotspot.sparc dependency (TODO missing in mx.compiler/suite.py)
+        , "org.graalvm.compiler.truffle.compiler" // compiler.truffle.compiler.amd64 dependency
+        , "org.graalvm.compiler.truffle.runtime" // compiler.truffle.runtime.hotspot dependency
+        , "org.graalvm.compiler.truffle.common.hotspot" // compiler.truffle.runtime.hotspot dependency
+        , "org.graalvm.compiler.truffle.compiler.hotspot" // compiler.truffle.runtime.hotspot.java dependency
+        , "org.graalvm.compiler.truffle.common.hotspot.libgraal" // compiler.truffle.runtime.hotspot.libgraal dependency
+        , "org.graalvm.util" // compiler.truffle.runtime.hotspot.libgraal dependency
+        , "org.graalvm.compiler.debug" // compiler.core.common dependency
+        , "org.graalvm.compiler.virtual" // compiler.core dependency
+        , "org.graalvm.compiler.asm.sparc" // compiler.lir.sparc dependency
+
+        , "GRAAL_PROCESSOR_COMMON"
+        , "org.graalvm.compiler.processor"
+
+        , "GRAAL_OPTIONS_PROCESSOR"
+        , "org.graalvm.compiler.options.processor"
+
+        , "GRAAL_NODEINFO_PROCESSOR"
+        , "org.graalvm.compiler.nodeinfo.processor"
+
+        , "GRAAL_SERVICEPROVIDER_PROCESSOR"
+        , "org.graalvm.compiler.serviceprovider.processor"
+
+        , "GRAAL_REPLACEMENTS_PROCESSOR"
+        , "org.graalvm.compiler.replacements.processor"
+
+        , "GRAAL_COMPILER_MATCH_PROCESSOR"
+        , "org.graalvm.compiler.core.match.processor"
+
+        , "GRAAL_GRAPHIO"
+        , "org.graalvm.graphio"
+
+        , "GRAAL_TRUFFLE_COMMON"
+        , "org.graalvm.compiler.truffle.common"
+
+        , "TRUFFLE_COMMON_PROCESSOR"
+        , "org.graalvm.compiler.truffle.common.processor"
+
+        , "JVMCI_HOTSPOT"
+        , "JVMCI_API"
+    );
+
+    static final Map<String, Stream<String>> BUILD_ARGS = Map.of(
+        "sdk", Stream.empty()
+        , "substratevm", Stream.of("--only", SVM_DEPENDENCIES)
+    );
+
     static Consumer<String> build(Options options)
     {
         return artifactName ->
@@ -140,8 +290,9 @@ class Mx
     {
         var rootPath = LocalPaths.graalHome().resolve(artifactName);
         var suitePyPath = LocalPaths.graalHome().resolve(suitePy(artifactName));
-        final var mxVersion = mxVersion(suitePyPath);
-        return new Artifact(rootPath, suitePyPath, mxVersion);
+        var mxVersion = mxVersion(suitePyPath);
+        var buildArgs = BUILD_ARGS.get(artifactName);
+        return new Artifact(rootPath, suitePyPath, mxVersion, buildArgs);
     }
 
     private static Path suitePy(String artifactName)
@@ -182,12 +333,15 @@ class Mx
     {
         return artifact ->
             new OperatingSystem.Command(
-                Stream.of(
-                    LocalPaths.mxHome(artifact.mxVersion).resolve("mx").toString()
-                    , options.verbose ? "-V" : ""
-                    , "--trust-http"
-                    , "build"
-                    , "--no-native"
+                Stream.concat(
+                    Stream.of(
+                        LocalPaths.mxHome(artifact.mxVersion).resolve("mx").toString()
+                        , options.verbose ? "-V" : ""
+                        , "--trust-http"
+                        , "build"
+                        , "--no-native"
+                    )
+                    , artifact.buildArgs
                 )
                 , artifact.rootPath
                 , Stream.empty()
@@ -196,8 +350,10 @@ class Mx
 
     static Function<Artifact, Artifact> hookMavenProxy(Options options)
     {
-        return artifact -> {
-            if (options.mavenProxy != null) {
+        return artifact ->
+        {
+            if (options.mavenProxy != null)
+            {
                 Mx.prependMavenProxyToMxPy(options)
                     .compose(Mx::backupOrRestoreMxPy)
                     .apply(artifact);
@@ -276,12 +432,19 @@ class Mx
         final Path rootPath;
         final Path suitePyPath;
         final String mxVersion;
+        final Stream<String> buildArgs;
 
-        Artifact(Path rootPath, Path suitePyPath, String mxVersion)
+        Artifact(
+            Path rootPath
+            , Path suitePyPath
+            , String mxVersion
+            , Stream<String> buildArgs
+        )
         {
             this.rootPath = rootPath;
             this.suitePyPath = suitePyPath;
             this.mxVersion = mxVersion;
+            this.buildArgs = buildArgs;
         }
     }
 }
