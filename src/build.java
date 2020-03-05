@@ -286,23 +286,6 @@ class Mx
     }
 }
 
-class Git
-{
-    static Function<String, OperatingSystem.Command> checkout(Path directory)
-    {
-        return branch ->
-            new OperatingSystem.Command(
-                Stream.of(
-                    "git"
-                    , "checkout"
-                    , branch
-                )
-                , directory
-                , Stream.empty()
-            );
-    }
-}
-
 class LocalPaths
 {
     static final Path GRAAL_HOME = Path.of("/tmp", "mandrel");
