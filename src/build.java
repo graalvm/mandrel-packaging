@@ -288,11 +288,14 @@ class Mx
 
     private static Artifact artifact(String artifactName)
     {
-        var rootPath = LocalPaths.graalHome().resolve(artifactName);
-        var suitePyPath = LocalPaths.graalHome().resolve(suitePy(artifactName));
-        var mxVersion = mxVersion(suitePyPath);
+        var rootPath = LocalPaths.graalHome().apply(Path.of(artifactName));
+        var mxHome = LocalPaths.mxRoot()
+            .compose(Mx::mxVersion)
+            .compose(LocalPaths.graalHome())
+            .compose(Mx::suitePy)
+            .apply(artifactName);
         var buildArgs = BUILD_ARGS.get(artifactName);
-        return new Artifact(rootPath, suitePyPath, mxVersion, buildArgs);
+        return new Artifact(rootPath, mxHome, buildArgs);
     }
 
     private static Path suitePy(String artifactName)
@@ -335,7 +338,7 @@ class Mx
             new OperatingSystem.Command(
                 Stream.concat(
                     Stream.of(
-                        LocalPaths.mxHome(artifact.mxVersion).resolve("mx").toString()
+                        artifact.mxHome.resolve("mx").toString()
                         , options.verbose ? "-V" : ""
                         , "--trust-http"
                         , "build"
@@ -390,8 +393,8 @@ class Mx
 
     private static Path backupOrRestoreMxPy(Artifact artifact)
     {
-        Path backupMxPy = LocalPaths.mxHome(artifact.mxVersion).resolve("mx.py.backup");
-        Path mxPy = LocalPaths.mxHome(artifact.mxVersion).resolve("mx.py");
+        Path backupMxPy = artifact.mxHome.resolve("mx.py.backup");
+        Path mxPy = artifact.mxHome.resolve("mx.py");
         if (!backupMxPy.toFile().exists())
         {
             copy(mxPy, backupMxPy);
@@ -430,20 +433,17 @@ class Mx
     private static class Artifact
     {
         final Path rootPath;
-        final Path suitePyPath;
-        final String mxVersion;
+        final Path mxHome;
         final Stream<String> buildArgs;
 
         Artifact(
             Path rootPath
-            , Path suitePyPath
-            , String mxVersion
+            , Path mxHome
             , Stream<String> buildArgs
         )
         {
             this.rootPath = rootPath;
-            this.suitePyPath = suitePyPath;
-            this.mxVersion = mxVersion;
+            this.mxHome = mxHome;
             this.buildArgs = buildArgs;
         }
     }
@@ -452,15 +452,16 @@ class Mx
 class LocalPaths
 {
     private static final Path GRAAL_HOME = Path.of("/tmp", "mandrel");
+    private static final Path MX_ROOT = Path.of("/opt", "mx");
 
-    static Path graalHome()
+    static Function<Path, Path> graalHome()
     {
-        return GRAAL_HOME;
+        return GRAAL_HOME::resolve;
     }
 
-    static Path mxHome(String mxVersion)
+    static Function<String, Path> mxRoot()
     {
-        return Path.of("/opt", "mx", mxVersion);
+        return MX_ROOT::resolve;
     }
 }
 
@@ -488,7 +489,7 @@ class Maven
 
     private static Artifact artifact(String artifactName)
     {
-        final var rootPath = LocalPaths.graalHome().resolve(artifactName);
+        final var rootPath = LocalPaths.graalHome().apply(Path.of(artifactName));
         final var groupId = GROUP_IDS.get(artifactName);
         final var artifactId = ARTIFACT_IDS.get(artifactName);
         return new Artifact(rootPath, groupId, artifactId);
