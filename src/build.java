@@ -138,8 +138,8 @@ class Mx
 
     private static Artifact artifact(String artifactName)
     {
-        var rootPath = LocalPaths.GRAAL_HOME.resolve(artifactName);
-        var suitePyPath = LocalPaths.GRAAL_HOME.resolve(suitePy(artifactName));
+        var rootPath = LocalPaths.graalHome().resolve(artifactName);
+        var suitePyPath = LocalPaths.graalHome().resolve(suitePy(artifactName));
         final var mxVersion = mxVersion(suitePyPath);
         return new Artifact(rootPath, suitePyPath, mxVersion);
     }
@@ -288,11 +288,11 @@ class Mx
 
 class LocalPaths
 {
-    static final Path GRAAL_HOME = Path.of("/tmp", "mandrel");
+    private static final Path GRAAL_HOME = Path.of("/tmp", "mandrel");
 
-    static Path graalHome(Path other)
+    static Path graalHome()
     {
-        return GRAAL_HOME.resolve(other);
+        return GRAAL_HOME;
     }
 
     static Path mxHome(String mxVersion)
@@ -319,18 +319,22 @@ class Maven
         return artifactName ->
             OperatingSystem.exec()
                 .compose(Maven.mavenMvn(options))
-                .compose(LocalPaths::graalHome)
-                .apply(Path.of(artifactName));
+                .compose(Maven::artifact)
+                .apply(artifactName);
     }
 
-    private static Function<Path, OperatingSystem.Command> mavenMvn(Options options)
+    private static Artifact artifact(String artifactName)
     {
-        return path ->
-        {
-            final var artifactName = path.getFileName().toString();
-            final var groupId = GROUP_IDS.get(artifactName);
-            final var artifactId = ARTIFACT_IDS.get(artifactName);
+        final var rootPath = LocalPaths.graalHome().resolve(artifactName);
+        final var groupId = GROUP_IDS.get(artifactName);
+        final var artifactId = ARTIFACT_IDS.get(artifactName);
+        return new Artifact(rootPath, groupId, artifactId);
+    }
 
+    private static Function<Artifact, OperatingSystem.Command> mavenMvn(Options options)
+    {
+        return artifact ->
+        {
             final var repoId = Objects.nonNull(options.mavenRepoId)
                 ? String.format("-DrepositoryId=%s", options.mavenRepoId)
                 : "";
@@ -344,28 +348,42 @@ class Maven
                     "mvn"
                     , options.verbose ? "--debug" : ""
                     , String.format("%1$s:%1$s-file", options.action.toString().toLowerCase())
-                    , String.format("-DgroupId=%s", groupId)
-                    , String.format("-DartifactId=%s", artifactId)
+                    , String.format("-DgroupId=%s", artifact.groupId)
+                    , String.format("-DartifactId=%s", artifact.artifactId)
                     , String.format("-Dversion=%s", options.version)
                     , "-Dpackaging=jar"
                     , String.format(
                         "-Dfile=%s/mxbuild/dists/jdk11/%s.jar"
-                        , path.toString()
-                        , artifactId
+                        , artifact.rootPath.toString()
+                        , artifact.artifactId
                     )
                     , String.format(
                         "-Dsources=%s/mxbuild/dists/jdk11/%s.src.zip"
-                        , path.toString()
-                        , artifactId
+                        , artifact.rootPath.toString()
+                        , artifact.artifactId
                     )
                     , "-DcreateChecksum=true"
                     , repoId
                     , url
                 )
-                , path
+                , artifact.rootPath
                 , Stream.empty()
             );
         };
+    }
+
+    private static class Artifact
+    {
+        final Path rootPath;
+        final String groupId;
+        final String artifactId;
+
+        Artifact(Path rootPath, String groupId, String artifactId)
+        {
+            this.rootPath = rootPath;
+            this.groupId = groupId;
+            this.artifactId = artifactId;
+        }
     }
 }
 
