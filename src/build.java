@@ -122,20 +122,6 @@ class SequentialBuild
     }
 }
 
-class Artifact
-{
-    final Path rootPath;
-    final Path suitePyPath;
-    final String mxVersion;
-
-    Artifact(Path rootPath, Path suitePyPath, String mxVersion)
-    {
-        this.rootPath = rootPath;
-        this.suitePyPath = suitePyPath;
-        this.mxVersion = mxVersion;
-    }
-}
-
 class Mx
 {
     private static final Pattern VERSION_PATTERN = Pattern.compile("\"([0-9]\\.[0-9]{1,3}\\.[0-9]{1,2})\"");
@@ -282,6 +268,20 @@ class Mx
         catch (IOException e)
         {
             throw new RuntimeException(e);
+        }
+    }
+
+    private static class Artifact
+    {
+        final Path rootPath;
+        final Path suitePyPath;
+        final String mxVersion;
+
+        Artifact(Path rootPath, Path suitePyPath, String mxVersion)
+        {
+            this.rootPath = rootPath;
+            this.suitePyPath = suitePyPath;
+            this.mxVersion = mxVersion;
         }
     }
 }
