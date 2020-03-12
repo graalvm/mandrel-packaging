@@ -1,8 +1,8 @@
+import java.io.File;
 import java.io.IOException;
 import java.nio.file.CopyOption;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -16,16 +16,32 @@ import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import static java.nio.file.StandardCopyOption.REPLACE_EXISTING;
+
 public class build
 {
     static final Logger logger = LogManager.getLogger(build.class);
 
     public static void main(String... args)
     {
+        final var localPaths = LocalPaths.newSystemPaths();
         final var options = Options.from(Args.read(args));
+        final var build = new Build(localPaths, options);
 
-        logger.info("Build Mandrel");
-        SequentialBuild.build(options);
+        logger.info("Build the bits!");
+        SequentialBuild.build(build);
+    }
+}
+
+class Build
+{
+    final LocalPaths paths;
+    final Options options;
+
+    Build(LocalPaths paths, Options options)
+    {
+        this.paths = paths;
+        this.options = options;
     }
 }
 
@@ -88,6 +104,11 @@ class Options
         );
     }
 
+    static String snapshotVersion(Options options)
+    {
+        return String.format("%s-SNAPSHOT", options.version);
+    }
+
     private static String optional(String name, Map<String, List<String>> args)
     {
         final var option = args.get(name);
@@ -114,11 +135,11 @@ class Options
 
 class SequentialBuild
 {
-    static void build(Options options)
+    static void build(Build build)
     {
         // Only invoke mvn if all mx builds succeeded
-        options.artifacts.forEach(Mx.build(options));
-        options.artifacts.forEach(Maven.mvn(options));
+        build.options.artifacts.forEach(Mx.build(build));
+        build.options.artifacts.forEach(Maven.mvn(build));
     }
 }
 
@@ -163,18 +184,18 @@ class Mx
         )
     );
 
-    static Consumer<String> build(Options options)
+    static Consumer<String> build(Build build)
     {
         return artifactName ->
         {
             LOG.debugf("Build %s", artifactName);
 
-            final var artifact = Mx.hookMavenProxy(options)
-                .compose(Mx::artifact)
+            final var artifact = Mx.hookMavenProxy(build.options)
+                .compose(Mx.artifact(build))
                 .apply(artifactName);
 
             artifact.buildSteps
-                .map(Mx.mxbuild(artifact, options))
+                .map(Mx.mxbuild(artifact, build.options))
                 .forEach(OperatingSystem::exec);
         };
     }
@@ -198,16 +219,23 @@ class Mx
             );
     }
 
-    private static Artifact artifact(String artifactName)
+    private static Function<String, Artifact> artifact(Build build)
     {
-        var rootPath = LocalPaths.graalHome().apply(Path.of(artifactName));
-        var mxHome = LocalPaths.mxRoot()
-            .compose(Mx::mxVersion)
-            .compose(LocalPaths.graalHome())
-            .compose(Mx::suitePy)
-            .apply(artifactName);
-        var buildArgs = BUILD_STEPS.get(artifactName);
-        return new Artifact(rootPath, mxHome, buildArgs);
+        return artifactName ->
+        {
+            final var fromGraalHome = LocalPaths.graalHome(build.paths);
+
+            var rootPath = fromGraalHome
+                .apply(Path.of(artifactName));
+
+            var mxHome = LocalPaths.mxRoot(build.paths)
+                .compose(Mx::mxVersion)
+                .compose(fromGraalHome)
+                .compose(Mx::suitePy)
+                .apply(artifactName);
+            var buildArgs = BUILD_STEPS.get(artifactName);
+            return new Artifact(rootPath, mxHome, buildArgs);
+        };
     }
 
     private static Path suitePy(String artifactName)
@@ -290,11 +318,11 @@ class Mx
         Path mxPy = artifact.mxHome.resolve("mx.py");
         if (!backupMxPy.toFile().exists())
         {
-            copy(mxPy, backupMxPy);
+            OperatingSystem.copy(mxPy, backupMxPy);
         }
         else
         {
-            copy(backupMxPy, mxPy, StandardCopyOption.REPLACE_EXISTING);
+            OperatingSystem.copy(backupMxPy, mxPy, REPLACE_EXISTING);
         }
 
         return mxPy;
@@ -309,18 +337,6 @@ class Mx
                 ? line.replaceFirst("\\[", String.format("[ %s", mavenBaseURL))
                 : line;
         };
-    }
-
-    private static void copy(Path from, Path to, CopyOption... copyOptions)
-    {
-        try
-        {
-            Files.copy(from, to, copyOptions);
-        }
-        catch (IOException e)
-        {
-            throw new RuntimeException(e);
-        }
     }
 
     static class BuildArgs
@@ -364,22 +380,50 @@ class Mx
 
 class LocalPaths
 {
-    private static final Path GRAAL_HOME = Path.of("/tmp", "mandrel");
-    private static final Path MX_ROOT = Path.of("/opt", "mx");
+    final Path graalHome;
+    final Path mxHome;
+    final Path workingDir;
 
-    static Function<Path, Path> graalHome()
+    private LocalPaths(Path graalHome, Path mxHome, Path workingDir)
     {
-        return GRAAL_HOME::resolve;
+        this.graalHome = graalHome;
+        this.mxHome = mxHome;
+        this.workingDir = workingDir;
     }
 
-    static Function<String, Path> mxRoot()
+    static Function<Path, Path> graalHome(LocalPaths paths)
     {
-        return MX_ROOT::resolve;
+        return paths.graalHome::resolve;
+    }
+
+    static Function<String, Path> mxRoot(LocalPaths paths)
+    {
+        return paths.mxHome::resolve;
+    }
+
+    static Function<Path, Path> targetDir(LocalPaths paths)
+    {
+        return paths.workingDir.resolve("target")::resolve;
+    }
+
+    static Function<Path, Path> resourcesDir(LocalPaths paths)
+    {
+        return paths.workingDir.resolve("resources")::resolve;
+    }
+
+    static LocalPaths newSystemPaths()
+    {
+        final var graalHome = Path.of("/tmp", "mandrel");
+        final var mxHome = Path.of("/opt", "mx");
+        final var workingDir = new File(System.getProperty("user.dir")).toPath();
+        return new LocalPaths(graalHome, mxHome, workingDir);
     }
 }
 
 class Maven
 {
+    static final Logger LOG = LogManager.getLogger(Maven.class);
+
     static final Map<String, String> GROUP_IDS = Map.of(
         "sdk", "org.graalvm.sdk"
         , "substratevm", "org.graalvm.nativeimage"
@@ -390,22 +434,127 @@ class Maven
         , "substratevm", "svm"
     );
 
-    static Consumer<String> mvn(Options options)
+    static Consumer<String> mvn(Build build)
     {
-        // TODO consider splitting mvn into install and deploy
-        return artifactName ->
-            OperatingSystem.exec()
-                .compose(Maven.mavenMvn(options))
-                .compose(Maven::artifact)
-                .apply(artifactName);
+        switch (build.options.action)
+        {
+            case INSTALL:
+                return Maven.mvnInstall(build);
+            default:
+                throw new RuntimeException("NYI");
+        }
     }
 
-    private static Artifact artifact(String artifactName)
+    static Consumer<String> mvnInstall(Build build)
     {
-        final var rootPath = LocalPaths.graalHome().apply(Path.of(artifactName));
-        final var groupId = GROUP_IDS.get(artifactName);
-        final var artifactId = ARTIFACT_IDS.get(artifactName);
-        return new Artifact(rootPath, groupId, artifactId);
+        return artifactName ->
+        {
+            final var artifact =
+                Maven.preparePomXml(build)
+                    .compose(Maven.artifact(build.paths))
+                    .apply(artifactName);
+
+            final var buildSteps = Stream.of(
+                Maven.installSnapshot(build.options)
+                , Maven.install(build)
+            );
+
+            buildSteps
+                .map(step -> step.apply(artifact))
+                .forEach(OperatingSystem::exec);
+        };
+    }
+
+    private static Function<String, Artifact> artifact(LocalPaths paths)
+    {
+        return artifactName -> {
+            final var rootPath = LocalPaths
+                .graalHome(paths)
+                .apply(Path.of(artifactName));
+            final var groupId = GROUP_IDS.get(artifactName);
+            final var artifactId = ARTIFACT_IDS.get(artifactName);
+            return new Artifact(rootPath, groupId, artifactId);
+        };
+    }
+
+    private static Function<Artifact, Artifact> preparePomXml(Build build)
+    {
+        return artifact ->
+        {
+            final var sourcePomXmlPath = Artifact
+                .sourcePomXmlPath(build.paths)
+                .apply(artifact);
+
+            final var targetPomXmlPath =
+                Artifact.targetPomXmlPath(build.paths).apply(artifact);
+
+            LOG.debugf("Create parent directories for %s", targetPomXmlPath);
+            OperatingSystem.mkdirs()
+                .compose(Path::getParent)
+                .apply(targetPomXmlPath);
+
+            LOG.debugf("Copy %s to %s", sourcePomXmlPath, targetPomXmlPath);
+            OperatingSystem.copy(sourcePomXmlPath, targetPomXmlPath, REPLACE_EXISTING);
+
+            try (var lines = Files.lines(targetPomXmlPath))
+            {
+                final var replaced = lines
+                    .map(line -> line.replace("999", build.options.version))
+                    .collect(Collectors.toList());
+                Files.write(targetPomXmlPath, replaced);
+            }
+            catch (IOException e)
+            {
+                throw new RuntimeException(e);
+            }
+
+            return artifact;
+        };
+    }
+
+    private static Function<Artifact, OperatingSystem.Command> installSnapshot(Options options)
+    {
+        return artifact ->
+            new OperatingSystem.Command(
+                Stream.of(
+                    "mvn"
+                    , options.verbose ? "--debug" : ""
+                    , "install:install-file"
+                    , String.format("-DgroupId=%s", artifact.groupId)
+                    , String.format("-DartifactId=%s", artifact.artifactId)
+                    , String.format("-Dversion=%s", Options.snapshotVersion(options))
+                    , "-Dpackaging=jar"
+                    , String.format(
+                        "-Dfile=%s/mxbuild/dists/jdk11/%s.jar"
+                        , artifact.rootPath.toString()
+                        , artifact.artifactId
+                    )
+                    , String.format(
+                        "-Dsources=%s/mxbuild/dists/jdk11/%s.src.zip"
+                        , artifact.rootPath.toString()
+                        , artifact.artifactId
+                    )
+                    , "-DcreateChecksum=true"
+                )
+                , artifact.rootPath
+                , Stream.empty()
+            );
+    }
+
+    private static Function<Artifact, OperatingSystem.Command> install(Build build)
+    {
+        return artifact ->
+            new OperatingSystem.Command(
+                Stream.of(
+                    "mvn"
+                    , build.options.verbose ? "--debug" : ""
+                    , "install"
+                )
+                , Artifact.targetPomXmlPath(build.paths)
+                    .apply(artifact)
+                    .getParent()
+                , Stream.empty()
+            );
     }
 
     private static Function<Artifact, OperatingSystem.Command> mavenMvn(Options options)
@@ -461,6 +610,27 @@ class Maven
             this.groupId = groupId;
             this.artifactId = artifactId;
         }
+
+        static Function<Artifact, Path> sourcePomXmlPath(LocalPaths paths)
+        {
+            return artifact ->
+                LocalPaths.resourcesDir(paths)
+                    .compose(Artifact::pomXmlPath)
+                    .apply(artifact);
+        }
+
+        static Function<Artifact, Path> targetPomXmlPath(LocalPaths paths)
+        {
+            return artifact ->
+                LocalPaths.targetDir(paths)
+                    .compose(Artifact::pomXmlPath)
+                    .apply(artifact);
+        }
+
+        private static Path pomXmlPath(Artifact artifact)
+        {
+            return Path.of(artifact.artifactId, "pom.xml");
+        }
     }
 }
 
@@ -508,6 +678,35 @@ class OperatingSystem
         {
             throw new RuntimeException(e);
         }
+    }
+
+    static void copy(Path from, Path to, CopyOption... copyOptions)
+    {
+        try
+        {
+            Files.copy(from, to, copyOptions);
+        }
+        catch (IOException e)
+        {
+            throw new RuntimeException(e);
+        }
+    }
+
+    static Function<Path, Path> mkdirs()
+    {
+        return OperatingSystem::mkdirs;
+    }
+
+    private static Path mkdirs(Path path)
+    {
+        final var file = path.toFile();
+        if (!file.exists())
+        {
+            final var created = file.mkdirs();
+            if (!created)
+                throw new RuntimeException("Failed to create target directory");
+        }
+        return path;
     }
 
     static class Command
