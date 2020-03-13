@@ -14,6 +14,9 @@
     <version>999-ASSEMBLY</version>
 
     <name>Graal Sdk</name>
+    <description>
+        GraalVM is an ecosystem for compiling and running applications written in multiple languages. GraalVM removes the isolation between programming languages and enables interoperability in a shared runtime.
+    </description>
     <url>https://github.com/oracle/graal</url>
     <developers>
         <developer>
