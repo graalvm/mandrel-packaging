@@ -249,17 +249,13 @@ class Mx
 
     private static String mxVersion(Path suitePy)
     {
-        try (var lines = Files.lines(suitePy))
+        try (var lines = OperatingSystem.readLines(suitePy))
         {
             return lines
                 .filter(line -> line.contains("mxversion"))
                 .map(Mx::extractMxVersion)
                 .findFirst()
                 .orElse(null);
-        }
-        catch (IOException e)
-        {
-            throw new RuntimeException(e);
         }
     }
 
@@ -291,18 +287,14 @@ class Mx
     {
         return mxPy ->
         {
-            try (var lines = Files.lines(mxPy))
+            try (var lines = OperatingSystem.readLines(mxPy))
             {
                 final var replaced = lines
                     .filter(Mx::notMavenOrg)
                     .map(prependMavenProxy(options))
                     .collect(Collectors.toList());
-                Files.write(mxPy, replaced);
+                OperatingSystem.writeLines(mxPy, replaced);
                 return null;
-            }
-            catch (IOException e)
-            {
-                throw new RuntimeException(e);
             }
         };
     }
@@ -383,12 +375,14 @@ class LocalPaths
     final Path graalHome;
     final Path mxHome;
     final Path workingDir;
+    final Path mavenRepoHome;
 
-    private LocalPaths(Path graalHome, Path mxHome, Path workingDir)
+    private LocalPaths(Path graalHome, Path mxHome, Path workingDir, Path mavenRepoHome)
     {
         this.graalHome = graalHome;
         this.mxHome = mxHome;
         this.workingDir = workingDir;
+        this.mavenRepoHome = mavenRepoHome;
     }
 
     static Function<Path, Path> graalHome(LocalPaths paths)
@@ -415,8 +409,11 @@ class LocalPaths
     {
         final var graalHome = Path.of("/tmp", "mandrel");
         final var mxHome = Path.of("/opt", "mx");
-        final var workingDir = new File(System.getProperty("user.dir")).toPath();
-        return new LocalPaths(graalHome, mxHome, workingDir);
+        final var userDir = System.getProperty("user.dir");
+        final var workingDir = new File(userDir).toPath();
+        final var userHome = System.getProperty("user.home");
+        final var mavenRepoHome = Path.of(userHome, ".m2", "repository");
+        return new LocalPaths(graalHome, mxHome, workingDir, mavenRepoHome);
     }
 }
 
@@ -450,70 +447,68 @@ class Maven
         return artifactName ->
         {
             final var artifact =
-                Maven.preparePomXml(build)
-                    .compose(Maven.artifact(build.paths))
+                Maven.artifact(build.paths)
                     .apply(artifactName);
+            final var assemblyArtifact = AssemblyArtifact.of(artifact, build);
+            final var releaseArtifact = ReleaseArtifact.of(artifact, build);
 
-            final var buildSteps = Stream.of(
-                Maven.installSnapshot(build.options)
-                , Maven.install(build)
-            );
-
-            buildSteps
-                .map(step -> step.apply(artifact))
-                .forEach(OperatingSystem::exec);
+            Maven.mvnInstallSnapshot(artifact, build);
+            Maven.mvnInstallAssembly(assemblyArtifact, build);
+            Maven.mvnInstallRelease(releaseArtifact, build);
         };
     }
 
     private static Function<String, Artifact> artifact(LocalPaths paths)
     {
-        return artifactName -> {
+        return artifactName ->
+        {
             final var rootPath = LocalPaths
                 .graalHome(paths)
                 .apply(Path.of(artifactName));
             final var groupId = GROUP_IDS.get(artifactName);
             final var artifactId = ARTIFACT_IDS.get(artifactName);
-            return new Artifact(rootPath, groupId, artifactId);
+
+            return new Artifact(
+                rootPath
+                , groupId
+                , artifactId
+            );
         };
     }
 
-    private static Function<Artifact, Artifact> preparePomXml(Build build)
+    private static Function<DirectionalPaths, DirectionalPaths> preparePomXml(Build build)
     {
-        return artifact ->
+        return paths ->
         {
-            final var sourcePomXmlPath = Artifact
-                .sourcePomXmlPath(build.paths)
-                .apply(artifact);
-
-            final var targetPomXmlPath =
-                Artifact.targetPomXmlPath(build.paths).apply(artifact);
-
-            LOG.debugf("Create parent directories for %s", targetPomXmlPath);
+            LOG.debugf("Create parent directories for %s", paths.target);
             OperatingSystem.mkdirs()
                 .compose(Path::getParent)
-                .apply(targetPomXmlPath);
+                .apply(paths.target);
 
-            LOG.debugf("Copy %s to %s", sourcePomXmlPath, targetPomXmlPath);
-            OperatingSystem.copy(sourcePomXmlPath, targetPomXmlPath, REPLACE_EXISTING);
+            OperatingSystem.copy(paths.source, paths.target, REPLACE_EXISTING);
 
-            try (var lines = Files.lines(targetPomXmlPath))
+            try (var lines = OperatingSystem.readLines(paths.target))
             {
                 final var replaced = lines
                     .map(line -> line.replace("999", build.options.version))
                     .collect(Collectors.toList());
-                Files.write(targetPomXmlPath, replaced);
-            }
-            catch (IOException e)
-            {
-                throw new RuntimeException(e);
+                OperatingSystem.writeLines(paths.target, replaced);
             }
 
-            return artifact;
+            return paths;
         };
     }
 
-    private static Function<Artifact, OperatingSystem.Command> installSnapshot(Options options)
+    private static void mvnInstallSnapshot(Artifact artifact, Build build)
     {
+        OperatingSystem.exec()
+            .compose(Maven.mvnInstallSnapshot(build.options))
+            .apply(artifact);
+    }
+
+    private static Function<Artifact, OperatingSystem.Command> mvnInstallSnapshot(Options options)
+    {
+        // TODO fix install-file plugin version -> https://maven.apache.org/plugins/maven-install-plugin/examples/custom-pom-installation.html
         return artifact ->
             new OperatingSystem.Command(
                 Stream.of(
@@ -541,7 +536,23 @@ class Maven
             );
     }
 
-    private static Function<Artifact, OperatingSystem.Command> install(Build build)
+    private static void mvnInstallAssembly(AssemblyArtifact artifact, Build build)
+    {
+        OperatingSystem.exec()
+            .compose(Maven.mvnInstallAssembly(build))
+            .compose(Maven.prepareAssemblyPomXml(build))
+            .apply(artifact);
+    }
+
+    private static Function<AssemblyArtifact, AssemblyArtifact> prepareAssemblyPomXml(Build build)
+    {
+        return artifact -> {
+            Maven.preparePomXml(build).apply(artifact.pomPaths);
+            return artifact;
+        };
+    }
+
+    private static Function<AssemblyArtifact, OperatingSystem.Command> mvnInstallAssembly(Build build)
     {
         return artifact ->
             new OperatingSystem.Command(
@@ -550,9 +561,46 @@ class Maven
                     , build.options.verbose ? "--debug" : ""
                     , "install"
                 )
-                , Artifact.targetPomXmlPath(build.paths)
-                    .apply(artifact)
-                    .getParent()
+                , artifact.pomPaths.target.getParent()
+                , Stream.empty()
+            );
+    }
+
+    private static void mvnInstallRelease(ReleaseArtifact artifact, Build build)
+    {
+        OperatingSystem.exec()
+            .compose(Maven.installRelease(build))
+            .compose(Maven.prepareReleasePomXml(build))
+            .apply(artifact);
+    }
+
+    private static Function<ReleaseArtifact, ReleaseArtifact> prepareReleasePomXml(Build build)
+    {
+        return artifact -> {
+            Maven.preparePomXml(build).apply(artifact.pomPaths);
+            return artifact;
+        };
+    }
+
+    private static Function<ReleaseArtifact, OperatingSystem.Command> installRelease(Build build)
+    {
+        // TODO fix install-file plugin version -> https://maven.apache.org/plugins/maven-install-plugin/examples/custom-pom-installation.html
+        return artifact ->
+            new OperatingSystem.Command(
+                Stream.of(
+                    "mvn"
+                    , build.options.verbose ? "--debug" : ""
+                    , "install:install-file"
+                    , String.format("-DgroupId=%s", artifact.groupId)
+                    , String.format("-DartifactId=%s", artifact.artifactId)
+                    , String.format("-Dversion=%s", build.options.version)
+                    , "-Dpackaging=jar"
+                    , String.format("-Dfile=%s", artifact.jarPath)
+                    , String.format("-Dsources=%s", artifact.sourceJarPath)
+                    , "-DcreateChecksum=true"
+                    , String.format("-DpomFile=%s", artifact.pomPaths.target)
+                )
+                , build.paths.workingDir
                 , Stream.empty()
             );
     }
@@ -598,7 +646,7 @@ class Maven
         };
     }
 
-    private static class Artifact
+    private static final class Artifact
     {
         final Path rootPath;
         final String groupId;
@@ -610,26 +658,112 @@ class Maven
             this.groupId = groupId;
             this.artifactId = artifactId;
         }
+    }
 
-        static Function<Artifact, Path> sourcePomXmlPath(LocalPaths paths)
+    private static final class AssemblyArtifact
+    {
+        final DirectionalPaths pomPaths;
+
+        private AssemblyArtifact(DirectionalPaths pomPaths)
         {
-            return artifact ->
-                LocalPaths.resourcesDir(paths)
-                    .compose(Artifact::pomXmlPath)
-                    .apply(artifact);
+            this.pomPaths = pomPaths;
         }
 
-        static Function<Artifact, Path> targetPomXmlPath(LocalPaths paths)
+        static AssemblyArtifact of(Artifact artifact, Build build)
         {
-            return artifact ->
-                LocalPaths.targetDir(paths)
-                    .compose(Artifact::pomXmlPath)
-                    .apply(artifact);
+            final var pomPath = Path.of(
+                "assembly"
+                , artifact.artifactId
+                , "pom.xml"
+            );
+            final var pomPaths = new DirectionalPaths(
+                LocalPaths.resourcesDir(build.paths).apply(pomPath)
+                , LocalPaths.targetDir(build.paths).apply(pomPath)
+            );
+
+            return new AssemblyArtifact(pomPaths);
+        }
+    }
+
+    private static final class ReleaseArtifact
+    {
+        final String groupId;
+        final String artifactId;
+        final DirectionalPaths pomPaths;
+        final Path jarPath;
+        final Path sourceJarPath;
+
+        private ReleaseArtifact(
+            String groupId
+            , String artifactId
+            , DirectionalPaths pomPaths
+            , Path jarPath
+            , Path sourceJarPath
+        )
+        {
+            this.groupId = groupId;
+            this.artifactId = artifactId;
+            this.pomPaths = pomPaths;
+            this.jarPath = jarPath;
+            this.sourceJarPath = sourceJarPath;
         }
 
-        private static Path pomXmlPath(Artifact artifact)
+        static ReleaseArtifact of(Artifact artifact, Build build)
         {
-            return Path.of(artifact.artifactId, "pom.xml");
+            final var releasePomPath = Path.of(
+                "release"
+                , artifact.artifactId
+                , "pom.xml"
+            );
+
+            final var pomPaths = new DirectionalPaths(
+                LocalPaths.resourcesDir(build.paths).apply(releasePomPath)
+                , LocalPaths.targetDir(build.paths).apply(releasePomPath)
+            );
+
+            final var jarName = String.format(
+                "%s-%s-ASSEMBLY"
+                , artifact.artifactId
+                , build.options.version
+            );
+
+            final var artifactPath = build.paths.mavenRepoHome
+                .resolve(artifact.groupId.replace(".", "/"))
+                .resolve(artifact.artifactId);
+
+            final var jarPath = artifactPath
+                .resolve(String.format("%s-ASSEMBLY", build.options.version))
+                .resolve(String.format("%s.jar", jarName));
+
+            final var sourceJarName = String.format(
+                "%s-%s-SNAPSHOT"
+                , artifact.artifactId
+                , build.options.version
+            );
+
+            final var sourceJarPath = artifactPath
+                .resolve(String.format("%s-SNAPSHOT", build.options.version))
+                .resolve(String.format("%s-sources.jar", sourceJarName));
+
+            return new ReleaseArtifact(
+                artifact.groupId
+                , artifact.artifactId
+                , pomPaths
+                , jarPath
+                , sourceJarPath
+            );
+        }
+    }
+
+    private static final class DirectionalPaths
+    {
+        final Path source;
+        final Path target;
+
+        private DirectionalPaths(Path source, Path target)
+        {
+            this.source = source;
+            this.target = target;
         }
     }
 }
@@ -684,6 +818,7 @@ class OperatingSystem
     {
         try
         {
+            LOG.debugf("Copy %s to %s", from, to);
             Files.copy(from, to, copyOptions);
         }
         catch (IOException e)
@@ -695,6 +830,30 @@ class OperatingSystem
     static Function<Path, Path> mkdirs()
     {
         return OperatingSystem::mkdirs;
+    }
+
+    static Stream<String> readLines(Path path)
+    {
+        try
+        {
+            return Files.lines(path);
+        }
+        catch (IOException e)
+        {
+            throw new RuntimeException(e);
+        }
+    }
+
+    static void writeLines(Path path, Iterable<? extends CharSequence> lines)
+    {
+        try
+        {
+            Files.write(path, lines);
+        }
+        catch (IOException e)
+        {
+            throw new RuntimeException(e);
+        }
     }
 
     private static Path mkdirs(Path path)
