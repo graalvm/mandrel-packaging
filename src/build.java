@@ -449,12 +449,16 @@ class Maven
             final var artifact =
                 Maven.artifact(build.paths)
                     .apply(artifactName);
-            final var assemblyArtifact = AssemblyArtifact.of(artifact, build);
-            final var releaseArtifact = ReleaseArtifact.of(artifact, build);
 
             Maven.mvnInstallSnapshot(artifact, build);
-            Maven.mvnInstallAssembly(assemblyArtifact, build);
-            Maven.mvnInstallRelease(releaseArtifact, build);
+
+            Maven.mvnInstallAssembly(build)
+                .compose(AssemblyArtifact.of(build))
+                .apply(artifact);
+
+            Maven.mvnInstallRelease(build)
+                .compose(ReleaseArtifact.of(build))
+                .apply(artifact);
         };
     }
 
@@ -536,12 +540,13 @@ class Maven
             );
     }
 
-    private static void mvnInstallAssembly(AssemblyArtifact artifact, Build build)
+    private static Function<AssemblyArtifact, Void> mvnInstallAssembly(Build build)
     {
-        OperatingSystem.exec()
-            .compose(Maven.mvnInstallAssembly(build))
-            .compose(Maven.prepareAssemblyPomXml(build))
-            .apply(artifact);
+        return artifact ->
+            OperatingSystem.exec()
+                .compose(Maven.installAssembly(build))
+                .compose(Maven.prepareAssemblyPomXml(build))
+                .apply(artifact);
     }
 
     private static Function<AssemblyArtifact, AssemblyArtifact> prepareAssemblyPomXml(Build build)
@@ -552,7 +557,7 @@ class Maven
         };
     }
 
-    private static Function<AssemblyArtifact, OperatingSystem.Command> mvnInstallAssembly(Build build)
+    private static Function<AssemblyArtifact, OperatingSystem.Command> installAssembly(Build build)
     {
         return artifact ->
             new OperatingSystem.Command(
@@ -566,12 +571,13 @@ class Maven
             );
     }
 
-    private static void mvnInstallRelease(ReleaseArtifact artifact, Build build)
+    private static Function<ReleaseArtifact, Void> mvnInstallRelease(Build build)
     {
-        OperatingSystem.exec()
-            .compose(Maven.installRelease(build))
-            .compose(Maven.prepareReleasePomXml(build))
-            .apply(artifact);
+        return artifact ->
+            OperatingSystem.exec()
+                .compose(Maven.installRelease(build))
+                .compose(Maven.prepareReleasePomXml(build))
+                .apply(artifact);
     }
 
     private static Function<ReleaseArtifact, ReleaseArtifact> prepareReleasePomXml(Build build)
@@ -605,6 +611,7 @@ class Maven
             );
     }
 
+    // TODO refactor deploy
     private static Function<Artifact, OperatingSystem.Command> mavenMvn(Options options)
     {
         return artifact ->
@@ -669,19 +676,21 @@ class Maven
             this.pomPaths = pomPaths;
         }
 
-        static AssemblyArtifact of(Artifact artifact, Build build)
+        static Function<Artifact, AssemblyArtifact> of(Build build)
         {
-            final var pomPath = Path.of(
-                "assembly"
-                , artifact.artifactId
-                , "pom.xml"
-            );
-            final var pomPaths = new DirectionalPaths(
-                LocalPaths.resourcesDir(build.paths).apply(pomPath)
-                , LocalPaths.targetDir(build.paths).apply(pomPath)
-            );
+            return artifact -> {
+                final var pomPath = Path.of(
+                    "assembly"
+                    , artifact.artifactId
+                    , "pom.xml"
+                );
+                final var pomPaths = new DirectionalPaths(
+                    LocalPaths.resourcesDir(build.paths).apply(pomPath)
+                    , LocalPaths.targetDir(build.paths).apply(pomPath)
+                );
 
-            return new AssemblyArtifact(pomPaths);
+                return new AssemblyArtifact(pomPaths);
+            };
         }
     }
 
@@ -708,50 +717,52 @@ class Maven
             this.sourceJarPath = sourceJarPath;
         }
 
-        static ReleaseArtifact of(Artifact artifact, Build build)
+        static Function<Artifact, ReleaseArtifact> of(Build build)
         {
-            final var releasePomPath = Path.of(
-                "release"
-                , artifact.artifactId
-                , "pom.xml"
-            );
+            return artifact -> {
+                final var releasePomPath = Path.of(
+                    "release"
+                    , artifact.artifactId
+                    , "pom.xml"
+                );
 
-            final var pomPaths = new DirectionalPaths(
-                LocalPaths.resourcesDir(build.paths).apply(releasePomPath)
-                , LocalPaths.targetDir(build.paths).apply(releasePomPath)
-            );
+                final var pomPaths = new DirectionalPaths(
+                    LocalPaths.resourcesDir(build.paths).apply(releasePomPath)
+                    , LocalPaths.targetDir(build.paths).apply(releasePomPath)
+                );
 
-            final var jarName = String.format(
-                "%s-%s-ASSEMBLY"
-                , artifact.artifactId
-                , build.options.version
-            );
+                final var jarName = String.format(
+                    "%s-%s-ASSEMBLY"
+                    , artifact.artifactId
+                    , build.options.version
+                );
 
-            final var artifactPath = build.paths.mavenRepoHome
-                .resolve(artifact.groupId.replace(".", "/"))
-                .resolve(artifact.artifactId);
+                final var artifactPath = build.paths.mavenRepoHome
+                    .resolve(artifact.groupId.replace(".", "/"))
+                    .resolve(artifact.artifactId);
 
-            final var jarPath = artifactPath
-                .resolve(String.format("%s-ASSEMBLY", build.options.version))
-                .resolve(String.format("%s.jar", jarName));
+                final var jarPath = artifactPath
+                    .resolve(String.format("%s-ASSEMBLY", build.options.version))
+                    .resolve(String.format("%s.jar", jarName));
 
-            final var sourceJarName = String.format(
-                "%s-%s-SNAPSHOT"
-                , artifact.artifactId
-                , build.options.version
-            );
+                final var sourceJarName = String.format(
+                    "%s-%s-SNAPSHOT"
+                    , artifact.artifactId
+                    , build.options.version
+                );
 
-            final var sourceJarPath = artifactPath
-                .resolve(String.format("%s-SNAPSHOT", build.options.version))
-                .resolve(String.format("%s-sources.jar", sourceJarName));
+                final var sourceJarPath = artifactPath
+                    .resolve(String.format("%s-SNAPSHOT", build.options.version))
+                    .resolve(String.format("%s-sources.jar", sourceJarName));
 
-            return new ReleaseArtifact(
-                artifact.groupId
-                , artifact.artifactId
-                , pomPaths
-                , jarPath
-                , sourceJarPath
-            );
+                return new ReleaseArtifact(
+                    artifact.groupId
+                    , artifact.artifactId
+                    , pomPaths
+                    , jarPath
+                    , sourceJarPath
+                );
+            };
         }
     }
 
