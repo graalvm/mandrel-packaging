@@ -732,7 +732,7 @@ class Maven
                 );
 
                 final var jarName = String.format(
-                    "%s-%s-ASSEMBLY"
+                    "%s-%s-ASSEMBLY-jar-with-dependencies.jar"
                     , artifact.artifactId
                     , build.options.version
                 );
@@ -743,17 +743,17 @@ class Maven
 
                 final var jarPath = artifactPath
                     .resolve(String.format("%s-ASSEMBLY", build.options.version))
-                    .resolve(String.format("%s.jar", jarName));
+                    .resolve(jarName);
 
                 final var sourceJarName = String.format(
-                    "%s-%s-SNAPSHOT"
+                    "%s-%s-SNAPSHOT-sources.jar"
                     , artifact.artifactId
                     , build.options.version
                 );
 
                 final var sourceJarPath = artifactPath
                     .resolve(String.format("%s-SNAPSHOT", build.options.version))
-                    .resolve(String.format("%s-sources.jar", sourceJarName));
+                    .resolve(sourceJarName);
 
                 return new ReleaseArtifact(
                     artifact.groupId
