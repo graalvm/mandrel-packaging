@@ -56,7 +56,7 @@ class Options
     final String mavenProxy;
     final String mavenRepoId;
     final String mavenURL;
-    final List<String> artifacts;
+    final List<String> artifactNames;
 
     Options(
         Action action
@@ -65,7 +65,7 @@ class Options
         , String mavenProxy
         , String mavenRepoId
         , String mavenURL
-        , List<String> artifacts
+        , List<String> artifactNames
     )
     {
         this.action = action;
@@ -74,7 +74,7 @@ class Options
         this.mavenProxy = mavenProxy;
         this.mavenRepoId = mavenRepoId;
         this.mavenURL = mavenURL;
-        this.artifacts = artifacts;
+        this.artifactNames = artifactNames;
     }
 
     public static Options from(Map<String, List<String>> args)
@@ -85,9 +85,12 @@ class Options
         final var version = required("version", args);
         final var verbose = args.containsKey("verbose");
         final var mavenProxy = optional("maven-proxy", args);
-        final var mavenRepoId = optional("maven-repo-id", args);
-        final var mavenURL = optional("maven-url", args);
-
+        final var mavenRepoId = action == Action.DEPLOY
+            ? required("maven-repo-id", args)
+            : optional("maven-repo-id", args);
+        final var mavenURL = action == Action.DEPLOY
+            ? required("maven-repo-id", args)
+            : optional("maven-url", args);
         final var artifactsArg = args.get("artifacts");
         final var artifacts = artifactsArg == null
             ? DEFAULT_ARTIFACTS
@@ -137,9 +140,8 @@ class SequentialBuild
 {
     static void build(Build build)
     {
-        // Only invoke mvn if all mx builds succeeded
-        build.options.artifacts.forEach(Mx.build(build));
-        build.options.artifacts.forEach(Maven.mvn(build));
+        Mx.mx(build);
+        Maven.mvn(build);
     }
 }
 
@@ -184,7 +186,12 @@ class Mx
         )
     );
 
-    static Consumer<String> build(Build build)
+    static void mx(Build build)
+    {
+        build.options.artifactNames.forEach(Mx.build(build));
+    }
+
+    private static Consumer<String> build(Build build)
     {
         return artifactName ->
         {
@@ -431,18 +438,22 @@ class Maven
         , "substratevm", "svm"
     );
 
-    static Consumer<String> mvn(Build build)
+    static void mvn(Build build)
     {
-        switch (build.options.action)
+        // Only invoke mvn if all mx builds succeeded
+        final var releaseArtifacts =
+            build.options.artifactNames.stream()
+                .map(Maven.mvnInstall(build))
+                .collect(Collectors.toList());
+
+        // Only deploy if all mvn installs worked
+        if (build.options.action == Options.Action.DEPLOY)
         {
-            case INSTALL:
-                return Maven.mvnInstall(build);
-            default:
-                throw new RuntimeException("NYI");
+            releaseArtifacts.forEach(Maven.mvnDeploy(build));
         }
     }
 
-    static Consumer<String> mvnInstall(Build build)
+    private static Function<String, ReleaseArtifact> mvnInstall(Build build)
     {
         return artifactName ->
         {
@@ -456,10 +467,35 @@ class Maven
                 .compose(AssemblyArtifact.of(build))
                 .apply(artifact);
 
-            Maven.mvnInstallRelease(build)
+            return Maven.mvnInstallRelease(build)
                 .compose(ReleaseArtifact.of(build))
                 .apply(artifact);
         };
+    }
+
+    private static Consumer<ReleaseArtifact> mvnDeploy(Build build)
+    {
+        return artifact ->
+            OperatingSystem.exec()
+                .compose(Maven.deploy(build))
+                .apply(artifact);
+    }
+
+    private static Function<ReleaseArtifact, OperatingSystem.Command> deploy(Build build)
+    {
+        // TODO fix deploy plugin version (in pom.xml)
+        return artifact ->
+            new OperatingSystem.Command(
+                Stream.of(
+                    "mvn"
+                    , build.options.verbose ? "--debug" : ""
+                    , "deploy"
+                    , String.format("-DrepositoryId=%s", build.options.mavenRepoId)
+                    , String.format("-Durl=%s", build.options.mavenURL)
+                )
+                , build.paths.workingDir
+                , Stream.empty()
+            );
     }
 
     private static Function<String, Artifact> artifact(LocalPaths paths)
@@ -551,7 +587,8 @@ class Maven
 
     private static Function<AssemblyArtifact, AssemblyArtifact> prepareAssemblyPomXml(Build build)
     {
-        return artifact -> {
+        return artifact ->
+        {
             Maven.preparePomXml(build).apply(artifact.pomPaths);
             return artifact;
         };
@@ -571,18 +608,21 @@ class Maven
             );
     }
 
-    private static Function<ReleaseArtifact, Void> mvnInstallRelease(Build build)
+    private static Function<ReleaseArtifact, ReleaseArtifact> mvnInstallRelease(Build build)
     {
-        return artifact ->
+        return artifact -> {
             OperatingSystem.exec()
                 .compose(Maven.installRelease(build))
                 .compose(Maven.prepareReleasePomXml(build))
                 .apply(artifact);
+            return artifact;
+        };
     }
 
     private static Function<ReleaseArtifact, ReleaseArtifact> prepareReleasePomXml(Build build)
     {
-        return artifact -> {
+        return artifact ->
+        {
             Maven.preparePomXml(build).apply(artifact.pomPaths);
             return artifact;
         };
@@ -611,48 +651,6 @@ class Maven
             );
     }
 
-    // TODO refactor deploy
-    private static Function<Artifact, OperatingSystem.Command> mavenMvn(Options options)
-    {
-        return artifact ->
-        {
-            final var repoId = Objects.nonNull(options.mavenRepoId)
-                ? String.format("-DrepositoryId=%s", options.mavenRepoId)
-                : "";
-
-            final var url = Objects.nonNull(options.mavenURL)
-                ? String.format("-Durl=%s", options.mavenURL)
-                : "";
-
-            return new OperatingSystem.Command(
-                Stream.of(
-                    "mvn"
-                    , options.verbose ? "--debug" : ""
-                    , String.format("%1$s:%1$s-file", options.action.toString().toLowerCase())
-                    , String.format("-DgroupId=%s", artifact.groupId)
-                    , String.format("-DartifactId=%s", artifact.artifactId)
-                    , String.format("-Dversion=%s", options.version)
-                    , "-Dpackaging=jar"
-                    , String.format(
-                        "-Dfile=%s/mxbuild/dists/jdk11/%s.jar"
-                        , artifact.rootPath.toString()
-                        , artifact.artifactId
-                    )
-                    , String.format(
-                        "-Dsources=%s/mxbuild/dists/jdk11/%s.src.zip"
-                        , artifact.rootPath.toString()
-                        , artifact.artifactId
-                    )
-                    , "-DcreateChecksum=true"
-                    , repoId
-                    , url
-                )
-                , artifact.rootPath
-                , Stream.empty()
-            );
-        };
-    }
-
     private static final class Artifact
     {
         final Path rootPath;
@@ -678,7 +676,8 @@ class Maven
 
         static Function<Artifact, AssemblyArtifact> of(Build build)
         {
-            return artifact -> {
+            return artifact ->
+            {
                 final var pomPath = Path.of(
                     "assembly"
                     , artifact.artifactId
@@ -719,7 +718,8 @@ class Maven
 
         static Function<Artifact, ReleaseArtifact> of(Build build)
         {
-            return artifact -> {
+            return artifact ->
+            {
                 final var releasePomPath = Path.of(
                     "release"
                     , artifact.artifactId
