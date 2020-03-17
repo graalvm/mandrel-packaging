@@ -503,11 +503,19 @@ class Maven
                 Stream.of(
                     "mvn"
                     , build.options.verbose ? "--debug" : ""
-                    , "deploy"
+                    , "deploy:deploy-file"
+                    , String.format("-DgroupId=%s", artifact.groupId)
+                    , String.format("-DartifactId=%s", artifact.artifactId)
+                    , String.format("-Dversion=%s", build.options.version)
+                    , "-Dpackaging=jar"
+                    , String.format("-Dfile=%s", artifact.jarPath)
+                    , String.format("-Dsources=%s", artifact.sourceJarPath)
+                    , "-DcreateChecksum=true"
+                    , String.format("-DpomFile=%s", artifact.pomPaths.target)
                     , String.format("-DrepositoryId=%s", build.options.mavenRepoId)
                     , String.format("-Durl=%s", build.options.mavenURL)
                 )
-                , artifact.pomPaths.target.getParent()
+                , build.paths.workingDir
                 , Stream.empty()
             );
     }
