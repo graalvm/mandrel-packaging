@@ -507,7 +507,7 @@ class Maven
                     , String.format("-DrepositoryId=%s", build.options.mavenRepoId)
                     , String.format("-Durl=%s", build.options.mavenURL)
                 )
-                , build.paths.workingDir
+                , artifact.pomPaths.target.getParent()
                 , Stream.empty()
             );
     }
