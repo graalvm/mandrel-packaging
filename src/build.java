@@ -88,12 +88,10 @@ class Options
         final var version = required("version", args);
         final var verbose = args.containsKey("verbose");
         final var mavenProxy = optional("maven-proxy", args);
-        final var mavenRepoId = action == Action.DEPLOY
-            ? required("maven-repo-id", args)
-            : optional("maven-repo-id", args);
-        final var mavenURL = action == Action.DEPLOY
-            ? required("maven-repo-id", args)
-            : optional("maven-url", args);
+        final var mavenRepoId =
+            requiredForDeploy("maven-repo-id", args, action);
+        final var mavenURL =
+            requiredForDeploy("maven-url", args, action);
         final var artifactsArg = args.get("artifacts");
         final var artifacts = artifactsArg == null
             ? DEFAULT_ARTIFACTS
@@ -110,6 +108,17 @@ class Options
             , mavenURL
             , artifacts
             , mavenLocalRepository);
+    }
+
+    private static String requiredForDeploy(
+        String name
+        , Map<String, List<String>> args
+        , Action action
+    )
+    {
+        return action == Action.DEPLOY
+            ? required(name, args)
+            : optional(name, args);
     }
 
     static String snapshotVersion(Options options)
