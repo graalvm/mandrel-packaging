@@ -24,8 +24,8 @@ public class build
 
     public static void main(String... args)
     {
-        final var localPaths = LocalPaths.newSystemPaths();
         final var options = Options.from(Args.read(args));
+        final var localPaths = LocalPaths.newSystemPaths(options);
         final var build = new Build(localPaths, options);
 
         logger.info("Build the bits!");
@@ -57,6 +57,7 @@ class Options
     final String mavenRepoId;
     final String mavenURL;
     final List<String> artifactNames;
+    final String mavenLocalRepository;
 
     Options(
         Action action
@@ -66,6 +67,7 @@ class Options
         , String mavenRepoId
         , String mavenURL
         , List<String> artifactNames
+        , String mavenLocalRepository
     )
     {
         this.action = action;
@@ -75,6 +77,7 @@ class Options
         this.mavenRepoId = mavenRepoId;
         this.mavenURL = mavenURL;
         this.artifactNames = artifactNames;
+        this.mavenLocalRepository = mavenLocalRepository;
     }
 
     public static Options from(Map<String, List<String>> args)
@@ -95,6 +98,8 @@ class Options
         final var artifacts = artifactsArg == null
             ? DEFAULT_ARTIFACTS
             : artifactsArg;
+        final var mavenLocalRepository =
+            optional("maven-local-repository", args);
 
         return new Options(
             action
@@ -104,7 +109,7 @@ class Options
             , mavenRepoId
             , mavenURL
             , artifacts
-        );
+            , mavenLocalRepository);
     }
 
     static String snapshotVersion(Options options)
@@ -412,15 +417,24 @@ class LocalPaths
         return paths.workingDir.resolve("resources")::resolve;
     }
 
-    static LocalPaths newSystemPaths()
+    static LocalPaths newSystemPaths(Options options)
     {
         final var graalHome = Path.of("/tmp", "mandrel");
         final var mxHome = Path.of("/opt", "mx");
         final var userDir = System.getProperty("user.dir");
         final var workingDir = new File(userDir).toPath();
-        final var userHome = System.getProperty("user.home");
-        final var mavenRepoHome = Path.of(userHome, ".m2", "repository");
+        final var mavenRepoHome = mavenRepoHome(options);
         return new LocalPaths(graalHome, mxHome, workingDir, mavenRepoHome);
+    }
+
+    private static Path mavenRepoHome(Options options)
+    {
+        if (options.mavenLocalRepository == null) {
+            final var userHome = System.getProperty("user.home");
+            return Path.of(userHome, ".m2", "repository");
+        }
+
+        return Path.of(options.mavenLocalRepository);
     }
 }
 
