@@ -164,40 +164,9 @@ class Mx
     private static final Logger LOG = LogManager.getLogger(OperatingSystem.class);
     private static final Pattern VERSION_PATTERN = Pattern.compile("\"([0-9]\\.[0-9]{1,3}\\.[0-9]{1,2})\"");
 
-    private static final String SVM_ONLY = String.join(","
-        , "SVM"
-        , "com.oracle.svm.graal"
-        , "com.oracle.svm.truffle"
-        , "com.oracle.svm.hosted"
-        , "com.oracle.svm.truffle.nfi"
-        , "com.oracle.svm.truffle.nfi.posix"
-        , "com.oracle.svm.truffle.nfi.windows"
-        , "com.oracle.svm.core.jdk11"
-        , "com.oracle.svm.core"
-        , "com.oracle.svm.core.graal.amd64"
-        , "com.oracle.svm.core.graal.aarch64"
-        , "com.oracle.svm.core.posix.jdk11"
-        , "com.oracle.svm.core.posix"
-        , "com.oracle.svm.core.windows"
-        , "com.oracle.svm.core.genscavenge"
-        , "com.oracle.svm.jni"
-        , "com.oracle.svm.reflect"
-        , "com.oracle.svm.util" // svm.core dependency
-        , "com.oracle.svm.core.graal" // svm.hosted dependency
-        // Explicit dependency to avoid pulling libffi
-        , "TRUFFLE_NFI"
-        , "com.oracle.truffle.nfi"
-        , "com.oracle.truffle.nfi.spi"
-    );
-
     static final Map<String, Stream<BuildArgs>> BUILD_STEPS = Map.of(
         "sdk", Stream.of(BuildArgs.empty())
-        , "substratevm", Stream.of(
-            BuildArgs.of("--dependencies", "GRAAL")
-            , BuildArgs.of("--dependencies", "POINTSTO")
-            , BuildArgs.of("--dependencies", "OBJECTFILE")
-            , BuildArgs.of("--only", SVM_ONLY)
-        )
+        , "substratevm", Stream.of(BuildArgs.of("--dependencies", "SVM_HOSTED"))
     );
 
     static void mx(Build build)
