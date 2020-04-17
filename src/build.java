@@ -5,6 +5,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -45,6 +46,46 @@ class Build
     }
 }
 
+class Dependency
+{
+    final String id;
+    final String version;
+    final String sha1;
+    final String sourceSha1;
+    final Pattern pattern;
+
+    Dependency(String id, String version, String sha1, String sourceSha1, Pattern pattern)
+    {
+        this.id = id;
+        this.version = version;
+        this.sha1 = sha1;
+        this.sourceSha1 = sourceSha1;
+        this.pattern = pattern;
+    }
+
+    static Dependency of(Map<String, String> fields)
+    {
+        final var id = fields.get("id");
+        final var version = fields.get("version");
+        final var sha1 = fields.get("sha1");
+        final var sourceSha1 = fields.get("sourceSha1");
+        final var pattern = Pattern.compile(String.format("%s[^({|\\n)]*\\{", id));
+        return new Dependency(id, version, sha1, sourceSha1, pattern);
+    }
+
+    @Override
+    public String toString()
+    {
+        return "Dependency{" +
+            "id='" + id + '\'' +
+            ", version='" + version + '\'' +
+            ", sha1='" + sha1 + '\'' +
+            ", sourceSha1='" + sourceSha1 + '\'' +
+            ", pattern=" + pattern +
+            '}';
+    }
+}
+
 class Options
 {
     private static final List<String> DEFAULT_ARTIFACTS =
@@ -58,6 +99,7 @@ class Options
     final String mavenURL;
     final List<String> artifactNames;
     final String mavenLocalRepository;
+    final List<Dependency> dependencies;
 
     Options(
         Action action
@@ -68,6 +110,7 @@ class Options
         , String mavenURL
         , List<String> artifactNames
         , String mavenLocalRepository
+        , List<Dependency> dependencies
     )
     {
         this.action = action;
@@ -78,6 +121,7 @@ class Options
         this.mavenURL = mavenURL;
         this.artifactNames = artifactNames;
         this.mavenLocalRepository = mavenLocalRepository;
+        this.dependencies = dependencies;
     }
 
     public static Options from(Map<String, List<String>> args)
@@ -92,12 +136,19 @@ class Options
             requiredForDeploy("maven-repo-id", args, action);
         final var mavenURL =
             requiredForDeploy("maven-url", args, action);
+
         final var artifactsArg = args.get("artifacts");
         final var artifacts = artifactsArg == null
             ? DEFAULT_ARTIFACTS
             : artifactsArg;
+
         final var mavenLocalRepository =
             optional("maven-local-repository", args);
+
+        final var dependenciesArg = args.get("dependencies");
+        final var dependencies = dependenciesArg == null
+            ? Collections.<Dependency>emptyList()
+            : toDependencies(dependenciesArg);
 
         return new Options(
             action
@@ -107,7 +158,25 @@ class Options
             , mavenRepoId
             , mavenURL
             , artifacts
-            , mavenLocalRepository);
+            , mavenLocalRepository
+            , dependencies
+        );
+    }
+
+    private static List<Dependency> toDependencies(List<String> args)
+    {
+        return args.stream()
+            .map(Options::toFields)
+            .map(Dependency::of)
+            .collect(Collectors.toList());
+    }
+
+    static Map<String, String> toFields(String dependency)
+    {
+        final var fields = Arrays.asList(dependency.split(","));
+        return fields.stream()
+            .map(fs -> fs.split("="))
+            .collect(Collectors.toMap(fs -> fs[0], fs -> fs[1]));
     }
 
     private static String requiredForDeploy(
@@ -162,7 +231,15 @@ class SequentialBuild
 class Mx
 {
     private static final Logger LOG = LogManager.getLogger(OperatingSystem.class);
-    private static final Pattern VERSION_PATTERN = Pattern.compile("\"([0-9]\\.[0-9]{1,3}\\.[0-9]{1,2})\"");
+    private static final Pattern MX_VERSION_PATTERN =
+        Pattern.compile("\"([0-9]\\.[0-9]{1,3}\\.[0-9]{1,2})\"");
+
+    private static final Pattern DEPENDENCY_SHA1_PATTERN =
+        Pattern.compile("\"sha1\"\\s*:\\s*\"([a-f0-9]*)\"");
+    private static final Pattern DEPENDENCY_SOURCE_SHA1_PATTERN =
+        Pattern.compile("\"sourceSha1\"\\s*:\\s*\"([a-f0-9]*)\"");
+    private static final Pattern DEPENDENCY_VERSION_PATTERN =
+        Pattern.compile("\"version\"\\s*:\\s*\"([0-9.]*)\"");
 
     private static final String SVM_ONLY = String.join(","
         , "SVM"
@@ -211,7 +288,8 @@ class Mx
         {
             LOG.debugf("Build %s", artifactName);
 
-            final var artifact = Mx.hookMavenProxy(build.options)
+            final var artifact = Mx.swapDependencies(build.options)
+                .compose(Mx.hookMavenProxy(build.options))
                 .compose(Mx.artifact(build))
                 .apply(artifactName);
 
@@ -282,11 +360,136 @@ class Mx
 
     private static String extractMxVersion(String line)
     {
-        final var matcher = VERSION_PATTERN.matcher(line);
+        final var matcher = MX_VERSION_PATTERN.matcher(line);
         return matcher.results()
             .findFirst()
             .map(result -> result.group(1))
             .orElse(null);
+    }
+
+    static Function<Artifact, Artifact> swapDependencies(Options options)
+    {
+        return artifact ->
+        {
+            final var dependencies = options.dependencies;
+            if (dependencies.isEmpty())
+                return artifact;
+
+            LOG.debugf("Swap dependencies: %s", dependencies);
+            try
+            {
+                final var suitePy = Path.of("mx.mx", "suite.py");
+                final var path = artifact.mxHome.resolve(suitePy);
+
+                try (var lines = Files.lines(path))
+                {
+                    ParsedDependencies parsed = parseSuitePy(dependencies, lines);
+                    final var transformed = applyDependencies(dependencies, parsed);
+                    Files.write(path, transformed);
+                }
+
+                return artifact;
+            }
+            catch (IOException e)
+            {
+                throw new RuntimeException(e);
+            }
+        };
+    }
+
+    static List<String> applyDependencies(List<Dependency> dependencies, ParsedDependencies parsed)
+    {
+        final var result = new ArrayList<>(parsed.lines);
+        dependencies.forEach(apply(a -> a.version, parsed.versions, result));
+        dependencies.forEach(apply(a -> a.sha1, parsed.sha1s, result));
+        dependencies.forEach(apply(a -> a.sourceSha1, parsed.sourceSha1s, result));
+        return result;
+    }
+
+    static Consumer<Dependency> apply(
+        Function<Dependency, String> extract
+        , Map<String, Coordinate> values
+        , List<String> lines
+    )
+    {
+        return artifact ->
+        {
+            final var coordinate = values.get(artifact.id);
+            if (coordinate != null)
+            {
+                final var line = lines.get(coordinate.lineNumber);
+                final var replaced = line.replace(coordinate.value, extract.apply(artifact));
+                lines.set(coordinate.lineNumber, replaced);
+            }
+        };
+    }
+
+    static ParsedDependencies parseSuitePy(List<Dependency> dependencies, Stream<String> lines)
+    {
+        int lineNumber = -1;
+        String id = null;
+        String tmp;
+
+        final var output = new ArrayList<String>();
+        final Map<String, Coordinate> versions = new HashMap<>();
+        final Map<String, Coordinate> sha1s = new HashMap<>();
+        final Map<String, Coordinate> sourceSha1s = new HashMap<>();
+
+        final var it = lines.iterator();
+        while (it.hasNext())
+        {
+            final var line = it.next();
+
+            lineNumber++;
+            output.add(line);
+
+            if (id == null)
+            {
+                final var maybeArtifact = dependencies.stream()
+                    .filter(artifact -> artifact.pattern.matcher(line).find())
+                    .findFirst();
+
+                if (maybeArtifact.isPresent())
+                {
+                    id = maybeArtifact.get().id;
+                }
+            }
+            else
+            {
+                tmp = extract(line, DEPENDENCY_SHA1_PATTERN);
+                if (tmp != null)
+                {
+                    sha1s.put(id, new Coordinate(tmp, lineNumber));
+                    continue;
+                }
+
+                tmp = extract(line, DEPENDENCY_SOURCE_SHA1_PATTERN);
+                if (tmp != null)
+                {
+                    sourceSha1s.put(id, new Coordinate(tmp, lineNumber));
+                    continue;
+                }
+
+                tmp = extract(line, DEPENDENCY_VERSION_PATTERN);
+                if (tmp != null)
+                {
+                    versions.put(id, new Coordinate(tmp, lineNumber));
+                    id = null;
+                }
+            }
+        }
+
+        return new ParsedDependencies(output, versions, sha1s, sourceSha1s);
+    }
+
+    static String extract(String line, Pattern pattern)
+    {
+        final var matcher = pattern.matcher(line);
+        if (matcher.find())
+        {
+            return matcher.group(1);
+        }
+        return null;
     }
 
     static Function<Artifact, Artifact> hookMavenProxy(Options options)
@@ -389,6 +592,48 @@ class Mx
             this.buildSteps = buildSteps;
         }
     }
+
+    static final class ParsedDependencies
+    {
+        final List<String> lines;
+        final Map<String, Coordinate> versions;
+        final Map<String, Coordinate> sha1s;
+        final Map<String, Coordinate> sourceSha1s;
+
+        ParsedDependencies(
+            List<String> lines
+            , Map<String, Coordinate> versions
+            , Map<String, Coordinate> sha1s
+            , Map<String, Coordinate> sourceSha1s
+        )
+        {
+            this.lines = lines;
+            this.versions = versions;
+            this.sha1s = sha1s;
+            this.sourceSha1s = sourceSha1s;
+        }
+    }
+
+    static final class Coordinate
+    {
+        final String value;
+        final int lineNumber;
+
+        Coordinate(String value, int lineNumber)
+        {
+            this.value = value;
+            this.lineNumber = lineNumber;
+        }
+
+        @Override
+        public String toString()
+        {
+            return "Coordinate{" +
+                "value='" + value + '\'' +
+                ", lineNumber=" + lineNumber +
+                '}';
+        }
+    }
 }
 
 class LocalPaths
@@ -438,7 +683,8 @@ class LocalPaths
 
     private static Path mavenRepoHome(Options options)
     {
-        if (options.mavenLocalRepository == null) {
+        if (options.mavenLocalRepository == null)
+        {
             final var userHome = System.getProperty("user.home");
             return Path.of(userHome, ".m2", "repository");
         }
@@ -641,7 +887,8 @@ class Maven
 
     private static Function<ReleaseArtifact, ReleaseArtifact> mvnInstallRelease(Build build)
     {
-        return artifact -> {
+        return artifact ->
+        {
             OperatingSystem.exec()
                 .compose(Maven.installRelease(build))
                 .compose(Maven.prepareReleasePomXml(build))
