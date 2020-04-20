@@ -267,9 +267,9 @@ class Mx
         , "com.oracle.truffle.nfi.spi"
     );
 
-    static final Map<String, List<BuildArgs>> BUILD_STEPS = Map.of(
-        "sdk", List.of(BuildArgs.empty())
-        , "substratevm", List.of(
+    static final Map<String, Stream<BuildArgs>> BUILD_STEPS = Map.of(
+        "sdk", Stream.of(BuildArgs.empty())
+        , "substratevm", Stream.of(
             BuildArgs.of("--dependencies", "GRAAL")
             , BuildArgs.of("--dependencies", "POINTSTO")
             , BuildArgs.of("--dependencies", "OBJECTFILE")
@@ -293,31 +293,28 @@ class Mx
                 .compose(Mx.artifact(build))
                 .apply(artifactName);
 
-            artifact.buildSteps.stream()
-                .map(Mx.mxclean(artifact, build.options))
-                .forEach(OperatingSystem::exec);
+            OperatingSystem.exec(Mx.mxclean(artifact, build.options));
 
-            artifact.buildSteps.stream()
+            artifact.buildSteps
                 .map(Mx.mxbuild(artifact, build.options))
                 .forEach(OperatingSystem::exec);
         };
     }
 
-    private static Function<BuildArgs, OperatingSystem.Command> mxclean(Artifact artifact, Options options)
+    private static OperatingSystem.Command mxclean(Artifact artifact, Options options)
     {
-        return buildArgs ->
-            new OperatingSystem.Command(
-                Stream.concat(
-                    Stream.of(
-                        artifact.mxHome.resolve("mx").toString()
-                        , options.verbose ? "-V" : ""
-                        , "clean"
-                    )
-                    , Stream.empty()
+        return new OperatingSystem.Command(
+            Stream.concat(
+                Stream.of(
+                    artifact.mxHome.resolve("mx").toString()
+                    , options.verbose ? "-V" : ""
+                    , "clean"
                 )
-                , artifact.rootPath
                 , Stream.empty()
-            );
+            )
+            , artifact.rootPath
+            , Stream.empty()
+        );
     }
 
     private static Function<BuildArgs, OperatingSystem.Command> mxbuild(Artifact artifact, Options options)
@@ -600,12 +597,12 @@ class Mx
     {
         final Path rootPath;
         final Path mxHome;
-        final List<BuildArgs> buildSteps;
+        final Stream<BuildArgs> buildSteps;
 
         Artifact(
             Path rootPath
             , Path mxHome
-            , List<BuildArgs> buildSteps
+            , Stream<BuildArgs> buildSteps
         )
         {
             this.rootPath = rootPath;
