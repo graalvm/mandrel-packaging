@@ -267,9 +267,9 @@ class Mx
         , "com.oracle.truffle.nfi.spi"
     );
 
-    static final Map<String, Stream<BuildArgs>> BUILD_STEPS = Map.of(
-        "sdk", Stream.of(BuildArgs.empty())
-        , "substratevm", Stream.of(
+    static final Map<String, List<BuildArgs>> BUILD_STEPS = Map.of(
+        "sdk", List.of(BuildArgs.empty())
+        , "substratevm", List.of(
             BuildArgs.of("--dependencies", "GRAAL")
             , BuildArgs.of("--dependencies", "POINTSTO")
             , BuildArgs.of("--dependencies", "OBJECTFILE")
@@ -293,10 +293,31 @@ class Mx
                 .compose(Mx.artifact(build))
                 .apply(artifactName);
 
-            artifact.buildSteps
+            artifact.buildSteps.stream()
+                .map(Mx.mxclean(artifact, build.options))
+                .forEach(OperatingSystem::exec);
+
+            artifact.buildSteps.stream()
                 .map(Mx.mxbuild(artifact, build.options))
                 .forEach(OperatingSystem::exec);
         };
+    }
+
+    private static Function<BuildArgs, OperatingSystem.Command> mxclean(Artifact artifact, Options options)
+    {
+        return buildArgs ->
+            new OperatingSystem.Command(
+                Stream.concat(
+                    Stream.of(
+                        artifact.mxHome.resolve("mx").toString()
+                        , options.verbose ? "-V" : ""
+                        , "clean"
+                    )
+                    , Stream.empty()
+                )
+                , artifact.rootPath
+                , Stream.empty()
+            );
     }
 
     private static Function<BuildArgs, OperatingSystem.Command> mxbuild(Artifact artifact, Options options)
@@ -579,12 +600,12 @@ class Mx
     {
         final Path rootPath;
         final Path mxHome;
-        final Stream<BuildArgs> buildSteps;
+        final List<BuildArgs> buildSteps;
 
         Artifact(
             Path rootPath
             , Path mxHome
-            , Stream<BuildArgs> buildSteps
+            , List<BuildArgs> buildSteps
         )
         {
             this.rootPath = rootPath;
