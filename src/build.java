@@ -269,12 +269,7 @@ class Mx
 
     static final Map<String, Stream<BuildArgs>> BUILD_STEPS = Map.of(
         "sdk", Stream.of(BuildArgs.empty())
-        , "substratevm", Stream.of(
-            BuildArgs.of("--dependencies", "GRAAL")
-            , BuildArgs.of("--dependencies", "POINTSTO")
-            , BuildArgs.of("--dependencies", "OBJECTFILE")
-            , BuildArgs.of("--only", SVM_ONLY)
-        )
+        , "substratevm", Stream.of(BuildArgs.of("--only", SVM_ONLY))
     );
 
     static void mx(Build build)
