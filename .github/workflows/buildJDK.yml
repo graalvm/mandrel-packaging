@@ -1,0 +1,80 @@
+name: Build Mandrel using buildJDK and test it
+
+on: [push]
+
+env:
+  MX_GIT_CACHE: refcache
+  JAVA_HOME: /opt/jdk
+  MANDREL_REPO: ${{ github.workspace }}/mandrel
+  MX_HOME: ${{ github.workspace }}/mx
+  VERBOSE: true
+  MANDREL_VERSION: 10.9.8.7 test-build
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+    - uses: actions/checkout@v2
+      with:
+        repository: graalvm/mandrel.git
+        fetch-depth: 1
+        ref: master
+        path: ${{ github.workspace }}/mandrel
+    - uses: actions/checkout@v2
+      with:
+        repository: graalvm/mx.git
+        fetch-depth: 1
+        ref: master
+        path: ${{ github.workspace }}/mx
+    - uses: actions/cache@v1
+      with:
+        path: ~/.mx
+        key: ${{ runner.os }}-mx-${{ hashFiles('**/suite.py') }}
+        restore-keys: |
+          ${{ runner.os }}-mx-
+    - uses: actions/cache@v1
+      with:
+        path: ~/.m2/repository
+        key: ${{ runner.os }}-mx-${{ hashFiles('**/suite.py') }}
+        restore-keys: |
+          ${{ runner.os }}-${{ matrix.quarkus-name }}-maven-
+    - name: Get latest openJDK11 with static libs
+      run: |
+        curl -sL https://api.adoptopenjdk.net/v3/binary/latest/11/ea/linux/x64/jdk/hotspot/normal/openjdk -o jdk.tar.gz
+        curl -sL https://api.adoptopenjdk.net/v3/binary/latest/11/ea/linux/x64/staticlibs/hotspot/normal/openjdk -o jdk-static-libs.tar.gz
+        mkdir -p ${JAVA_HOME}
+        tar xf jdk.tar.gz -C ${JAVA_HOME} --strip-components=1
+        tar xf jdk-static-libs.tar.gz -C ${JAVA_HOME} --strip-components=1
+        echo ${JAVA_HOME}
+        ${JAVA_HOME}/bin/java --version
+    - name: Build Mandrel JDK
+      run: |
+        ./buildJDK.sh
+        mv mandrel-java11-linux-amd64-10.9.8.7.tar.gz mandrel-java11-linux-amd64.tar.gz
+    - name: Smoke tests
+      run: |
+        /opt/mandrelJDK/bin/native-image --version
+        /opt/mandrelJDK/bin/native-image --version | grep "${MANDREL_VERSION}"
+        echo "
+        public class HelloStrict {
+            public static void main(String[] args) {
+                System.out.printf(
+                    \"Hello %1$,.12f %2$,.12f %3$,.12f %n\"
+                    , StrictMath.cos(0.0)
+                    , StrictMath.IEEEremainder(3.0, 5.0)
+                    , StrictMath.IEEEremainder(-16.3, 4.1)
+                );
+            }
+        }
+        " > HelloStrict.java
+        /opt/mandrelJDK/bin/javac HelloStrict.java
+        /opt/mandrelJDK/bin/java HelloStrict > java.txt
+        /opt/mandrelJDK/bin/native-image HelloStrict
+        ./hellostrict > native.txt
+        diff java.txt native.txt
+    - name: Upload Mandrel build
+      uses: actions/upload-artifact@v1
+      with:
+        name: mandrel-java11-linux-amd64-test-build
+        path: mandrel-java11-linux-amd64.tar.gz
