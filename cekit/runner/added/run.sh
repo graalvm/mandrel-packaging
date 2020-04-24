@@ -5,10 +5,9 @@ set -e
 export PATH="${JAVA_BIN}:${PATH}"
 export PATH="${MAVEN_BIN}:${PATH}"
 
-echo "HOME=${HOME}"
 echo "PATH=${PATH}"
 
-pushd "${HOME}"
+pushd "/tmp"
 
 if [[ -z "${SKIP_PACKAGING}" ]]; then
     rm -rf mandrel-packaging
