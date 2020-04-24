@@ -6,3 +6,4 @@ curl http://mirror.easyname.ch/apache/maven/maven-3/3.6.3/binaries/apache-maven-
 mkdir /opt/maven
 cd /opt
 tar -xzvpf maven.tar.gz -C maven --strip-components 1
+rm maven.tar.gz

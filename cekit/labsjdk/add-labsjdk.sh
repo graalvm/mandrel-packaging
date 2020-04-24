@@ -6,3 +6,4 @@ curl -L https://github.com/graalvm/labs-openjdk-11/releases/download/jvmci-20.0-
 mkdir /opt/labsjdk
 cd /opt
 tar -xzvpf labsjdk.tar.gz -C labsjdk --strip-components 1
+rm labsjdk.tar.gz
