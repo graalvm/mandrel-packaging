@@ -12,12 +12,12 @@ pushd "${HOME}"
 
 if [[ -z "${SKIP_PACKAGING}" ]]; then
     rm -rf mandrel-packaging
-    git clone https://github.com/galderz/mandrel-packaging -depth 10 -b master
+    git clone https://github.com/galderz/mandrel-packaging --depth 10 -b master
 fi
 
 if [[ -z "${SKIP_MANDREL}" ]]; then
     rm -rf mandrel
-    git clone https://github.com/oracle/graal -depth 10 -b master mandrel
+    git clone https://github.com/oracle/graal --depth 10 -b master mandrel
 fi
 
 pushd mandrel-packaging
