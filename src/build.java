@@ -741,6 +741,7 @@ class Maven
         , "pointsto", "org.graalvm.nativeimage"
         , "truffle-api", "org.graalvm.truffle"
         , "compiler", "org.graalvm.compiler"
+        , "objectfile", "org.graalvm.nativeimage"
     );
 
     static final Map<String, Path> DISTS_PATHS = Map.of(
@@ -749,6 +750,7 @@ class Maven
         , "pointsto", Path.of("substratevm", "mxbuild", "dists", "jdk11", "pointsto")
         , "truffle-api", Path.of("truffle", "mxbuild", "dists", "jdk11", "truffle-api")
         , "compiler", Path.of("compiler", "mxbuild", "dists", "jdk11", "graal")
+        , "objectfile", Path.of("substratevm", "mxbuild", "dists", "jdk1.8", "objectfile")
     );
 
     static void mvn(Build build)
