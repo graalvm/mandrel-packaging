@@ -101,6 +101,7 @@ class Options
     final String mavenLocalRepository;
     final List<Dependency> dependencies;
     final List<String> extraArtifactNames;
+    final boolean skipClean;
 
     Options(
         Action action
@@ -113,6 +114,7 @@ class Options
         , String mavenLocalRepository
         , List<Dependency> dependencies
         , List<String> extraArtifactNames
+        , boolean skipClean
     )
     {
         this.action = action;
@@ -125,6 +127,7 @@ class Options
         this.mavenLocalRepository = mavenLocalRepository;
         this.dependencies = dependencies;
         this.extraArtifactNames = extraArtifactNames;
+        this.skipClean = skipClean;
     }
 
     public static Options from(Map<String, List<String>> args)
@@ -158,6 +161,8 @@ class Options
             ? Collections.singletonList("pointsto") // TODO add remaining jars
             : extraArtifactsArg;
 
+        final var skipClean = args.containsKey("skipClean");
+
         return new Options(
             action
             , version
@@ -169,6 +174,7 @@ class Options
             , mavenLocalRepository
             , dependencies
             , extraArtifactNames
+            , skipClean
         );
     }
 
@@ -302,7 +308,9 @@ class Mx
                 .compose(Mx.artifact(build))
                 .apply(artifactName);
 
-            OperatingSystem.exec(Mx.mxclean(artifact, build.options));
+            final var clean = !build.options.skipClean;
+            if (clean)
+                OperatingSystem.exec(Mx.mxclean(artifact, build.options));
 
             artifact.buildSteps
                 .map(Mx.mxbuild(artifact, build.options))
