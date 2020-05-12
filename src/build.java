@@ -770,11 +770,10 @@ class Maven
 
     private static Function<String, ReleaseArtifact> mvnInstall(Build build)
     {
-        return artifactName ->
+        return artifactId ->
         {
             final var artifact =
-                Maven.artifact(build.paths)
-                    .apply(artifactName);
+                Maven.artifact(artifactId);
 
             Maven.mvnInstallSnapshot(artifact, build);
 
@@ -820,24 +819,15 @@ class Maven
             );
     }
 
-    private static Function<String, Artifact> artifact(LocalPaths paths)
+    private static Artifact artifact(String artifactId)
     {
-        return artifactId ->
-        {
-            final var distsPath = DISTS_PATHS.get(artifactId);
-            final var componentPath = LocalPaths
-                .graalHome(paths)
-                .apply(distsPath.getName(0));
-
-            final var groupId = GROUP_IDS.get(artifactId);
-
-            return new Artifact(
-                componentPath
-                , groupId
-                , artifactId
-                , distsPath
-            );
-        };
+        final var distsPath = DISTS_PATHS.get(artifactId);
+        final var groupId = GROUP_IDS.get(artifactId);
+        return new Artifact(
+            groupId
+            , artifactId
+            , distsPath
+        );
     }
 
     private static Function<DirectionalPaths, DirectionalPaths> preparePomXml(Build build)
@@ -866,21 +856,21 @@ class Maven
     private static void mvnInstallSnapshot(Artifact artifact, Build build)
     {
         OperatingSystem.exec()
-            .compose(Maven.mvnInstallSnapshot(build.options))
+            .compose(Maven.mvnInstallSnapshot(build))
             .apply(artifact);
     }
 
-    private static Function<Artifact, OperatingSystem.Command> mvnInstallSnapshot(Options options)
+    private static Function<Artifact, OperatingSystem.Command> mvnInstallSnapshot(Build build)
     {
         return artifact ->
             new OperatingSystem.Command(
                 Stream.of(
                     "mvn"
-                    , options.verbose ? "--debug" : ""
+                    , build.options.verbose ? "--debug" : ""
                     , INSTALL_FILE_GOAL
                     , String.format("-DgroupId=%s", artifact.groupId)
                     , String.format("-DartifactId=%s", artifact.artifactId)
-                    , String.format("-Dversion=%s", Options.snapshotVersion(options))
+                    , String.format("-Dversion=%s", Options.snapshotVersion(build.options))
                     , "-Dpackaging=jar"
                     , String.format(
                         "-Dfile=%s.jar"
@@ -892,7 +882,7 @@ class Maven
                     )
                     , "-DcreateChecksum=true"
                 )
-                , artifact.componentPath
+                , build.paths.graalHome
                 , Stream.empty()
             );
     }
@@ -974,14 +964,12 @@ class Maven
 
     private static final class Artifact
     {
-        final Path componentPath;
         final String groupId;
         final String artifactId;
         final Path distsPath;
 
-        Artifact(Path componentPath, String groupId, String artifactId, Path distsPath)
+        Artifact(String groupId, String artifactId, Path distsPath)
         {
-            this.componentPath = componentPath;
             this.groupId = groupId;
             this.artifactId = artifactId;
             this.distsPath = distsPath;
