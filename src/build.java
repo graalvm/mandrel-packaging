@@ -100,6 +100,7 @@ class Options
     final List<String> artifactNames;
     final String mavenLocalRepository;
     final List<Dependency> dependencies;
+    final List<String> extraArtifactNames;
 
     Options(
         Action action
@@ -111,6 +112,7 @@ class Options
         , List<String> artifactNames
         , String mavenLocalRepository
         , List<Dependency> dependencies
+        , List<String> extraArtifactNames
     )
     {
         this.action = action;
@@ -122,6 +124,7 @@ class Options
         this.artifactNames = artifactNames;
         this.mavenLocalRepository = mavenLocalRepository;
         this.dependencies = dependencies;
+        this.extraArtifactNames = extraArtifactNames;
     }
 
     public static Options from(Map<String, List<String>> args)
@@ -150,6 +153,11 @@ class Options
             ? Collections.<Dependency>emptyList()
             : toDependencies(dependenciesArg);
 
+        final var extraArtifactsArg = args.get("extraArtifacts");
+        final var extraArtifactNames = extraArtifactsArg == null
+            ? Collections.singletonList("pointsto") // TODO add remaining jars
+            : extraArtifactsArg;
+
         return new Options(
             action
             , version
@@ -160,6 +168,7 @@ class Options
             , artifacts
             , mavenLocalRepository
             , dependencies
+            , extraArtifactNames
         );
     }
 
@@ -732,11 +741,25 @@ class Maven
     static final Map<String, String> GROUP_IDS = Map.of(
         "sdk", "org.graalvm.sdk"
         , "substratevm", "org.graalvm.nativeimage"
+        , "pointsto", "org.graalvm.nativeimage"
     );
 
     static final Map<String, String> ARTIFACT_IDS = Map.of(
         "sdk", "graal-sdk"
         , "substratevm", "svm"
+        , "pointsto", "pointsto"
+    );
+
+    static final Map<String, String> COMPONENT_IDS = Map.of(
+        "sdk", "sdk"
+        , "substratevm", "substratevm"
+        , "pointsto", "substratevm"
+    );
+
+    static final Map<String, String> COMPONENT_JDK_NAMES = Map.of(
+        "sdk", "jdk11"
+        , "substratevm", "jdk11"
+        , "pointsto", "jdk11"
     );
 
     static void mvn(Build build)
@@ -747,10 +770,16 @@ class Maven
                 .map(Maven.mvnInstall(build))
                 .collect(Collectors.toList());
 
+        final var releaseExtraArtifacts =
+            build.options.extraArtifactNames.stream()
+                .map(Maven.mvnInstall(build))
+                .collect(Collectors.toList());
+
         // Only deploy if all mvn installs worked
         if (build.options.action == Options.Action.DEPLOY)
         {
             releaseArtifacts.forEach(Maven.mvnDeploy(build));
+            releaseExtraArtifacts.forEach(Maven.mvnDeploy(build));
         }
     }
 
@@ -810,14 +839,19 @@ class Maven
     {
         return artifactName ->
         {
-            final var rootPath = LocalPaths
+            final var componentName = COMPONENT_IDS.get(artifactName);
+            final var componentPath = LocalPaths
                 .graalHome(paths)
-                .apply(Path.of(artifactName));
+                .apply(Path.of(componentName));
+
+            final var componentJdkName = COMPONENT_JDK_NAMES.get(artifactName);
+
             final var groupId = GROUP_IDS.get(artifactName);
             final var artifactId = ARTIFACT_IDS.get(artifactName);
 
             return new Artifact(
-                rootPath
+                componentPath
+                , componentJdkName
                 , groupId
                 , artifactId
             );
@@ -867,18 +901,20 @@ class Maven
                     , String.format("-Dversion=%s", Options.snapshotVersion(options))
                     , "-Dpackaging=jar"
                     , String.format(
-                        "-Dfile=%s/mxbuild/dists/jdk11/%s.jar"
-                        , artifact.rootPath.toString()
+                        "-Dfile=%s/mxbuild/dists/%s/%s.jar"
+                        , artifact.componentPath.toString()
+                        , artifact.componentJdkName
                         , artifact.artifactId
                     )
                     , String.format(
-                        "-Dsources=%s/mxbuild/dists/jdk11/%s.src.zip"
-                        , artifact.rootPath.toString()
+                        "-Dsources=%s/mxbuild/dists/%s/%s.src.zip"
+                        , artifact.componentPath.toString()
+                        , artifact.componentJdkName
                         , artifact.artifactId
                     )
                     , "-DcreateChecksum=true"
                 )
-                , artifact.rootPath
+                , artifact.componentPath
                 , Stream.empty()
             );
     }
@@ -960,13 +996,15 @@ class Maven
 
     private static final class Artifact
     {
-        final Path rootPath;
+        final Path componentPath;
+        final String componentJdkName;
         final String groupId;
         final String artifactId;
 
-        Artifact(Path rootPath, String groupId, String artifactId)
+        Artifact(Path componentPath, String componentJdkName, String groupId, String artifactId)
         {
-            this.rootPath = rootPath;
+            this.componentPath = componentPath;
+            this.componentJdkName = componentJdkName;
             this.groupId = groupId;
             this.artifactId = artifactId;
         }
