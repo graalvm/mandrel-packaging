@@ -11,7 +11,7 @@ pushd "/tmp"
 
 if [[ -z "${SKIP_PACKAGING}" ]]; then
     rm -rf mandrel-packaging
-    git clone https://github.com/galderz/mandrel-packaging --depth 10 -b master
+    git clone https://github.com/mandrel/mandrel-packaging --depth 10 -b master
 fi
 
 if [[ -z "${SKIP_MANDREL}" ]]; then
