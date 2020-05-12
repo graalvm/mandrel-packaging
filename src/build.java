@@ -715,6 +715,20 @@ class Maven
 {
     static final Logger LOG = LogManager.getLogger(Maven.class);
 
+    static final String INSTALL_FILE_VERSION = "2.4";
+
+    static final String INSTALL_FILE_GOAL = String.format(
+        "org.apache.maven.plugins:maven-install-plugin:%s:install-file"
+        , INSTALL_FILE_VERSION
+    );
+
+    static final String DEPLOY_FILE_VERSION = "2.7";
+
+    static final String DEPLOY_FILE_GOAL = String.format(
+        "org.apache.maven.plugins:maven-deploy-plugin:%s:deploy-file"
+        , DEPLOY_FILE_VERSION
+    );
+
     static final Map<String, String> GROUP_IDS = Map.of(
         "sdk", "org.graalvm.sdk"
         , "substratevm", "org.graalvm.nativeimage"
@@ -770,13 +784,12 @@ class Maven
 
     private static Function<ReleaseArtifact, OperatingSystem.Command> deploy(Build build)
     {
-        // TODO fix deploy plugin version (in pom.xml)
         return artifact ->
             new OperatingSystem.Command(
                 Stream.of(
                     "mvn"
                     , build.options.verbose ? "--debug" : ""
-                    , "deploy:deploy-file"
+                    , DEPLOY_FILE_GOAL
                     , String.format("-DgroupId=%s", artifact.groupId)
                     , String.format("-DartifactId=%s", artifact.artifactId)
                     , String.format("-Dversion=%s", build.options.version)
@@ -843,13 +856,12 @@ class Maven
 
     private static Function<Artifact, OperatingSystem.Command> mvnInstallSnapshot(Options options)
     {
-        // TODO fix install-file plugin version -> https://maven.apache.org/plugins/maven-install-plugin/examples/custom-pom-installation.html
         return artifact ->
             new OperatingSystem.Command(
                 Stream.of(
                     "mvn"
                     , options.verbose ? "--debug" : ""
-                    , "install:install-file"
+                    , INSTALL_FILE_GOAL
                     , String.format("-DgroupId=%s", artifact.groupId)
                     , String.format("-DartifactId=%s", artifact.artifactId)
                     , String.format("-Dversion=%s", Options.snapshotVersion(options))
@@ -926,13 +938,12 @@ class Maven
 
     private static Function<ReleaseArtifact, OperatingSystem.Command> installRelease(Build build)
     {
-        // TODO fix install-file plugin version -> https://maven.apache.org/plugins/maven-install-plugin/examples/custom-pom-installation.html
         return artifact ->
             new OperatingSystem.Command(
                 Stream.of(
                     "mvn"
                     , build.options.verbose ? "--debug" : ""
-                    , "install:install-file"
+                    , INSTALL_FILE_GOAL
                     , String.format("-DgroupId=%s", artifact.groupId)
                     , String.format("-DartifactId=%s", artifact.artifactId)
                     , String.format("-Dversion=%s", build.options.version)
