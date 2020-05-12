@@ -1,0 +1,88 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+    <parent>
+        <groupId>org.jboss</groupId>
+        <artifactId>jboss-parent</artifactId>
+        <version>36</version>
+    </parent>
+
+    <groupId>org.graalvm.compiler</groupId>
+    <artifactId>compiler</artifactId>
+    <version>999-ASSEMBLY</version>
+
+    <name>Graal</name>
+    <description>The GraalVM compiler and the Graal-truffle optimizer.</description>
+    <url>https://github.com/oracle/graal</url>
+    <developers>
+        <developer>
+            <name>GraalVM Development</name>
+            <email>graalvm-dev@oss.oracle.com</email>
+            <organization>Oracle Corporation</organization>
+            <organizationUrl>http://www.graalvm.org/</organizationUrl>
+        </developer>
+    </developers>
+    <licenses>
+        <license>
+            <name>Universal Permissive License, Version 1.0</name>
+            <url>http://opensource.org/licenses/UPL</url>
+        </license>
+    </licenses>
+    <scm>
+        <connection>scm:git:https://github.com/oracle/graal.git</connection>
+        <developerConnection>scm:git:git@github.com:oracle/graal.git</developerConnection>
+        <url>https://github.com/oracle/graal</url>
+    </scm>
+
+    <dependencies>
+        <dependency>
+            <groupId>org.graalvm.compiler</groupId>
+            <artifactId>compiler</artifactId>
+            <version>999-SNAPSHOT</version>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-jar-plugin</artifactId>
+                <version>${version.jar.plugin}</version>
+                <configuration>
+                    <archive>
+                        <manifestEntries>
+                            <Implementation-Version>999</Implementation-Version>
+                        </manifestEntries>
+                    </archive>
+                </configuration>
+            </plugin>
+            <plugin>
+                <artifactId>maven-assembly-plugin</artifactId>
+                <version>3.2.0</version>
+                <configuration>
+                    <descriptorRefs>
+                        <descriptorRef>jar-with-dependencies</descriptorRef>
+                    </descriptorRefs>
+                </configuration>
+                <executions>
+                    <execution>
+                        <id>make-assembly</id> <!-- this is used for inheritance merges -->
+                        <phase>package</phase> <!-- bind to the packaging phase -->
+                        <goals>
+                            <goal>single</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+            <plugin>
+                <artifactId>maven-enforcer-plugin</artifactId>
+                <configuration>
+                    <skip>true</skip>
+                </configuration>
+            </plugin>
+        </plugins>
+    </build>
+
+</project>
