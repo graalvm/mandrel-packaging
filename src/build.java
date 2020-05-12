@@ -718,6 +718,7 @@ class Maven
         , "svm"
         , "pointsto"
         , "truffle-api"
+        , "compiler"
     );
 
     static final String INSTALL_FILE_VERSION = "2.4";
@@ -739,20 +740,15 @@ class Maven
         , "svm", "org.graalvm.nativeimage"
         , "pointsto", "org.graalvm.nativeimage"
         , "truffle-api", "org.graalvm.truffle"
+        , "compiler", "org.graalvm.compiler"
     );
 
-    static final Map<String, String> COMPONENT_NAMES = Map.of(
-        "graal-sdk", "sdk"
-        , "svm", "substratevm"
-        , "pointsto", "substratevm"
-        , "truffle-api", "truffle"
-    );
-
-    static final Map<String, String> JDK_NAMES = Map.of(
-        "graal-sdk", "jdk11"
-        , "svm", "jdk11"
-        , "pointsto", "jdk11"
-        , "truffle-api", "jdk11"
+    static final Map<String, Path> DISTS_PATHS = Map.of(
+        "graal-sdk", Path.of("sdk", "mxbuild", "dists", "jdk11", "graal-sdk")
+        , "svm", Path.of("substratevm", "mxbuild", "dists", "jdk11", "svm")
+        , "pointsto", Path.of("substratevm", "mxbuild", "dists", "jdk11", "pointsto")
+        , "truffle-api", Path.of("truffle", "mxbuild", "dists", "jdk11", "truffle-api")
+        , "compiler", Path.of("compiler", "mxbuild", "dists", "jdk11", "graal")
     );
 
     static void mvn(Build build)
@@ -826,19 +822,18 @@ class Maven
     {
         return artifactId ->
         {
-            final var componentName = COMPONENT_NAMES.get(artifactId);
+            final var distsPath = DISTS_PATHS.get(artifactId);
             final var componentPath = LocalPaths
                 .graalHome(paths)
-                .apply(Path.of(componentName));
+                .apply(distsPath.getName(0));
 
-            final var jdkName = JDK_NAMES.get(artifactId);
             final var groupId = GROUP_IDS.get(artifactId);
 
             return new Artifact(
                 componentPath
-                , jdkName
                 , groupId
                 , artifactId
+                , distsPath
             );
         };
     }
@@ -886,16 +881,12 @@ class Maven
                     , String.format("-Dversion=%s", Options.snapshotVersion(options))
                     , "-Dpackaging=jar"
                     , String.format(
-                        "-Dfile=%s/mxbuild/dists/%s/%s.jar"
-                        , artifact.componentPath.toString()
-                        , artifact.jdkName
-                        , artifact.artifactId
+                        "-Dfile=%s.jar"
+                        , artifact.distsPath.toString()
                     )
                     , String.format(
-                        "-Dsources=%s/mxbuild/dists/%s/%s.src.zip"
-                        , artifact.componentPath.toString()
-                        , artifact.jdkName
-                        , artifact.artifactId
+                        "-Dsources=%s.src.zip"
+                        , artifact.distsPath.toString()
                     )
                     , "-DcreateChecksum=true"
                 )
@@ -982,16 +973,16 @@ class Maven
     private static final class Artifact
     {
         final Path componentPath;
-        final String jdkName;
         final String groupId;
         final String artifactId;
+        final Path distsPath;
 
-        Artifact(Path componentPath, String jdkName, String groupId, String artifactId)
+        Artifact(Path componentPath, String groupId, String artifactId, Path distsPath)
         {
             this.componentPath = componentPath;
-            this.jdkName = jdkName;
             this.groupId = groupId;
             this.artifactId = artifactId;
+            this.distsPath = distsPath;
         }
     }
 
