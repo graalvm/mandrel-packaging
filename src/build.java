@@ -5,6 +5,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
@@ -88,19 +89,14 @@ class Dependency
 
 class Options
 {
-    private static final List<String> DEFAULT_ARTIFACTS =
-        Arrays.asList("sdk", "substratevm");
-
     final Action action;
     final String version;
     final boolean verbose;
     final String mavenProxy;
     final String mavenRepoId;
     final String mavenURL;
-    final List<String> artifactNames;
     final String mavenLocalRepository;
     final List<Dependency> dependencies;
-    final List<String> extraArtifactNames;
     final boolean skipClean;
 
     Options(
@@ -110,10 +106,8 @@ class Options
         , String mavenProxy
         , String mavenRepoId
         , String mavenURL
-        , List<String> artifactNames
         , String mavenLocalRepository
         , List<Dependency> dependencies
-        , List<String> extraArtifactNames
         , boolean skipClean
     )
     {
@@ -123,10 +117,8 @@ class Options
         this.mavenProxy = mavenProxy;
         this.mavenRepoId = mavenRepoId;
         this.mavenURL = mavenURL;
-        this.artifactNames = artifactNames;
         this.mavenLocalRepository = mavenLocalRepository;
         this.dependencies = dependencies;
-        this.extraArtifactNames = extraArtifactNames;
         this.skipClean = skipClean;
     }
 
@@ -143,11 +135,6 @@ class Options
         final var mavenURL =
             requiredForDeploy("maven-url", args, action);
 
-        final var artifactsArg = args.get("artifacts");
-        final var artifacts = artifactsArg == null
-            ? DEFAULT_ARTIFACTS
-            : artifactsArg;
-
         final var mavenLocalRepository =
             optional("maven-local-repository", args);
 
@@ -155,11 +142,6 @@ class Options
         final var dependencies = dependenciesArg == null
             ? Collections.<Dependency>emptyList()
             : toDependencies(dependenciesArg);
-
-        final var extraArtifactsArg = args.get("extraArtifacts");
-        final var extraArtifactNames = extraArtifactsArg == null
-            ? Collections.singletonList("pointsto") // TODO add remaining jars
-            : extraArtifactsArg;
 
         final var skipClean = args.containsKey("skipClean");
 
@@ -170,10 +152,8 @@ class Options
             , mavenProxy
             , mavenRepoId
             , mavenURL
-            , artifacts
             , mavenLocalRepository
             , dependencies
-            , extraArtifactNames
             , skipClean
         );
     }
@@ -285,7 +265,8 @@ class Mx
     static final Map<String, Stream<BuildArgs>> BUILD_STEPS = Map.of(
         "sdk", Stream.of(BuildArgs.empty())
         , "substratevm", Stream.of(
-            BuildArgs.of("--dependencies", "GRAAL")
+            BuildArgs.of("--dependencies", "GRAAL_SDK")
+            , BuildArgs.of("--dependencies", "GRAAL")
             , BuildArgs.of("--dependencies", "POINTSTO")
             , BuildArgs.of("--dependencies", "OBJECTFILE")
             , BuildArgs.of("--only", SVM_ONLY)
@@ -294,7 +275,7 @@ class Mx
 
     static void mx(Build build)
     {
-        build.options.artifactNames.forEach(Mx.build(build));
+        Mx.build(build).accept("substratevm");
     }
 
     private static Consumer<String> build(Build build)
@@ -732,6 +713,12 @@ class Maven
 {
     static final Logger LOG = LogManager.getLogger(Maven.class);
 
+    static final Collection<String> ARTIFACT_IDS = Arrays.asList(
+        "graal-sdk"
+        , "svm"
+        , "pointsto"
+    );
+
     static final String INSTALL_FILE_VERSION = "2.4";
 
     static final String INSTALL_FILE_GOAL = String.format(
@@ -747,26 +734,20 @@ class Maven
     );
 
     static final Map<String, String> GROUP_IDS = Map.of(
-        "sdk", "org.graalvm.sdk"
-        , "substratevm", "org.graalvm.nativeimage"
+        "graal-sdk", "org.graalvm.sdk"
+        , "svm", "org.graalvm.nativeimage"
         , "pointsto", "org.graalvm.nativeimage"
     );
 
-    static final Map<String, String> ARTIFACT_IDS = Map.of(
-        "sdk", "graal-sdk"
-        , "substratevm", "svm"
-        , "pointsto", "pointsto"
-    );
-
-    static final Map<String, String> COMPONENT_IDS = Map.of(
-        "sdk", "sdk"
-        , "substratevm", "substratevm"
+    static final Map<String, String> COMPONENT_NAMES = Map.of(
+        "graal-sdk", "sdk"
+        , "svm", "substratevm"
         , "pointsto", "substratevm"
     );
 
-    static final Map<String, String> COMPONENT_JDK_NAMES = Map.of(
-        "sdk", "jdk11"
-        , "substratevm", "jdk11"
+    static final Map<String, String> JDK_NAMES = Map.of(
+        "graal-sdk", "jdk11"
+        , "svm", "jdk11"
         , "pointsto", "jdk11"
     );
 
@@ -774,12 +755,7 @@ class Maven
     {
         // Only invoke mvn if all mx builds succeeded
         final var releaseArtifacts =
-            build.options.artifactNames.stream()
-                .map(Maven.mvnInstall(build))
-                .collect(Collectors.toList());
-
-        final var releaseExtraArtifacts =
-            build.options.extraArtifactNames.stream()
+            ARTIFACT_IDS.stream()
                 .map(Maven.mvnInstall(build))
                 .collect(Collectors.toList());
 
@@ -787,7 +763,6 @@ class Maven
         if (build.options.action == Options.Action.DEPLOY)
         {
             releaseArtifacts.forEach(Maven.mvnDeploy(build));
-            releaseExtraArtifacts.forEach(Maven.mvnDeploy(build));
         }
     }
 
@@ -845,21 +820,19 @@ class Maven
 
     private static Function<String, Artifact> artifact(LocalPaths paths)
     {
-        return artifactName ->
+        return artifactId ->
         {
-            final var componentName = COMPONENT_IDS.get(artifactName);
+            final var componentName = COMPONENT_NAMES.get(artifactId);
             final var componentPath = LocalPaths
                 .graalHome(paths)
                 .apply(Path.of(componentName));
 
-            final var componentJdkName = COMPONENT_JDK_NAMES.get(artifactName);
-
-            final var groupId = GROUP_IDS.get(artifactName);
-            final var artifactId = ARTIFACT_IDS.get(artifactName);
+            final var jdkName = JDK_NAMES.get(artifactId);
+            final var groupId = GROUP_IDS.get(artifactId);
 
             return new Artifact(
                 componentPath
-                , componentJdkName
+                , jdkName
                 , groupId
                 , artifactId
             );
@@ -911,13 +884,13 @@ class Maven
                     , String.format(
                         "-Dfile=%s/mxbuild/dists/%s/%s.jar"
                         , artifact.componentPath.toString()
-                        , artifact.componentJdkName
+                        , artifact.jdkName
                         , artifact.artifactId
                     )
                     , String.format(
                         "-Dsources=%s/mxbuild/dists/%s/%s.src.zip"
                         , artifact.componentPath.toString()
-                        , artifact.componentJdkName
+                        , artifact.jdkName
                         , artifact.artifactId
                     )
                     , "-DcreateChecksum=true"
@@ -1005,14 +978,14 @@ class Maven
     private static final class Artifact
     {
         final Path componentPath;
-        final String componentJdkName;
+        final String jdkName;
         final String groupId;
         final String artifactId;
 
-        Artifact(Path componentPath, String componentJdkName, String groupId, String artifactId)
+        Artifact(Path componentPath, String jdkName, String groupId, String artifactId)
         {
             this.componentPath = componentPath;
-            this.componentJdkName = componentJdkName;
+            this.jdkName = jdkName;
             this.groupId = groupId;
             this.artifactId = artifactId;
         }
