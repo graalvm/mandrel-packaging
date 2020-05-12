@@ -10,7 +10,7 @@ setEnv() {
     fi
 
     if [[ -n "${PACKAGING_CLONE}" ]]; then
-        RUN_OPTIONS="-v ${PACKAGING_CLONE}:/home/mandrel/mandrel-packaging ${RUN_OPTIONS}"
+        RUN_OPTIONS="-v ${PACKAGING_CLONE}:/tmp/mandrel-packaging ${RUN_OPTIONS}"
         SKIP_PACKAGING=1
     fi
 
