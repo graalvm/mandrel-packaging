@@ -717,6 +717,7 @@ class Maven
         "graal-sdk"
         , "svm"
         , "pointsto"
+        , "truffle-api"
     );
 
     static final String INSTALL_FILE_VERSION = "2.4";
@@ -737,18 +738,21 @@ class Maven
         "graal-sdk", "org.graalvm.sdk"
         , "svm", "org.graalvm.nativeimage"
         , "pointsto", "org.graalvm.nativeimage"
+        , "truffle-api", "org.graalvm.truffle"
     );
 
     static final Map<String, String> COMPONENT_NAMES = Map.of(
         "graal-sdk", "sdk"
         , "svm", "substratevm"
         , "pointsto", "substratevm"
+        , "truffle-api", "truffle"
     );
 
     static final Map<String, String> JDK_NAMES = Map.of(
         "graal-sdk", "jdk11"
         , "svm", "jdk11"
         , "pointsto", "jdk11"
+        , "truffle-api", "jdk11"
     );
 
     static void mvn(Build build)
