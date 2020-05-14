@@ -55,6 +55,7 @@
                     <archive>
                         <manifestEntries>
                             <Implementation-Version>999</Implementation-Version>
+                            <Multi-Release>true</Multi-Release>
                         </manifestEntries>
                     </archive>
                     <descriptorRefs>
