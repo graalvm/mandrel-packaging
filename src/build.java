@@ -720,6 +720,7 @@ class Maven
         , "pointsto"
         , "truffle-api"
         , "compiler"
+        , "objectfile"
         , "svm-driver"
     );
 
