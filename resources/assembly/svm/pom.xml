@@ -55,6 +55,7 @@
                         <manifestEntries>
                             <Implementation-Version>999</Implementation-Version>
                             <Premain-Class>com.oracle.svm.hosted.agent.NativeImageBytecodeInstrumentationAgent</Premain-Class>
+                            <Multi-Release>true</Multi-Release>
                         </manifestEntries>
                     </archive>
                     <descriptorRefs>

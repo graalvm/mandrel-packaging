@@ -53,6 +53,7 @@
                     <archive>
                         <manifestEntries>
                             <Implementation-Version>999</Implementation-Version>
+                            <Main-Class>com.oracle.svm.driver.NativeImage</Main-Class>
                         </manifestEntries>
                     </archive>
                     <descriptorRefs>
