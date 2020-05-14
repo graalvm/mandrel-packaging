@@ -269,6 +269,7 @@ class Mx
             , BuildArgs.of("--dependencies", "GRAAL")
             , BuildArgs.of("--dependencies", "POINTSTO")
             , BuildArgs.of("--dependencies", "OBJECTFILE")
+            , BuildArgs.of("--dependencies", "SVM_DRIVER")
             , BuildArgs.of("--only", SVM_ONLY)
         )
     );
@@ -719,6 +720,7 @@ class Maven
         , "pointsto"
         , "truffle-api"
         , "compiler"
+        , "svm-driver"
     );
 
     static final String INSTALL_FILE_VERSION = "2.4";
@@ -742,6 +744,7 @@ class Maven
         , "truffle-api", "org.graalvm.truffle"
         , "compiler", "org.graalvm.compiler"
         , "objectfile", "org.graalvm.nativeimage"
+        , "svm-driver", "org.graalvm.nativeimage"
     );
 
     static final Map<String, Path> DISTS_PATHS = Map.of(
@@ -751,6 +754,7 @@ class Maven
         , "truffle-api", Path.of("truffle", "mxbuild", "dists", "jdk11", "truffle-api")
         , "compiler", Path.of("compiler", "mxbuild", "dists", "jdk11", "graal")
         , "objectfile", Path.of("substratevm", "mxbuild", "dists", "jdk1.8", "objectfile")
+        , "svm-driver", Path.of("substratevm", "mxbuild", "dists", "jdk1.8", "svm-driver")
     );
 
     static void mvn(Build build)
