@@ -245,8 +245,6 @@ class Mx
         , "com.oracle.svm.truffle.nfi.windows"
         , "com.oracle.svm.core.jdk11"
         , "com.oracle.svm.core"
-        , "com.oracle.svm.core.graal.amd64"
-        , "com.oracle.svm.core.graal.aarch64"
         , "com.oracle.svm.core.posix.jdk11"
         , "com.oracle.svm.core.posix"
         , "com.oracle.svm.core.windows"
@@ -254,7 +252,6 @@ class Mx
         , "com.oracle.svm.jni"
         , "com.oracle.svm.reflect"
         , "com.oracle.svm.util" // svm.core dependency
-        , "com.oracle.svm.core.graal" // svm.hosted dependency
         // Explicit dependency to avoid pulling libffi
         , "TRUFFLE_NFI"
         , "com.oracle.truffle.nfi"
