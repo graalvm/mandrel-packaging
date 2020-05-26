@@ -1,6 +1,5 @@
 import java.io.File;
 import java.io.IOException;
-import java.nio.file.CopyOption;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -12,9 +11,11 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Predicate;
+import java.util.function.Supplier;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -28,23 +29,13 @@ public class build
     public static void main(String... args)
     {
         final var options = Options.from(Args.read(args));
-        final var localPaths = LocalPaths.newSystemPaths(options);
-        final var build = new Build(localPaths, options);
+
+        final var fs = FileSystem.ofSystem(options);
+        final var os = new OperatingSystem();
+        final var build = new SequentialBuild(fs, os);
 
         logger.info("Build the bits!");
-        SequentialBuild.build(build);
-    }
-}
-
-class Build
-{
-    final LocalPaths paths;
-    final Options options;
-
-    Build(LocalPaths paths, Options options)
-    {
-        this.paths = paths;
-        this.options = options;
+        build.build(options);
     }
 }
 
@@ -217,10 +208,105 @@ class Options
 
 class SequentialBuild
 {
-    static void build(Build build)
+    final FileSystem fs;
+    final OperatingSystem os;
+
+    SequentialBuild(FileSystem fs, OperatingSystem os) {
+        this.fs = fs;
+        this.os = os;
+    }
+
+    void build(Options options)
     {
-        Mx.mx(build);
-        Maven.mvn(build);
+        final var exec = new Tasks.Exec.Effects(os::exec);
+        final var replace = new Tasks.Replace.Effects(fs::readLines, fs::writeLines, os::copy);
+        Mx.build(options, exec, replace, fs::mxHome, fs::graalHome);
+        Maven.mvn(options, exec, replace, fs::graalHome, fs::workingDir, fs::mavenRepoHome);
+    }
+}
+
+class EnvVar
+{
+    final String name;
+    final String value;
+
+    EnvVar(String name, String value)
+    {
+        this.name = name;
+        this.value = value;
+    }
+}
+
+class Tasks
+{
+    static class Exec
+    {
+        final List<String> args;
+        final Path directory;
+        final List<EnvVar> envVars;
+
+        Exec(List<String> args, Path directory, List<EnvVar> envVars) {
+            this.args = args;
+            this.directory = directory;
+            this.envVars = envVars;
+        }
+
+        static class Effects
+        {
+            final Consumer<Exec> exec;
+
+            Effects(Consumer<Exec> exec)
+            {
+                this.exec = exec;
+            }
+        }
+    }
+
+    static class Replace
+    {
+        private final Path path;
+        private final Function<Stream<String>, List<String>> replacer;
+
+        Replace(Path path, Function<Stream<String>, List<String>> replacer) {
+            this.path = path;
+            this.replacer = replacer;
+        }
+
+        static void replace(Replace replace, Effects effects)
+        {
+            try (var lines = effects.readLines.apply(replace.path))
+            {
+                final var transformed = replace.replacer.apply(lines);
+                effects.writeLines.accept(replace.path, transformed);
+            }
+        }
+
+        static void copyReplace(Replace replace, Path from, Effects effects)
+        {
+            effects.copy.accept(from, replace.path);
+            Tasks.Replace.replace(
+                new Tasks.Replace(replace.path, replace.replacer)
+                , effects
+            );
+        }
+
+        static class Effects
+        {
+            final Function<Path, Stream<String>> readLines;
+            final BiConsumer<Path, List<String>> writeLines;
+            final BiConsumer<Path, Path> copy;
+
+            Effects(
+                Function<Path, Stream<String>> readLines
+                , BiConsumer<Path, List<String>> writeLines
+                , BiConsumer<Path, Path> copy
+            )
+            {
+                this.readLines = readLines;
+                this.writeLines = writeLines;
+                this.copy = copy;
+            }
+        }
     }
 }
 
@@ -257,124 +343,105 @@ class Mx
         , "com.oracle.truffle.nfi.spi"
     );
 
-    static final Map<String, Stream<BuildArgs>> BUILD_STEPS = Map.of(
-        "sdk", Stream.of(BuildArgs.empty())
-        , "substratevm", Stream.of(
-            BuildArgs.of("--dependencies", "GRAAL_SDK")
-            , BuildArgs.of("--dependencies", "GRAAL")
-            , BuildArgs.of("--dependencies", "POINTSTO")
-            , BuildArgs.of("--dependencies", "OBJECTFILE")
-            , BuildArgs.of("--dependencies", "SVM_DRIVER")
-            , BuildArgs.of("--only", SVM_ONLY)
-        )
+    static final List<BuildArgs> BUILD_STEPS = List.of(
+        BuildArgs.of("--dependencies", "GRAAL_SDK")
+        , BuildArgs.of("--dependencies", "GRAAL")
+        , BuildArgs.of("--dependencies", "POINTSTO")
+        , BuildArgs.of("--dependencies", "OBJECTFILE")
+        , BuildArgs.of("--dependencies", "SVM_DRIVER")
+        , BuildArgs.of("--only", SVM_ONLY)
     );
 
-    static void mx(Build build)
+    static void build(
+        Options options
+        , Tasks.Exec.Effects exec
+        , Tasks.Replace.Effects replace
+        , Function<Path, Path> mxHome
+        , Function<Path, Path> graalHome
+    )
     {
-        Mx.build(build).accept("substratevm");
+        Mx.swapDependencies(options, replace, mxHome);
+        Mx.hookMavenProxy(options, replace, mxHome);
+
+        final var clean = !options.skipClean;
+        if (clean)
+            exec.exec.accept(Mx.mxclean(options, mxHome, graalHome));
+
+        BUILD_STEPS.stream()
+            .map(Mx.mxbuild(options, mxHome, graalHome))
+            .forEach(exec.exec);
     }
 
-    private static Consumer<String> build(Build build)
+    private static Tasks.Exec mxclean(
+        Options options
+        , Function<Path, Path> mxHome
+        , Function<Path, Path> graalHome
+    )
     {
-        return artifactName ->
-        {
-            LOG.debugf("Build %s", artifactName);
-
-            final var artifact = Mx.swapDependencies(build)
-                .compose(Mx.hookMavenProxy(build))
-                .compose(Mx.artifact(build))
-                .apply(artifactName);
-
-            final var clean = !build.options.skipClean;
-            if (clean)
-                OperatingSystem.exec(Mx.mxclean(artifact, build));
-
-            artifact.buildSteps
-                .map(Mx.mxbuild(artifact, build))
-                .forEach(OperatingSystem::exec);
-        };
-    }
-
-    private static OperatingSystem.Command mxclean(Artifact artifact, Build build)
-    {
-        return new OperatingSystem.Command(
-            Stream.concat(
-                Stream.of(
-                    LocalPaths.mxRoot(build.paths).apply(Paths.get("mx")).toString()
-                    , build.options.verbose ? "-V" : ""
-                    , "clean"
-                )
-                , Stream.empty()
+        final var mx = mxHome.apply(Paths.get("mx"));
+        return new Tasks.Exec(
+            Arrays.asList(
+                mx.toString()
+                , options.verbose ? "-V" : ""
+                , "clean"
             )
-            , artifact.rootPath
-            , Stream.empty()
+            , graalHome.apply(Path.of("substratevm"))
+            , Collections.emptyList()
         );
     }
 
-    private static Function<BuildArgs, OperatingSystem.Command> mxbuild(Artifact artifact, Build build)
+    private static Function<BuildArgs, Tasks.Exec> mxbuild(
+        Options options
+        , Function<Path, Path> mxHome
+        , Function<Path, Path> graalHome
+    )
     {
         return buildArgs ->
-            new OperatingSystem.Command(
-                Stream.concat(
-                    Stream.of(
-                        LocalPaths.mxRoot(build.paths).apply(Paths.get("mx")).toString()
-                        , build.options.verbose ? "-V" : ""
-                        , "--trust-http"
-                        , "build"
-                        , "--no-native"
-                    )
-                    , buildArgs.args
-                )
-                , artifact.rootPath
-                , Stream.empty()
+        {
+            final var mx = mxHome.apply(Paths.get("mx"));
+            final var args = Arrays.asList(
+                mx.toString()
+                , options.verbose ? "-V" : ""
+                , "--trust-http"
+                , "build"
+                , "--no-native"
             );
-    }
+            args.addAll(buildArgs.args);
 
-    private static Function<String, Artifact> artifact(Build build)
-    {
-        return artifactName ->
-        {
-            final var fromGraalHome = LocalPaths.graalHome(build.paths);
-
-            var rootPath = fromGraalHome
-                .apply(Path.of(artifactName));
-
-            var buildArgs = BUILD_STEPS.get(artifactName);
-            return new Artifact(rootPath, buildArgs);
+            return new Tasks.Exec(
+                args
+                , graalHome.apply(Path.of("substratevm"))
+                , Collections.emptyList()
+            );
         };
     }
 
-    static Function<Artifact, Artifact> swapDependencies(Build build)
+    static void swapDependencies(Options options, Tasks.Replace.Effects effects, Function<Path, Path> mxHome)
     {
-        return artifact ->
+        final var dependencies = options.dependencies;
+        if (dependencies.isEmpty())
+            return;
+
+        LOG.debugf("Swap dependencies: %s", dependencies);
+        final var suitePy = Path.of("mx.mx", "suite.py");
+        final var path = mxHome.apply(suitePy);
+
+        Tasks.Replace.replace(
+            new Tasks.Replace(path, swapDependencies(dependencies))
+            , effects
+        );
+    }
+
+    private static Function<Stream<String>, List<String>> swapDependencies(List<Dependency> dependencies)
+    {
+        return lines ->
         {
-            final var dependencies = build.options.dependencies;
-            if (dependencies.isEmpty())
-                return artifact;
-
-            LOG.debugf("Swap dependencies: %s", dependencies);
-            try
-            {
-                final var suitePy = Path.of("mx.mx", "suite.py");
-                final var path = LocalPaths.mxRoot(build.paths).apply(suitePy);
-
-                try (var lines = Files.lines(path))
-                {
-                    ParsedDependencies parsed = parseSuitePy(dependencies, lines);
-                    final var transformed = applyDependencies(dependencies, parsed);
-                    Files.write(path, transformed);
-                }
-
-                return artifact;
-            }
-            catch (IOException e)
-            {
-                throw new RuntimeException(e);
-            }
+            ParsedDependencies parsed = parseSuitePy(dependencies, lines);
+            return applyDependencies(dependencies, parsed);
         };
     }
 
-    static List<String> applyDependencies(List<Dependency> dependencies, ParsedDependencies parsed)
+    private static List<String> applyDependencies(List<Dependency> dependencies, ParsedDependencies parsed)
     {
         final var result = new ArrayList<>(parsed.lines);
         dependencies.forEach(apply(a -> a.version, parsed.versions, result));
@@ -469,57 +536,30 @@ class Mx
         return null;
     }
 
-    static Function<Artifact, Artifact> hookMavenProxy(Build build)
+    static void hookMavenProxy(Options options, Tasks.Replace.Effects effects, Function<Path, Path> mxHome)
     {
-        return artifact ->
+        if (options.mavenProxy != null)
         {
-            if (build.options.mavenProxy != null)
-            {
-                Mx.prependMavenProxyToMxPy(build.options)
-                    .compose(Mx::backupOrRestoreMxPy)
-                    .apply(build);
-            }
-
-            return artifact;
-        };
+            final var mxPy = mxHome.apply(Paths.get("mx.py"));
+            Tasks.Replace.replace(
+                new Tasks.Replace(mxPy, Mx.prependMavenProxyToMxPy(options))
+                , effects
+            );
+        }
     }
 
-    private static Function<Path, Void> prependMavenProxyToMxPy(Options options)
+    private static Function<Stream<String>, List<String>> prependMavenProxyToMxPy(Options options)
     {
-        return mxPy ->
-        {
-            try (var lines = OperatingSystem.readLines(mxPy))
-            {
-                final var replaced = lines
-                    .filter(Mx::notMavenOrg)
-                    .map(prependMavenProxy(options))
-                    .collect(Collectors.toList());
-                OperatingSystem.writeLines(mxPy, replaced);
-                return null;
-            }
-        };
+        return lines ->
+            lines
+                .filter(Mx::notMavenOrg)
+                .map(prependMavenProxy(options))
+                .collect(Collectors.toList());
     }
 
     private static boolean notMavenOrg(String line)
     {
         return !line.contains("maven.org");
-    }
-
-    private static Path backupOrRestoreMxPy(Build build)
-    {
-        final var mxHome = LocalPaths.mxRoot(build.paths);
-        Path backupMxPy = mxHome.apply(Paths.get("mx.py.backup"));
-        Path mxPy = mxHome.apply(Paths.get("mx.py"));
-        if (!backupMxPy.toFile().exists())
-        {
-            OperatingSystem.copy(mxPy, backupMxPy);
-        }
-        else
-        {
-            OperatingSystem.copy(backupMxPy, mxPy, REPLACE_EXISTING);
-        }
-
-        return mxPy;
     }
 
     private static Function<String, String> prependMavenProxy(Options options)
@@ -535,36 +575,13 @@ class Mx
 
     static class BuildArgs
     {
-        final Stream<String> args;
+        final List<String> args;
 
-        private BuildArgs(Stream<String> args)
-        {
-            this.args = args;
-        }
+        BuildArgs(List<String> args) {this.args = args;}
 
         static BuildArgs of(String... args)
         {
-            return new BuildArgs(Stream.of(args));
-        }
-
-        static BuildArgs empty()
-        {
-            return new BuildArgs(Stream.empty());
-        }
-    }
-
-    private static class Artifact
-    {
-        final Path rootPath;
-        final Stream<BuildArgs> buildSteps;
-
-        Artifact(
-            Path rootPath
-            , Stream<BuildArgs> buildSteps
-        )
-        {
-            this.rootPath = rootPath;
-            this.buildSteps = buildSteps;
+            return new BuildArgs(Arrays.asList(args));
         }
     }
 
@@ -611,67 +628,8 @@ class Mx
     }
 }
 
-class LocalPaths
-{
-    final Path graalHome;
-    final Path mxHome;
-    final Path workingDir;
-    final Path mavenRepoHome;
-
-    private LocalPaths(Path graalHome, Path mxHome, Path workingDir, Path mavenRepoHome)
-    {
-        this.graalHome = graalHome;
-        this.mxHome = mxHome;
-        this.workingDir = workingDir;
-        this.mavenRepoHome = mavenRepoHome;
-    }
-
-    static Function<Path, Path> graalHome(LocalPaths paths)
-    {
-        return paths.graalHome::resolve;
-    }
-
-    static Function<Path, Path> mxRoot(LocalPaths paths)
-    {
-        return paths.mxHome::resolve;
-    }
-
-    static Function<Path, Path> targetDir(LocalPaths paths)
-    {
-        return paths.workingDir.resolve("target")::resolve;
-    }
-
-    static Function<Path, Path> resourcesDir(LocalPaths paths)
-    {
-        return paths.workingDir.resolve("resources")::resolve;
-    }
-
-    static LocalPaths newSystemPaths(Options options)
-    {
-        final var graalHome = Path.of("/tmp", "mandrel");
-        final var mxHome = Path.of("/opt", "mx");
-        final var userDir = System.getProperty("user.dir");
-        final var workingDir = new File(userDir).toPath();
-        final var mavenRepoHome = mavenRepoHome(options);
-        return new LocalPaths(graalHome, mxHome, workingDir, mavenRepoHome);
-    }
-
-    private static Path mavenRepoHome(Options options)
-    {
-        if (options.mavenLocalRepository == null)
-        {
-            final var userHome = System.getProperty("user.home");
-            return Path.of(userHome, ".m2", "repository");
-        }
-
-        return Path.of(options.mavenLocalRepository);
-    }
-}
-
 class Maven
 {
-    static final Logger LOG = LogManager.getLogger(Maven.class);
-
     static final Collection<String> ARTIFACT_IDS = Arrays.asList(
         "graal-sdk"
         , "svm"
@@ -716,69 +674,78 @@ class Maven
         , "svm-driver", Path.of("substratevm", "mxbuild", "dists", "jdk1.8", "svm-driver")
     );
 
-    static void mvn(Build build)
+    static void mvn(
+        Options options
+        , Tasks.Exec.Effects exec
+        , Tasks.Replace.Effects replace
+        , Supplier<Path> graalHome
+        , Function<Path, Path> workingDir
+        , Function<Path, Path> mavenRepoHome
+    )
     {
         // Only invoke mvn if all mx builds succeeded
         final var releaseArtifacts =
             ARTIFACT_IDS.stream()
-                .map(Maven.mvnInstall(build))
+                .map(Maven.mvnInstall(options, exec, replace, graalHome, workingDir, mavenRepoHome))
                 .collect(Collectors.toList());
 
         // Only deploy if all mvn installs worked
-        if (build.options.action == Options.Action.DEPLOY)
+        if (options.action == Options.Action.DEPLOY)
         {
-            releaseArtifacts.forEach(Maven.mvnDeploy(build));
+            releaseArtifacts.forEach(Maven.mvnDeploy(options, exec, workingDir));
         }
     }
 
-    private static Function<String, ReleaseArtifact> mvnInstall(Build build)
+    private static Function<String, ReleaseArtifact> mvnInstall(
+        Options options
+        , Tasks.Exec.Effects exec
+        , Tasks.Replace.Effects replace
+        , Supplier<Path> graalHome
+        , Function<Path, Path> workingDir
+        , Function<Path, Path> mavenRepoHome
+    )
     {
         return artifactId ->
         {
             final var artifact =
                 Maven.artifact(artifactId);
 
-            Maven.mvnInstallSnapshot(artifact, build);
+            exec.exec.accept(mvnInstallSnapshot(artifact, options, graalHome));
+            exec.exec.accept(mvnInstallAssembly(artifact, options, replace, workingDir));
 
-            Maven.mvnInstallAssembly(build)
-                .compose(AssemblyArtifact.of(build))
-                .apply(artifact);
+            final var releaseArtifact = ReleaseArtifact.of(artifact, options, workingDir, mavenRepoHome);
+            exec.exec.accept(mvnInstallRelease(releaseArtifact, options, replace, workingDir));
 
-            return Maven.mvnInstallRelease(build)
-                .compose(ReleaseArtifact.of(build))
-                .apply(artifact);
+            return releaseArtifact;
         };
     }
 
-    private static Consumer<ReleaseArtifact> mvnDeploy(Build build)
+    private static Consumer<ReleaseArtifact> mvnDeploy(Options options, Tasks.Exec.Effects exec, Function<Path, Path> workingDir)
     {
         return artifact ->
-            OperatingSystem.exec()
-                .compose(Maven.deploy(build))
-                .apply(artifact);
+            exec.exec.accept(Maven.deploy(artifact, options, workingDir));
     }
 
-    private static Function<ReleaseArtifact, OperatingSystem.Command> deploy(Build build)
+    private static Tasks.Exec deploy(ReleaseArtifact artifact, Options options, Function<Path, Path> workingDir)
     {
-        return artifact ->
-            new OperatingSystem.Command(
-                Stream.of(
+         return new Tasks.Exec(
+                Arrays.asList(
                     "mvn"
-                    , build.options.verbose ? "--debug" : ""
+                    , options.verbose ? "--debug" : ""
                     , DEPLOY_FILE_GOAL
                     , String.format("-DgroupId=%s", artifact.groupId)
                     , String.format("-DartifactId=%s", artifact.artifactId)
-                    , String.format("-Dversion=%s", build.options.version)
+                    , String.format("-Dversion=%s", options.version)
                     , "-Dpackaging=jar"
                     , String.format("-Dfile=%s", artifact.jarPath)
                     , String.format("-Dsources=%s", artifact.sourceJarPath)
                     , "-DcreateChecksum=true"
                     , String.format("-DpomFile=%s", artifact.pomPaths.target)
-                    , String.format("-DrepositoryId=%s", build.options.mavenRepoId)
-                    , String.format("-Durl=%s", build.options.mavenURL)
+                    , String.format("-DrepositoryId=%s", options.mavenRepoId)
+                    , String.format("-Durl=%s", options.mavenURL)
                 )
-                , build.paths.workingDir
-                , Stream.empty()
+                , workingDir.apply(Path.of(""))
+                , Collections.emptyList()
             );
     }
 
@@ -793,47 +760,24 @@ class Maven
         );
     }
 
-    private static Function<DirectionalPaths, DirectionalPaths> preparePomXml(Build build)
+    private static Function<Stream<String>, List<String>> replacePomXml(Options options)
     {
-        return paths ->
-        {
-            LOG.debugf("Create parent directories for %s", paths.target);
-            OperatingSystem.mkdirs()
-                .compose(Path::getParent)
-                .apply(paths.target);
-
-            OperatingSystem.copy(paths.source, paths.target, REPLACE_EXISTING);
-
-            try (var lines = OperatingSystem.readLines(paths.target))
-            {
-                final var replaced = lines
-                    .map(line -> line.replace("999", build.options.version))
-                    .collect(Collectors.toList());
-                OperatingSystem.writeLines(paths.target, replaced);
-            }
-
-            return paths;
-        };
+        return lines ->
+            lines
+                .map(line -> line.replace("999", options.version))
+                .collect(Collectors.toList());
     }
 
-    private static void mvnInstallSnapshot(Artifact artifact, Build build)
+    private static Tasks.Exec mvnInstallSnapshot(Artifact artifact, Options options, Supplier<Path> graalHome)
     {
-        OperatingSystem.exec()
-            .compose(Maven.mvnInstallSnapshot(build))
-            .apply(artifact);
-    }
-
-    private static Function<Artifact, OperatingSystem.Command> mvnInstallSnapshot(Build build)
-    {
-        return artifact ->
-            new OperatingSystem.Command(
-                Stream.of(
+        return new Tasks.Exec(
+                Arrays.asList(
                     "mvn"
-                    , build.options.verbose ? "--debug" : ""
+                    , options.verbose ? "--debug" : ""
                     , INSTALL_FILE_GOAL
                     , String.format("-DgroupId=%s", artifact.groupId)
                     , String.format("-DartifactId=%s", artifact.artifactId)
-                    , String.format("-Dversion=%s", Options.snapshotVersion(build.options))
+                    , String.format("-Dversion=%s", Options.snapshotVersion(options))
                     , "-Dpackaging=jar"
                     , String.format(
                         "-Dfile=%s.jar"
@@ -845,84 +789,67 @@ class Maven
                     )
                     , "-DcreateChecksum=true"
                 )
-                , build.paths.graalHome
-                , Stream.empty()
+                , graalHome.get()
+                , Collections.emptyList()
             );
     }
 
-    private static Function<AssemblyArtifact, Void> mvnInstallAssembly(Build build)
+    private static Tasks.Exec mvnInstallAssembly(Artifact artifact, Options options, Tasks.Replace.Effects effects, Function<Path, Path> workingDir)
     {
-        return artifact ->
-            OperatingSystem.exec()
-                .compose(Maven.installAssembly(build))
-                .compose(Maven.prepareAssemblyPomXml(build))
-                .apply(artifact);
+        final var pomPath = Path.of(
+            "assembly"
+            , artifact.artifactId
+            , "pom.xml"
+        );
+        final var paths = DirectionalPaths.ofPom(pomPath, workingDir);
+
+        Tasks.Replace.copyReplace(
+            new Tasks.Replace(paths.target, Maven.replacePomXml(options))
+            , paths.source
+            , effects
+        );
+
+        return new Tasks.Exec(
+            Arrays.asList(
+                "mvn"
+                , options.verbose ? "--debug" : ""
+                , "install"
+            )
+            , paths.target.getParent()
+            , Collections.emptyList()
+        );
     }
 
-    private static Function<AssemblyArtifact, AssemblyArtifact> prepareAssemblyPomXml(Build build)
+    private static Tasks.Exec mvnInstallRelease(
+        ReleaseArtifact releaseArtifact
+        , Options options
+        , Tasks.Replace.Effects replace
+        , Function<Path, Path> workingDir
+    )
     {
-        return artifact ->
-        {
-            Maven.preparePomXml(build).apply(artifact.pomPaths);
-            return artifact;
-        };
-    }
+        Tasks.Replace.copyReplace(
+            new Tasks.Replace(releaseArtifact.pomPaths.target, Maven.replacePomXml(options))
+            , releaseArtifact.pomPaths.source
+            , replace
+        );
 
-    private static Function<AssemblyArtifact, OperatingSystem.Command> installAssembly(Build build)
-    {
-        return artifact ->
-            new OperatingSystem.Command(
-                Stream.of(
-                    "mvn"
-                    , build.options.verbose ? "--debug" : ""
-                    , "install"
-                )
-                , artifact.pomPaths.target.getParent()
-                , Stream.empty()
-            );
-    }
-
-    private static Function<ReleaseArtifact, ReleaseArtifact> mvnInstallRelease(Build build)
-    {
-        return artifact ->
-        {
-            OperatingSystem.exec()
-                .compose(Maven.installRelease(build))
-                .compose(Maven.prepareReleasePomXml(build))
-                .apply(artifact);
-            return artifact;
-        };
-    }
-
-    private static Function<ReleaseArtifact, ReleaseArtifact> prepareReleasePomXml(Build build)
-    {
-        return artifact ->
-        {
-            Maven.preparePomXml(build).apply(artifact.pomPaths);
-            return artifact;
-        };
-    }
-
-    private static Function<ReleaseArtifact, OperatingSystem.Command> installRelease(Build build)
-    {
-        return artifact ->
-            new OperatingSystem.Command(
-                Stream.of(
-                    "mvn"
-                    , build.options.verbose ? "--debug" : ""
-                    , INSTALL_FILE_GOAL
-                    , String.format("-DgroupId=%s", artifact.groupId)
-                    , String.format("-DartifactId=%s", artifact.artifactId)
-                    , String.format("-Dversion=%s", build.options.version)
-                    , "-Dpackaging=jar"
-                    , String.format("-Dfile=%s", artifact.jarPath)
-                    , String.format("-Dsources=%s", artifact.sourceJarPath)
-                    , "-DcreateChecksum=true"
-                    , String.format("-DpomFile=%s", artifact.pomPaths.target)
-                )
-                , build.paths.workingDir
-                , Stream.empty()
-            );
+        return new Tasks.Exec(
+            Arrays.asList(
+                "mvn"
+                , options.verbose ? "--debug" : ""
+                , INSTALL_FILE_GOAL
+                , String.format("-DgroupId=%s", releaseArtifact.groupId)
+                , String.format("-DartifactId=%s", releaseArtifact.artifactId)
+                , String.format("-Dversion=%s", options.version)
+                , "-Dpackaging=jar"
+                , String.format("-Dfile=%s", releaseArtifact.jarPath)
+                , String.format("-Dsources=%s", releaseArtifact.sourceJarPath)
+                , "-DcreateChecksum=true"
+                , String.format("-DpomFile=%s", releaseArtifact.pomPaths.target)
+            )
+            , workingDir.apply(Path.of(""))
+            , Collections.emptyList()
+        );
     }
 
     private static final class Artifact
@@ -936,34 +863,6 @@ class Maven
             this.groupId = groupId;
             this.artifactId = artifactId;
             this.distsPath = distsPath;
-        }
-    }
-
-    private static final class AssemblyArtifact
-    {
-        final DirectionalPaths pomPaths;
-
-        private AssemblyArtifact(DirectionalPaths pomPaths)
-        {
-            this.pomPaths = pomPaths;
-        }
-
-        static Function<Artifact, AssemblyArtifact> of(Build build)
-        {
-            return artifact ->
-            {
-                final var pomPath = Path.of(
-                    "assembly"
-                    , artifact.artifactId
-                    , "pom.xml"
-                );
-                final var pomPaths = new DirectionalPaths(
-                    LocalPaths.resourcesDir(build.paths).apply(pomPath)
-                    , LocalPaths.targetDir(build.paths).apply(pomPath)
-                );
-
-                return new AssemblyArtifact(pomPaths);
-            };
         }
     }
 
@@ -990,66 +889,154 @@ class Maven
             this.sourceJarPath = sourceJarPath;
         }
 
-        static Function<Artifact, ReleaseArtifact> of(Build build)
+        static ReleaseArtifact of(Artifact artifact, Options options, Function<Path, Path> workingDir, Function<Path, Path> mavenRepoHome)
         {
-            return artifact ->
-            {
-                final var releasePomPath = Path.of(
-                    "release"
-                    , artifact.artifactId
-                    , "pom.xml"
-                );
+            final var releasePomPath = Path.of(
+                "release"
+                , artifact.artifactId
+                , "pom.xml"
+            );
 
-                final var pomPaths = new DirectionalPaths(
-                    LocalPaths.resourcesDir(build.paths).apply(releasePomPath)
-                    , LocalPaths.targetDir(build.paths).apply(releasePomPath)
-                );
+            final var pomPaths = DirectionalPaths.ofPom(releasePomPath, workingDir);
 
-                final var jarName = String.format(
-                    "%s-%s-ASSEMBLY-jar-with-dependencies.jar"
-                    , artifact.artifactId
-                    , build.options.version
-                );
+            final var jarName = String.format(
+                "%s-%s-ASSEMBLY-jar-with-dependencies.jar"
+                , artifact.artifactId
+                , options.version
+            );
 
-                final var artifactPath = build.paths.mavenRepoHome
-                    .resolve(artifact.groupId.replace(".", "/"))
-                    .resolve(artifact.artifactId);
+            final var artifactPath = mavenRepoHome
+                .apply(Path.of(artifact.groupId.replace(".", "/")))
+                .resolve(artifact.artifactId);
 
-                final var jarPath = artifactPath
-                    .resolve(String.format("%s-ASSEMBLY", build.options.version))
-                    .resolve(jarName);
+            final var jarPath = artifactPath
+                .resolve(String.format("%s-ASSEMBLY", options.version))
+                .resolve(jarName);
 
-                final var sourceJarName = String.format(
-                    "%s-%s-SNAPSHOT-sources.jar"
-                    , artifact.artifactId
-                    , build.options.version
-                );
+            final var sourceJarName = String.format(
+                "%s-%s-SNAPSHOT-sources.jar"
+                , artifact.artifactId
+                , options.version
+            );
 
-                final var sourceJarPath = artifactPath
-                    .resolve(String.format("%s-SNAPSHOT", build.options.version))
-                    .resolve(sourceJarName);
+            final var sourceJarPath = artifactPath
+                .resolve(String.format("%s-SNAPSHOT", options.version))
+                .resolve(sourceJarName);
 
-                return new ReleaseArtifact(
-                    artifact.groupId
-                    , artifact.artifactId
-                    , pomPaths
-                    , jarPath
-                    , sourceJarPath
-                );
-            };
+            return new ReleaseArtifact(
+                artifact.groupId
+                , artifact.artifactId
+                , pomPaths
+                , jarPath
+                , sourceJarPath
+            );
         }
     }
 
-    private static final class DirectionalPaths
+    static final class DirectionalPaths
     {
         final Path source;
         final Path target;
 
-        private DirectionalPaths(Path source, Path target)
+        DirectionalPaths(Path source, Path target)
         {
             this.source = source;
             this.target = target;
         }
+
+        static DirectionalPaths ofPom(Path pomPath, Function<Path, Path> workingDir)
+        {
+            return new DirectionalPaths(
+                workingDir.apply(Path.of("resources").resolve(pomPath))
+                , workingDir.apply(Path.of("target").resolve(pomPath))
+            );
+        }
+    }
+}
+
+// Dependency
+class FileSystem
+{
+    private final Path graalHome;
+    private final Path mxHome;
+    private final Path workingDir;
+    private final Path mavenRepoHome;
+
+    FileSystem(Path graalHome, Path mxHome, Path workingDir, Path mavenRepoHome) {
+        this.graalHome = graalHome;
+        this.mxHome = mxHome;
+        this.workingDir = workingDir;
+        this.mavenRepoHome = mavenRepoHome;
+    }
+
+    Path mxHome(Path relative)
+    {
+        return mxHome.resolve(relative);
+    }
+
+    Path graalHome(Path relative)
+    {
+        return graalHome.resolve(relative);
+    }
+
+    Path graalHome()
+    {
+        return graalHome;
+    }
+
+    Path workingDir(Path relative)
+    {
+        return workingDir.resolve(relative);
+    }
+
+    Path mavenRepoHome(Path relative)
+    {
+        return mavenRepoHome.resolve(relative);
+    }
+
+    Stream<String> readLines(Path path)
+    {
+        try
+        {
+            return Files.lines(path);
+        }
+        catch (IOException e)
+        {
+            throw new RuntimeException(e);
+        }
+    }
+
+    void writeLines(Path path, Iterable<? extends CharSequence> lines)
+    {
+        try
+        {
+            Files.write(path, lines);
+        }
+        catch (IOException e)
+        {
+            throw new RuntimeException(e);
+        }
+    }
+
+    static FileSystem ofSystem(Options options)
+    {
+        final var graalHome = Path.of("/tmp", "mandrel");
+        final var mxHome = Path.of("/opt", "mx");
+        final var userDir = System.getProperty("user.dir");
+        final var workingDir = new File(userDir).toPath();
+        final var mavenRepoHome = mavenRepoHome(options);
+        return new FileSystem(graalHome, mxHome, workingDir, mavenRepoHome);
+    }
+
+    private static Path mavenRepoHome(Options options)
+    {
+        if (options.mavenLocalRepository == null)
+        {
+            final var userHome = System.getProperty("user.home");
+            return Path.of(userHome, ".m2", "repository");
+        }
+
+        return Path.of(options.mavenLocalRepository);
     }
 }
 
@@ -1057,29 +1044,20 @@ class OperatingSystem
 {
     static final Logger LOG = LogManager.getLogger(OperatingSystem.class);
 
-    static Function<OperatingSystem.Command, Void> exec()
+    void exec(Tasks.Exec task)
     {
-        return command ->
-        {
-            exec(command);
-            return null;
-        };
-    }
-
-    static void exec(Command command)
-    {
-        final var commandList = command.command
+        final var commandList = task.args.stream()
             .filter(Predicate.not(String::isEmpty))
             .collect(Collectors.toList());
 
-        LOG.debugf("Execute %s in %s", commandList, command.directory);
+        LOG.debugf("Execute %s in %s", commandList, task.directory);
         try
         {
             var processBuilder = new ProcessBuilder(commandList)
-                .directory(command.directory.toFile())
+                .directory(task.directory.toFile())
                 .inheritIO();
 
-            command.envVars.forEach(
+            task.envVars.forEach(
                 envVar -> processBuilder.environment()
                     .put(envVar.name, envVar.value)
             );
@@ -1099,12 +1077,17 @@ class OperatingSystem
         }
     }
 
-    static void copy(Path from, Path to, CopyOption... copyOptions)
+    void copy(Path from, Path to)
     {
         try
         {
+            LOG.debugf("Create parent directories for %s", to);
+            OperatingSystem.mkdirs()
+                .compose(Path::getParent)
+                .apply(to);
+
             LOG.debugf("Copy %s to %s", from, to);
-            Files.copy(from, to, copyOptions);
+            Files.copy(from, to, REPLACE_EXISTING);
         }
         catch (IOException e)
         {
@@ -1117,30 +1100,6 @@ class OperatingSystem
         return OperatingSystem::mkdirs;
     }
 
-    static Stream<String> readLines(Path path)
-    {
-        try
-        {
-            return Files.lines(path);
-        }
-        catch (IOException e)
-        {
-            throw new RuntimeException(e);
-        }
-    }
-
-    static void writeLines(Path path, Iterable<? extends CharSequence> lines)
-    {
-        try
-        {
-            Files.write(path, lines);
-        }
-        catch (IOException e)
-        {
-            throw new RuntimeException(e);
-        }
-    }
-
     private static Path mkdirs(Path path)
     {
         final var file = path.toFile();
@@ -1151,32 +1110,6 @@ class OperatingSystem
                 throw new RuntimeException("Failed to create target directory");
         }
         return path;
-    }
-
-    static class Command
-    {
-        final Stream<String> command;
-        final Path directory;
-        final Stream<EnvVar> envVars;
-
-        Command(Stream<String> command, Path directory, Stream<EnvVar> envVars)
-        {
-            this.command = command;
-            this.directory = directory;
-            this.envVars = envVars;
-        }
-    }
-
-    static class EnvVar
-    {
-        final String name;
-        final String value;
-
-        EnvVar(String name, String value)
-        {
-            this.name = name;
-            this.value = value;
-        }
     }
 }
 
