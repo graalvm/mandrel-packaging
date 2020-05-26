@@ -2,16 +2,14 @@
 
 set -e
 
-function fetchMx {
-    local version=$1
-    curl -L https://github.com/graalvm/mx/tarball/${version} > mx.tar.gz
-    mkdir -p mx/${version}
-    tar -xzvpf mx.tar.gz -C mx/${version} --strip-components 1
-    sudo chown -R mandrel:mandrel mx/${version}
-    rm -f mx.tar.gz
-}
+MX_VERSION="5.259.0"
 
 pushd /opt
-fetchMx "5.244.0"
-fetchMx "5.247.11"
+
+curl -L https://github.com/graalvm/mx/tarball/${MX_VERSION} > mx.tar.gz
+mkdir -p mx
+tar -xzvpf mx.tar.gz -C mx --strip-components 1
+sudo chown -R mandrel:mandrel mx
+rm -f mx.tar.gz
+
 popd
