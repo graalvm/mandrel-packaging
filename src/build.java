@@ -3,6 +3,7 @@ import java.io.IOException;
 import java.nio.file.CopyOption;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -226,8 +227,6 @@ class SequentialBuild
 class Mx
 {
     private static final Logger LOG = LogManager.getLogger(OperatingSystem.class);
-    private static final Pattern MX_VERSION_PATTERN =
-        Pattern.compile("\"([0-9]\\.[0-9]{1,3}\\.[0-9]{1,2})\"");
 
     private static final Pattern DEPENDENCY_SHA1_PATTERN =
         Pattern.compile("\"sha1\"\\s*:\\s*\"([a-f0-9]*)\"");
@@ -285,28 +284,28 @@ class Mx
         {
             LOG.debugf("Build %s", artifactName);
 
-            final var artifact = Mx.swapDependencies(build.options)
-                .compose(Mx.hookMavenProxy(build.options))
+            final var artifact = Mx.swapDependencies(build)
+                .compose(Mx.hookMavenProxy(build))
                 .compose(Mx.artifact(build))
                 .apply(artifactName);
 
             final var clean = !build.options.skipClean;
             if (clean)
-                OperatingSystem.exec(Mx.mxclean(artifact, build.options));
+                OperatingSystem.exec(Mx.mxclean(artifact, build));
 
             artifact.buildSteps
-                .map(Mx.mxbuild(artifact, build.options))
+                .map(Mx.mxbuild(artifact, build))
                 .forEach(OperatingSystem::exec);
         };
     }
 
-    private static OperatingSystem.Command mxclean(Artifact artifact, Options options)
+    private static OperatingSystem.Command mxclean(Artifact artifact, Build build)
     {
         return new OperatingSystem.Command(
             Stream.concat(
                 Stream.of(
-                    artifact.mxHome.resolve("mx").toString()
-                    , options.verbose ? "-V" : ""
+                    LocalPaths.mxRoot(build.paths).apply(Paths.get("mx")).toString()
+                    , build.options.verbose ? "-V" : ""
                     , "clean"
                 )
                 , Stream.empty()
@@ -316,14 +315,14 @@ class Mx
         );
     }
 
-    private static Function<BuildArgs, OperatingSystem.Command> mxbuild(Artifact artifact, Options options)
+    private static Function<BuildArgs, OperatingSystem.Command> mxbuild(Artifact artifact, Build build)
     {
         return buildArgs ->
             new OperatingSystem.Command(
                 Stream.concat(
                     Stream.of(
-                        artifact.mxHome.resolve("mx").toString()
-                        , options.verbose ? "-V" : ""
+                        LocalPaths.mxRoot(build.paths).apply(Paths.get("mx")).toString()
+                        , build.options.verbose ? "-V" : ""
                         , "--trust-http"
                         , "build"
                         , "--no-native"
@@ -344,51 +343,16 @@ class Mx
             var rootPath = fromGraalHome
                 .apply(Path.of(artifactName));
 
-            var mxHome = LocalPaths.mxRoot(build.paths)
-                .compose(Mx::mxVersion)
-                .compose(fromGraalHome)
-                .compose(Mx::suitePy)
-                .apply(artifactName);
             var buildArgs = BUILD_STEPS.get(artifactName);
-            return new Artifact(rootPath, mxHome, buildArgs);
+            return new Artifact(rootPath, buildArgs);
         };
     }
 
-    private static Path suitePy(String artifactName)
-    {
-        return Path.of(
-            artifactName
-            , String.format("mx.%s", artifactName)
-            , "suite.py"
-        );
-    }
-
-    private static String mxVersion(Path suitePy)
-    {
-        try (var lines = OperatingSystem.readLines(suitePy))
-        {
-            return lines
-                .filter(line -> line.contains("mxversion"))
-                .map(Mx::extractMxVersion)
-                .findFirst()
-                .orElse(null);
-        }
-    }
-
-    private static String extractMxVersion(String line)
-    {
-        final var matcher = MX_VERSION_PATTERN.matcher(line);
-        return matcher.results()
-            .findFirst()
-            .map(result -> result.group(1))
-            .orElse(null);
-    }
-
-    static Function<Artifact, Artifact> swapDependencies(Options options)
+    static Function<Artifact, Artifact> swapDependencies(Build build)
     {
         return artifact ->
         {
-            final var dependencies = options.dependencies;
+            final var dependencies = build.options.dependencies;
             if (dependencies.isEmpty())
                 return artifact;
 
@@ -396,7 +360,7 @@ class Mx
             try
             {
                 final var suitePy = Path.of("mx.mx", "suite.py");
-                final var path = artifact.mxHome.resolve(suitePy);
+                final var path = LocalPaths.mxRoot(build.paths).apply(suitePy);
 
                 try (var lines = Files.lines(path))
                 {
@@ -509,15 +473,15 @@ class Mx
         return null;
     }
 
-    static Function<Artifact, Artifact> hookMavenProxy(Options options)
+    static Function<Artifact, Artifact> hookMavenProxy(Build build)
     {
         return artifact ->
         {
-            if (options.mavenProxy != null)
+            if (build.options.mavenProxy != null)
             {
-                Mx.prependMavenProxyToMxPy(options)
+                Mx.prependMavenProxyToMxPy(build.options)
                     .compose(Mx::backupOrRestoreMxPy)
-                    .apply(artifact);
+                    .apply(build);
             }
 
             return artifact;
@@ -545,10 +509,11 @@ class Mx
         return !line.contains("maven.org");
     }
 
-    private static Path backupOrRestoreMxPy(Artifact artifact)
+    private static Path backupOrRestoreMxPy(Build build)
     {
-        Path backupMxPy = artifact.mxHome.resolve("mx.py.backup");
-        Path mxPy = artifact.mxHome.resolve("mx.py");
+        final var mxHome = LocalPaths.mxRoot(build.paths);
+        Path backupMxPy = mxHome.apply(Paths.get("mx.py.backup"));
+        Path mxPy = mxHome.apply(Paths.get("mx.py"));
         if (!backupMxPy.toFile().exists())
         {
             OperatingSystem.copy(mxPy, backupMxPy);
@@ -595,17 +560,14 @@ class Mx
     private static class Artifact
     {
         final Path rootPath;
-        final Path mxHome;
         final Stream<BuildArgs> buildSteps;
 
         Artifact(
             Path rootPath
-            , Path mxHome
             , Stream<BuildArgs> buildSteps
         )
         {
             this.rootPath = rootPath;
-            this.mxHome = mxHome;
             this.buildSteps = buildSteps;
         }
     }
@@ -673,7 +635,7 @@ class LocalPaths
         return paths.graalHome::resolve;
     }
 
-    static Function<String, Path> mxRoot(LocalPaths paths)
+    static Function<Path, Path> mxRoot(LocalPaths paths)
     {
         return paths.mxHome::resolve;
     }
