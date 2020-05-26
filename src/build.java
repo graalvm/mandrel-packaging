@@ -3,6 +3,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -11,6 +12,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Queue;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 import java.util.function.Function;
@@ -28,6 +30,8 @@ public class build
 
     public static void main(String... args)
     {
+        Check.main();
+
         final var options = Options.from(Args.read(args));
 
         final var fs = FileSystem.ofSystem(options);
@@ -245,10 +249,28 @@ class Tasks
         final Path directory;
         final List<EnvVar> envVars;
 
-        Exec(List<String> args, Path directory, List<EnvVar> envVars) {
+        private Exec(List<String> args, Path directory, List<EnvVar> envVars) {
             this.args = args;
             this.directory = directory;
             this.envVars = envVars;
+        }
+
+        static Exec of(List<String> args, Path directory, EnvVar... envVars)
+        {
+            final var nonEmpty = args.stream()
+                .filter(Predicate.not(String::isEmpty))
+                .collect(Collectors.toList());
+            return new Tasks.Exec(nonEmpty, directory, Arrays.asList(envVars));
+        }
+
+        @Override
+        public String toString()
+        {
+            return "Exec{" +
+                "args=" + args +
+                ", directory=" + directory +
+                ", envVars=" + envVars +
+                '}';
         }
 
         static class Effects
@@ -321,7 +343,7 @@ class Mx
     private static final Pattern DEPENDENCY_VERSION_PATTERN =
         Pattern.compile("\"version\"\\s*:\\s*\"([0-9.]*)\"");
 
-    private static final String SVM_ONLY = String.join(","
+    static final String SVM_ONLY = String.join(","
         , "SVM"
         , "com.oracle.svm.graal"
         , "com.oracle.svm.truffle"
@@ -379,14 +401,13 @@ class Mx
     )
     {
         final var mx = mxHome.apply(Paths.get("mx"));
-        return new Tasks.Exec(
+        return Tasks.Exec.of(
             Arrays.asList(
                 mx.toString()
                 , options.verbose ? "-V" : ""
                 , "clean"
             )
             , graalHome.apply(Path.of("substratevm"))
-            , Collections.emptyList()
         );
     }
 
@@ -399,19 +420,20 @@ class Mx
         return buildArgs ->
         {
             final var mx = mxHome.apply(Paths.get("mx"));
-            final var args = Arrays.asList(
-                mx.toString()
-                , options.verbose ? "-V" : ""
-                , "--trust-http"
-                , "build"
-                , "--no-native"
+            final var args = Lists.concat(
+                List.of(
+                    mx.toString()
+                    , options.verbose ? "-V" : ""
+                    , "--trust-http"
+                    , "build"
+                    , "--no-native"
+                )
+                , buildArgs.args
             );
-            args.addAll(buildArgs.args);
 
-            return new Tasks.Exec(
+            return Tasks.Exec.of(
                 args
                 , graalHome.apply(Path.of("substratevm"))
-                , Collections.emptyList()
             );
         };
     }
@@ -728,7 +750,7 @@ class Maven
 
     private static Tasks.Exec deploy(ReleaseArtifact artifact, Options options, Function<Path, Path> workingDir)
     {
-         return new Tasks.Exec(
+         return Tasks.Exec.of(
                 Arrays.asList(
                     "mvn"
                     , options.verbose ? "--debug" : ""
@@ -745,7 +767,6 @@ class Maven
                     , String.format("-Durl=%s", options.mavenURL)
                 )
                 , workingDir.apply(Path.of(""))
-                , Collections.emptyList()
             );
     }
 
@@ -770,7 +791,7 @@ class Maven
 
     private static Tasks.Exec mvnInstallSnapshot(Artifact artifact, Options options, Supplier<Path> graalHome)
     {
-        return new Tasks.Exec(
+        return Tasks.Exec.of(
                 Arrays.asList(
                     "mvn"
                     , options.verbose ? "--debug" : ""
@@ -790,7 +811,6 @@ class Maven
                     , "-DcreateChecksum=true"
                 )
                 , graalHome.get()
-                , Collections.emptyList()
             );
     }
 
@@ -809,14 +829,13 @@ class Maven
             , effects
         );
 
-        return new Tasks.Exec(
+        return Tasks.Exec.of(
             Arrays.asList(
                 "mvn"
                 , options.verbose ? "--debug" : ""
                 , "install"
             )
             , paths.target.getParent()
-            , Collections.emptyList()
         );
     }
 
@@ -833,7 +852,7 @@ class Maven
             , replace
         );
 
-        return new Tasks.Exec(
+        return Tasks.Exec.of(
             Arrays.asList(
                 "mvn"
                 , options.verbose ? "--debug" : ""
@@ -848,7 +867,6 @@ class Maven
                 , String.format("-DpomFile=%s", releaseArtifact.pomPaths.target)
             )
             , workingDir.apply(Path.of(""))
-            , Collections.emptyList()
         );
     }
 
@@ -1046,14 +1064,10 @@ class OperatingSystem
 
     void exec(Tasks.Exec task)
     {
-        final var commandList = task.args.stream()
-            .filter(Predicate.not(String::isEmpty))
-            .collect(Collectors.toList());
-
-        LOG.debugf("Execute %s in %s", commandList, task.directory);
+        LOG.debugf("Execute %s in %s", task.args, task.directory);
         try
         {
-            var processBuilder = new ProcessBuilder(commandList)
+            var processBuilder = new ProcessBuilder(task.args)
                 .directory(task.directory.toFile())
                 .inheritIO();
 
@@ -1179,5 +1193,99 @@ final class LogManager
     static Logger getLogger(Class<?> clazz)
     {
         return new Logger(clazz.getSimpleName());
+    }
+}
+
+final class Lists
+{
+    static <E> List<E> concat(List<? extends E> a, List<? extends E> b)
+    {
+        final var list = new ArrayList<E>(a.size() + b.size());
+        list.addAll(a);
+        list.addAll(b);
+        return list;
+    }
+}
+
+final class Check
+{
+    public static void main(String... args)
+    {
+        shouldEnableAssertions();
+        checkMx();
+    }
+
+    static void checkMx()
+    {
+        final var options = Options.from(Args.read("--version", "0.19.1"));
+        final var os = new RecordingOperatingSystem();
+        final var exec = new Tasks.Exec.Effects(os::record);
+        final var replace = new Tasks.Replace.Effects(p -> Stream.empty(), (p, l) -> {}, (src, target) -> {});
+        Mx.build(options, exec, replace, Function.identity(), Function.identity());
+        os.assertNumberOfTasks(7);
+        os.assertTask("mx clean");
+        os.assertTask("mx --trust-http build --no-native --dependencies GRAAL_SDK");
+        os.assertTask("mx --trust-http build --no-native --dependencies GRAAL");
+        os.assertTask("mx --trust-http build --no-native --dependencies POINTSTO");
+        os.assertTask("mx --trust-http build --no-native --dependencies OBJECTFILE");
+        os.assertTask("mx --trust-http build --no-native --dependencies SVM_DRIVER");
+        os.assertTask(String.format(
+            "mx --trust-http build --no-native --only %s"
+            , Mx.SVM_ONLY
+        ));
+    }
+
+    private static void shouldEnableAssertions()
+    {
+        boolean enabled = false;
+        //noinspection AssertWithSideEffects
+        assert enabled = true;
+        //noinspection ConstantConditions
+        if (!enabled)
+            throw new AssertionError("assert not enabled");
+    }
+
+    // TODO use a marker or equivalent as return of exec and verify that instead of tracking tasks separately
+    private static final class RecordingOperatingSystem
+    {
+        private final Queue<Tasks.Exec> tasks = new ArrayDeque<>();
+
+        void record(Tasks.Exec task)
+        {
+            final var success = tasks.offer(task);
+            assert success : task;
+        }
+
+        void assertNumberOfTasks(int size)
+        {
+            assert tasks.size() == size
+                : String.format("%d:%s", tasks.size(), tasks.toString());
+        }
+
+        private void assertTask(String expected)
+        {
+            assertTask(t ->
+            {
+                final var actual = String.join(" ", t.args);
+                assert actual.equals(expected) : t;
+            });
+        }
+
+        private void assertTask(Consumer<Tasks.Exec> asserts)
+        {
+            final Tasks.Exec head = peekTask();
+            asserts.accept(head);
+            forward();
+        }
+
+        private Tasks.Exec peekTask()
+        {
+            return tasks.peek();
+        }
+
+        private void forward()
+        {
+            tasks.remove();
+        }
     }
 }
