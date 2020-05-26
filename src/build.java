@@ -245,7 +245,6 @@ class Mx
         , "com.oracle.svm.truffle.nfi.windows"
         , "com.oracle.svm.core.jdk11"
         , "com.oracle.svm.core"
-        , "com.oracle.svm.core.posix.jdk11"
         , "com.oracle.svm.core.posix"
         , "com.oracle.svm.core.windows"
         , "com.oracle.svm.core.genscavenge"
