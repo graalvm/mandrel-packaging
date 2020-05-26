@@ -7,7 +7,7 @@ modules:
   repositories:
   - path: cekit
   install:
-  - name: labsjdk
+  - name: jdk
   - name: user
   - name: mx
   # Avoid fedora maven package because it depends on Java 8.
