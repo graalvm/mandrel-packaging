@@ -223,7 +223,7 @@ class SequentialBuild
     void build(Options options)
     {
         final var exec = new Tasks.Exec.Effects(os::exec);
-        final var replace = new Tasks.Replace.Effects(fs::readLines, fs::writeLines, os::copy);
+        final var replace = Tasks.Replace.Effects.ofSystem();
         Mx.build(options, exec, replace, fs::mxHome, fs::graalHome);
         Maven.mvn(options, exec, replace, fs::graalHome, fs::workingDir, fs::mavenRepoHome);
     }
@@ -318,7 +318,7 @@ class Tasks
             final BiConsumer<Path, List<String>> writeLines;
             final BiConsumer<Path, Path> copy;
 
-            Effects(
+            private Effects(
                 Function<Path, Stream<String>> readLines
                 , BiConsumer<Path, List<String>> writeLines
                 , BiConsumer<Path, Path> copy
@@ -327,6 +327,20 @@ class Tasks
                 this.readLines = readLines;
                 this.writeLines = writeLines;
                 this.copy = copy;
+            }
+
+            public static Effects ofSystem()
+            {
+                return new Effects(
+                    FileSystem::readLines
+                    , FileSystem::writeLines
+                    , FileSystem::copy
+                );
+            }
+
+            public static Effects noop()
+            {
+                return new Effects(p -> Stream.empty(), (p, l) -> {}, (src, target) -> {});
             }
         }
     }
@@ -975,6 +989,8 @@ class Maven
 // Dependency
 class FileSystem
 {
+    static final Logger LOG = LogManager.getLogger(FileSystem.class);
+
     private final Path graalHome;
     private final Path mxHome;
     private final Path workingDir;
@@ -1012,7 +1028,7 @@ class FileSystem
         return mavenRepoHome.resolve(relative);
     }
 
-    Stream<String> readLines(Path path)
+    static Stream<String> readLines(Path path)
     {
         try
         {
@@ -1024,7 +1040,7 @@ class FileSystem
         }
     }
 
-    void writeLines(Path path, Iterable<? extends CharSequence> lines)
+    static void writeLines(Path path, Iterable<? extends CharSequence> lines)
     {
         try
         {
@@ -1033,6 +1049,33 @@ class FileSystem
         catch (IOException e)
         {
             throw new RuntimeException(e);
+        }
+    }
+
+    static void copy(Path from, Path to)
+    {
+        try
+        {
+            LOG.debugf("Create parent directories for %s", to);
+            FileSystem.mkdirs(to.getParent());
+
+            LOG.debugf("Copy %s to %s", from, to);
+            Files.copy(from, to, REPLACE_EXISTING);
+        }
+        catch (IOException e)
+        {
+            throw new RuntimeException(e);
+        }
+    }
+
+    private static void mkdirs(Path path)
+    {
+        final var file = path.toFile();
+        if (!file.exists())
+        {
+            final var created = file.mkdirs();
+            if (!created)
+                throw new RuntimeException("Failed to create target directory");
         }
     }
 
@@ -1089,41 +1132,6 @@ class OperatingSystem
         {
             throw new RuntimeException(e);
         }
-    }
-
-    void copy(Path from, Path to)
-    {
-        try
-        {
-            LOG.debugf("Create parent directories for %s", to);
-            OperatingSystem.mkdirs()
-                .compose(Path::getParent)
-                .apply(to);
-
-            LOG.debugf("Copy %s to %s", from, to);
-            Files.copy(from, to, REPLACE_EXISTING);
-        }
-        catch (IOException e)
-        {
-            throw new RuntimeException(e);
-        }
-    }
-
-    static Function<Path, Path> mkdirs()
-    {
-        return OperatingSystem::mkdirs;
-    }
-
-    private static Path mkdirs(Path path)
-    {
-        final var file = path.toFile();
-        if (!file.exists())
-        {
-            final var created = file.mkdirs();
-            if (!created)
-                throw new RuntimeException("Failed to create target directory");
-        }
-        return path;
     }
 }
 
@@ -1220,7 +1228,7 @@ final class Check
         final var options = Options.from(Args.read("--version", "0.19.1"));
         final var os = new RecordingOperatingSystem();
         final var exec = new Tasks.Exec.Effects(os::record);
-        final var replace = new Tasks.Replace.Effects(p -> Stream.empty(), (p, l) -> {}, (src, target) -> {});
+        final var replace = Tasks.Replace.Effects.noop();
         Mx.build(options, exec, replace, Function.identity(), Function.identity());
         os.assertNumberOfTasks(7);
         os.assertTask("mx clean");
