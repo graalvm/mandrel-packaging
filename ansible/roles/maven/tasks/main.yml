@@ -1,0 +1,26 @@
+---
+# tasks file for maven
+- name: Download maven
+  get_url:
+    url: http://mirror.easyname.ch/apache/maven/maven-3/3.6.3/binaries/apache-maven-3.6.3-bin.tar.gz
+    dest: /tmp/maven.tar.gz
+  register: maven_archive
+
+- name: Make maven directory
+  file:
+    path: /opt/maven
+    state: directory
+  register: maven_path
+
+- name: Extract maven
+  unarchive:
+    remote_src: yes
+    src: "{{ maven_archive.dest }}"
+    dest: "{{ maven_path.path }}"
+    extra_opts:
+    - --strip-components=1
+
+- name: Add maven to $PATH
+  copy:
+    dest: /etc/profile.d/maven.sh
+    content: "export PATH=/opt/maven/bin:$PATH"

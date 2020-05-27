@@ -1,0 +1,4 @@
+mx_version: "5.259.0"
+mandrel_version: "20.1"
+jdk_urls:
+    - https://github.com/graalvm/labs-openjdk-11/releases/download/jvmci-20.1-b02/labsjdk-ce-11.0.7+10-jvmci-20.1-b02-linux-amd64.tar.gz

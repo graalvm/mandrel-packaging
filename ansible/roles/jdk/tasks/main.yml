@@ -1,0 +1,29 @@
+---
+# tasks file for jdk
+- name: Download JDK
+  get_url:
+    url: "{{ item }}"
+    dest: "/tmp/jdk{{ loop_index }}.tar.gz"
+  loop: "{{ jdk_urls }}"
+  loop_control:
+    index_var: loop_index
+  register: JDK_archive
+
+- name: Make JDK directory
+  file:
+    path: "{{ jdk_path }}"
+    state: directory
+
+- name: Extract JDK
+  unarchive:
+    remote_src: yes
+    src: "{{ item.dest }}"
+    dest: "{{ jdk_path }}"
+    extra_opts:
+    - --strip-components=1
+  loop: "{{ JDK_archive.results }}"
+
+- name: Set $JAVA_HOME and $PATH
+  copy:
+    dest: /etc/profile.d/java.sh
+    content: "export JAVA_HOME={{ jdk_path }} \nexport PATH={{ jdk_path }}/bin:$PATH"
