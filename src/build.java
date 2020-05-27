@@ -223,7 +223,7 @@ class SequentialBuild
     void build(Options options)
     {
         final var exec = new Tasks.Exec.Effects(os::exec);
-        final var replace = Tasks.Replace.Effects.ofSystem();
+        final var replace = Tasks.FileReplace.Effects.ofSystem();
         Mx.build(options, exec, replace, fs::mxHome, fs::graalHome);
         Maven.mvn(options, exec, replace, fs::graalHome, fs::workingDir, fs::mavenRepoHome);
     }
@@ -284,17 +284,17 @@ class Tasks
         }
     }
 
-    static class Replace
+    static class FileReplace
     {
         private final Path path;
         private final Function<Stream<String>, List<String>> replacer;
 
-        Replace(Path path, Function<Stream<String>, List<String>> replacer) {
+        FileReplace(Path path, Function<Stream<String>, List<String>> replacer) {
             this.path = path;
             this.replacer = replacer;
         }
 
-        static void replace(Replace replace, Effects effects)
+        static void replace(FileReplace replace, Effects effects)
         {
             try (var lines = effects.readLines.apply(replace.path))
             {
@@ -303,11 +303,11 @@ class Tasks
             }
         }
 
-        static void copyReplace(Replace replace, Path from, Effects effects)
+        static void copyReplace(FileReplace replace, Path from, Effects effects)
         {
             effects.copy.accept(from, replace.path);
-            Tasks.Replace.replace(
-                new Tasks.Replace(replace.path, replace.replacer)
+            FileReplace.replace(
+                new FileReplace(replace.path, replace.replacer)
                 , effects
             );
         }
@@ -391,7 +391,7 @@ class Mx
     static void build(
         Options options
         , Tasks.Exec.Effects exec
-        , Tasks.Replace.Effects replace
+        , Tasks.FileReplace.Effects replace
         , Function<Path, Path> mxHome
         , Function<Path, Path> graalHome
     )
@@ -452,7 +452,7 @@ class Mx
         };
     }
 
-    static void swapDependencies(Options options, Tasks.Replace.Effects effects, Function<Path, Path> mxHome)
+    static void swapDependencies(Options options, Tasks.FileReplace.Effects effects, Function<Path, Path> mxHome)
     {
         final var dependencies = options.dependencies;
         if (dependencies.isEmpty())
@@ -462,8 +462,8 @@ class Mx
         final var suitePy = Path.of("mx.mx", "suite.py");
         final var path = mxHome.apply(suitePy);
 
-        Tasks.Replace.replace(
-            new Tasks.Replace(path, swapDependencies(dependencies))
+        Tasks.FileReplace.replace(
+            new Tasks.FileReplace(path, swapDependencies(dependencies))
             , effects
         );
     }
@@ -572,13 +572,13 @@ class Mx
         return null;
     }
 
-    static void hookMavenProxy(Options options, Tasks.Replace.Effects effects, Function<Path, Path> mxHome)
+    static void hookMavenProxy(Options options, Tasks.FileReplace.Effects effects, Function<Path, Path> mxHome)
     {
         if (options.mavenProxy != null)
         {
             final var mxPy = mxHome.apply(Paths.get("mx.py"));
-            Tasks.Replace.replace(
-                new Tasks.Replace(mxPy, Mx.prependMavenProxyToMxPy(options))
+            Tasks.FileReplace.replace(
+                new Tasks.FileReplace(mxPy, Mx.prependMavenProxyToMxPy(options))
                 , effects
             );
         }
@@ -713,7 +713,7 @@ class Maven
     static void mvn(
         Options options
         , Tasks.Exec.Effects exec
-        , Tasks.Replace.Effects replace
+        , Tasks.FileReplace.Effects replace
         , Supplier<Path> graalHome
         , Function<Path, Path> workingDir
         , Function<Path, Path> mavenRepoHome
@@ -735,7 +735,7 @@ class Maven
     private static Function<String, ReleaseArtifact> mvnInstall(
         Options options
         , Tasks.Exec.Effects exec
-        , Tasks.Replace.Effects replace
+        , Tasks.FileReplace.Effects replace
         , Supplier<Path> graalHome
         , Function<Path, Path> workingDir
         , Function<Path, Path> mavenRepoHome
@@ -828,7 +828,7 @@ class Maven
             );
     }
 
-    private static Tasks.Exec mvnInstallAssembly(Artifact artifact, Options options, Tasks.Replace.Effects effects, Function<Path, Path> workingDir)
+    private static Tasks.Exec mvnInstallAssembly(Artifact artifact, Options options, Tasks.FileReplace.Effects effects, Function<Path, Path> workingDir)
     {
         final var pomPath = Path.of(
             "assembly"
@@ -837,8 +837,8 @@ class Maven
         );
         final var paths = DirectionalPaths.ofPom(pomPath, workingDir);
 
-        Tasks.Replace.copyReplace(
-            new Tasks.Replace(paths.target, Maven.replacePomXml(options))
+        Tasks.FileReplace.copyReplace(
+            new Tasks.FileReplace(paths.target, Maven.replacePomXml(options))
             , paths.source
             , effects
         );
@@ -856,12 +856,12 @@ class Maven
     private static Tasks.Exec mvnInstallRelease(
         ReleaseArtifact releaseArtifact
         , Options options
-        , Tasks.Replace.Effects replace
+        , Tasks.FileReplace.Effects replace
         , Function<Path, Path> workingDir
     )
     {
-        Tasks.Replace.copyReplace(
-            new Tasks.Replace(releaseArtifact.pomPaths.target, Maven.replacePomXml(options))
+        Tasks.FileReplace.copyReplace(
+            new Tasks.FileReplace(releaseArtifact.pomPaths.target, Maven.replacePomXml(options))
             , releaseArtifact.pomPaths.source
             , replace
         );
@@ -1228,7 +1228,7 @@ final class Check
         final var options = Options.from(Args.read("--version", "0.19.1"));
         final var os = new RecordingOperatingSystem();
         final var exec = new Tasks.Exec.Effects(os::record);
-        final var replace = Tasks.Replace.Effects.noop();
+        final var replace = Tasks.FileReplace.Effects.noop();
         Mx.build(options, exec, replace, Function.identity(), Function.identity());
         os.assertNumberOfTasks(7);
         os.assertTask("mx clean");
