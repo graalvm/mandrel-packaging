@@ -224,7 +224,7 @@ class SequentialBuild
     {
         final var exec = new Tasks.Exec.Effects(os::exec);
         final var replace = Tasks.FileReplace.Effects.ofSystem();
-        Mx.build(options, exec, replace, fs::mxHome, fs::graalHome);
+        Mx.build(options, exec, replace, fs::mxHome, fs::graalHome, os::javaHome);
         Maven.mvn(options, exec, replace, fs::graalHome, fs::workingDir, fs::mavenRepoHome);
     }
 }
@@ -394,6 +394,7 @@ class Mx
         , Tasks.FileReplace.Effects replace
         , Function<Path, Path> mxHome
         , Function<Path, Path> graalHome
+        , Supplier<Path> javaHome
     )
     {
         Mx.swapDependencies(options, replace, mxHome);
@@ -404,7 +405,7 @@ class Mx
             exec.exec.accept(Mx.mxclean(options, mxHome, graalHome));
 
         BUILD_STEPS.stream()
-            .map(Mx.mxbuild(options, mxHome, graalHome))
+            .map(Mx.mxbuild(options, mxHome, graalHome, javaHome))
             .forEach(exec.exec);
     }
 
@@ -429,6 +430,7 @@ class Mx
         Options options
         , Function<Path, Path> mxHome
         , Function<Path, Path> graalHome
+        , Supplier<Path> javaHome
     )
     {
         return buildArgs ->
@@ -439,6 +441,8 @@ class Mx
                     mx.toString()
                     , options.verbose ? "-V" : ""
                     , "--trust-http"
+                    , "--java-home"
+                    , javaHome.get().toString()
                     , "build"
                     , "--no-native"
                 )
@@ -1133,6 +1137,11 @@ class OperatingSystem
             throw new RuntimeException(e);
         }
     }
+
+    Path javaHome()
+    {
+        return Path.of(System.getProperty("java.home"));
+    }
 }
 
 final class Logger
@@ -1229,16 +1238,18 @@ final class Check
         final var os = new RecordingOperatingSystem();
         final var exec = new Tasks.Exec.Effects(os::record);
         final var replace = Tasks.FileReplace.Effects.noop();
-        Mx.build(options, exec, replace, Function.identity(), Function.identity());
+        final Function<Path, Path> identity = Function.identity();
+        final Supplier<Path> javaHome = () -> Path.of("java");
+        Mx.build(options, exec, replace, identity, identity, javaHome);
         os.assertNumberOfTasks(7);
         os.assertTask("mx clean");
-        os.assertTask("mx --trust-http build --no-native --dependencies GRAAL_SDK");
-        os.assertTask("mx --trust-http build --no-native --dependencies GRAAL");
-        os.assertTask("mx --trust-http build --no-native --dependencies POINTSTO");
-        os.assertTask("mx --trust-http build --no-native --dependencies OBJECTFILE");
-        os.assertTask("mx --trust-http build --no-native --dependencies SVM_DRIVER");
+        os.assertTask("mx --trust-http --java-home java build --no-native --dependencies GRAAL_SDK");
+        os.assertTask("mx --trust-http --java-home java build --no-native --dependencies GRAAL");
+        os.assertTask("mx --trust-http --java-home java build --no-native --dependencies POINTSTO");
+        os.assertTask("mx --trust-http --java-home java build --no-native --dependencies OBJECTFILE");
+        os.assertTask("mx --trust-http --java-home java build --no-native --dependencies SVM_DRIVER");
         os.assertTask(String.format(
-            "mx --trust-http build --no-native --only %s"
+            "mx --trust-http --java-home java build --no-native --only %s"
             , Mx.SVM_ONLY
         ));
     }
