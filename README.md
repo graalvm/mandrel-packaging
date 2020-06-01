@@ -1,7 +1,7 @@
 # Building mandrelJDK locally
 
 ```shell
-JAVA_HOME=/opt/jvms/openjdk-11.0.8+4/ MX_HOME=~/code/mx MANDREL_REPO=~/code/mandrel  MANDREL_JDK=./mandrelJDK  ./src/buildJDK.sh
+JAVA_HOME=/opt/jvms/openjdk-11.0.8+4/ MX_HOME=~/code/mx MANDREL_REPO=~/code/mandrel  MANDREL_JDK=./mandrelJDK  ./buildJDK.sh
 ```
 
 where:

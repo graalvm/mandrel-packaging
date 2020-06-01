@@ -12,7 +12,7 @@ MANDREL_JDK=${MANDREL_JDK:-/opt/mandrelJDK}
 ### Build Mandrel
 ## JVM bits
 basename="$(dirname $0)"
-${JAVA_HOME}/bin/java -ea $basename/build.java --version 20.1.0.redhat-00001 --maven-local-repository /tmp/.m2/repository --mx-home ${MX_HOME} --mandrel-home ${MANDREL_REPO}
+${JAVA_HOME}/bin/java -ea $basename/src/build.java --version 20.1.0.redhat-00001 --maven-local-repository /tmp/.m2/repository --mx-home ${MX_HOME} --mandrel-home ${MANDREL_REPO}
 
 ## native bits
 pushd ${MANDREL_REPO}/substratevm
