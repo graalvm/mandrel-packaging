@@ -236,8 +236,8 @@ class SequentialBuild
     {
         final var exec = new Tasks.Exec.Effects(os::exec);
         final var replace = Tasks.FileReplace.Effects.ofSystem();
-        Mx.build(options, exec, replace, fs::mxHome, fs::graalHome, os::javaHome);
-        Maven.mvn(options, exec, replace, fs::graalHome, fs::workingDir, fs::mavenRepoHome);
+        Mx.build(options, exec, replace, fs::mxHome, fs::mandrelHome, os::javaHome);
+        Maven.mvn(options, exec, replace, fs::mandrelHome, fs::workingDir, fs::mavenRepoHome);
     }
 }
 
@@ -405,7 +405,7 @@ class Mx
         , Tasks.Exec.Effects exec
         , Tasks.FileReplace.Effects replace
         , Function<Path, Path> mxHome
-        , Function<Path, Path> graalHome
+        , Function<Path, Path> mandrelHome
         , Supplier<Path> javaHome
     )
     {
@@ -414,17 +414,17 @@ class Mx
 
         final var clean = !options.skipClean;
         if (clean)
-            exec.exec.accept(Mx.mxclean(options, mxHome, graalHome));
+            exec.exec.accept(Mx.mxclean(options, mxHome, mandrelHome));
 
         BUILD_STEPS.stream()
-            .map(Mx.mxbuild(options, mxHome, graalHome, javaHome))
+            .map(Mx.mxbuild(options, mxHome, mandrelHome, javaHome))
             .forEach(exec.exec);
     }
 
     private static Tasks.Exec mxclean(
         Options options
         , Function<Path, Path> mxHome
-        , Function<Path, Path> graalHome
+        , Function<Path, Path> mandrelHome
     )
     {
         final var mx = mxHome.apply(Paths.get("mx"));
@@ -434,14 +434,14 @@ class Mx
                 , options.verbose ? "-V" : ""
                 , "clean"
             )
-            , graalHome.apply(Path.of("substratevm"))
+            , mandrelHome.apply(Path.of("substratevm"))
         );
     }
 
     private static Function<BuildArgs, Tasks.Exec> mxbuild(
         Options options
         , Function<Path, Path> mxHome
-        , Function<Path, Path> graalHome
+        , Function<Path, Path> mandrelHome
         , Supplier<Path> javaHome
     )
     {
@@ -463,7 +463,7 @@ class Mx
 
             return Tasks.Exec.of(
                 args
-                , graalHome.apply(Path.of("substratevm"))
+                , mandrelHome.apply(Path.of("substratevm"))
             );
         };
     }
@@ -730,7 +730,7 @@ class Maven
         Options options
         , Tasks.Exec.Effects exec
         , Tasks.FileReplace.Effects replace
-        , Supplier<Path> graalHome
+        , Supplier<Path> mandrelHome
         , Function<Path, Path> workingDir
         , Function<Path, Path> mavenRepoHome
     )
@@ -738,7 +738,7 @@ class Maven
         // Only invoke mvn if all mx builds succeeded
         final var releaseArtifacts =
             ARTIFACT_IDS.stream()
-                .map(Maven.mvnInstall(options, exec, replace, graalHome, workingDir, mavenRepoHome))
+                .map(Maven.mvnInstall(options, exec, replace, mandrelHome, workingDir, mavenRepoHome))
                 .collect(Collectors.toList());
 
         // Only deploy if all mvn installs worked
@@ -752,7 +752,7 @@ class Maven
         Options options
         , Tasks.Exec.Effects exec
         , Tasks.FileReplace.Effects replace
-        , Supplier<Path> graalHome
+        , Supplier<Path> mandrelHome
         , Function<Path, Path> workingDir
         , Function<Path, Path> mavenRepoHome
     )
@@ -762,7 +762,7 @@ class Maven
             final var artifact =
                 Maven.artifact(artifactId);
 
-            exec.exec.accept(mvnInstallSnapshot(artifact, options, graalHome));
+            exec.exec.accept(mvnInstallSnapshot(artifact, options, mandrelHome));
             exec.exec.accept(mvnInstallAssembly(artifact, options, replace, workingDir));
 
             final var releaseArtifact = ReleaseArtifact.of(artifact, options, workingDir, mavenRepoHome);
@@ -819,7 +819,7 @@ class Maven
                 .collect(Collectors.toList());
     }
 
-    private static Tasks.Exec mvnInstallSnapshot(Artifact artifact, Options options, Supplier<Path> graalHome)
+    private static Tasks.Exec mvnInstallSnapshot(Artifact artifact, Options options, Supplier<Path> mandrelHome)
     {
         return Tasks.Exec.of(
                 Arrays.asList(
@@ -840,7 +840,7 @@ class Maven
                     )
                     , "-DcreateChecksum=true"
                 )
-                , graalHome.get()
+                , mandrelHome.get()
             );
     }
 
@@ -1007,13 +1007,13 @@ class FileSystem
 {
     static final Logger LOG = LogManager.getLogger(FileSystem.class);
 
-    private final Path graalHome;
+    private final Path mandrelHome;
     private final Path mxHome;
     private final Path workingDir;
     private final Path mavenRepoHome;
 
-    FileSystem(Path graalHome, Path mxHome, Path workingDir, Path mavenRepoHome) {
-        this.graalHome = graalHome;
+    FileSystem(Path mandrelHome, Path mxHome, Path workingDir, Path mavenRepoHome) {
+        this.mandrelHome = mandrelHome;
         this.mxHome = mxHome;
         this.workingDir = workingDir;
         this.mavenRepoHome = mavenRepoHome;
@@ -1024,14 +1024,14 @@ class FileSystem
         return mxHome.resolve(relative);
     }
 
-    Path graalHome(Path relative)
+    Path mandrelHome(Path relative)
     {
-        return graalHome.resolve(relative);
+        return mandrelHome.resolve(relative);
     }
 
-    Path graalHome()
+    Path mandrelHome()
     {
-        return graalHome;
+        return mandrelHome;
     }
 
     Path workingDir(Path relative)
