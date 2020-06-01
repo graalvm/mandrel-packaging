@@ -92,6 +92,8 @@ class Options
     final String mavenRepoId;
     final String mavenURL;
     final String mavenLocalRepository;
+    final String mandrelHome;
+    final String mxHome;
     final List<Dependency> dependencies;
     final boolean skipClean;
 
@@ -103,6 +105,8 @@ class Options
         , String mavenRepoId
         , String mavenURL
         , String mavenLocalRepository
+        , String mandrelHome
+        , String mxHome
         , List<Dependency> dependencies
         , boolean skipClean
     )
@@ -114,6 +118,8 @@ class Options
         this.mavenRepoId = mavenRepoId;
         this.mavenURL = mavenURL;
         this.mavenLocalRepository = mavenLocalRepository;
+        this.mandrelHome = mandrelHome;
+        this.mxHome = mxHome;
         this.dependencies = dependencies;
         this.skipClean = skipClean;
     }
@@ -133,6 +139,10 @@ class Options
 
         final var mavenLocalRepository =
             optional("maven-local-repository", args);
+        final var mandrelHome =
+            optional("mandrel-home", args);
+        final var mxHome =
+            optional("mx-home", args);
 
         final var dependenciesArg = args.get("dependencies");
         final var dependencies = dependenciesArg == null
@@ -149,6 +159,8 @@ class Options
             , mavenRepoId
             , mavenURL
             , mavenLocalRepository
+            , mandrelHome
+            , mxHome
             , dependencies
             , skipClean
         );
@@ -1085,12 +1097,32 @@ class FileSystem
 
     static FileSystem ofSystem(Options options)
     {
-        final var graalHome = Path.of("/tmp", "mandrel");
-        final var mxHome = Path.of("/opt", "mx");
+        final var mandrelHome = mandrelHome(options);
+        final var mxHome = mxHome(options);
         final var userDir = System.getProperty("user.dir");
         final var workingDir = new File(userDir).toPath();
         final var mavenRepoHome = mavenRepoHome(options);
-        return new FileSystem(graalHome, mxHome, workingDir, mavenRepoHome);
+        return new FileSystem(mandrelHome, mxHome, workingDir, mavenRepoHome);
+    }
+
+    private static Path mandrelHome(Options options)
+    {
+        if (options.mandrelHome == null)
+        {
+            return Path.of("/tmp", "mandrel");
+        }
+
+        return Path.of(options.mandrelHome);
+    }
+
+    private static Path mxHome(Options options)
+    {
+        if (options.mxHome == null)
+        {
+            return Path.of("/opt", "mx");
+        }
+
+        return Path.of(options.mxHome);
     }
 
     private static Path mavenRepoHome(Options options)
