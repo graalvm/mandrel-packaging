@@ -1,3 +1,20 @@
+# Building mandrelJDK locally
+
+```shell
+JAVA_HOME=/opt/jvms/openjdk-11.0.8+4/ MX_HOME=~/code/mx MANDREL_REPO=~/code/mandrel  MANDREL_JDK=./mandrelJDK  ./src/buildJDK.sh
+```
+
+where:
+* `JAVA_HOME` is the path to the OpenJDK you want to use for building mandrel
+* `MX_HOME` is the path where you cloned https://github.com/graalvm/mx
+* `MANDREL_REPO` is the path where you cloned https://github.com/graalvm/mandrel
+* `MANDREL_JDK` is the path where you want mandrel to be installed, after completion you will be
+ able to use this as `JAVA_HOME` or/and `GRAALVM_HOME` in your projects (e.g. quarkus)
+ 
+You can also add `VERBOSE=true` to see the commands run by the script
+
+# Building maven artifacts using a container
+
 Requirements:
 
 * [`CEKit`](https://github.com/cekit/cekit)
