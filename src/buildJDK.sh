@@ -11,11 +11,11 @@ MANDREL_JDK=${MANDREL_JDK:-/opt/mandrelJDK}
 
 ### Build Mandrel
 ## JVM bits
-pushd ${MANDREL_REPO}/substratevm
-${MX_HOME}/mx build --dependencies GRAAL_SDK,GRAAL,POINTSTO,OBJECTFILE,SVM_DRIVER
-${MX_HOME}/mx build --only SVM,"com.oracle.svm.graal","com.oracle.svm.truffle","com.oracle.svm.hosted","com.oracle.svm.truffle.nfi","com.oracle.svm.truffle.nfi.posix","com.oracle.svm.truffle.nfi.windows","com.oracle.svm.core.jdk11","com.oracle.svm.core","com.oracle.svm.core.posix","com.oracle.svm.core.windows","com.oracle.svm.core.genscavenge","com.oracle.svm.jni","com.oracle.svm.reflect","com.oracle.svm.util","TRUFFLE_NFI","com.oracle.truffle.nfi","com.oracle.truffle.nfi.spi"
+basename="$(dirname $0)"
+${JAVA_HOME}/bin/java -ea $basename/build.java --version 20.1.0.redhat-00001 --maven-local-repository /tmp/.m2/repository --mx-home ${MX_HOME} --mandrel-home ${MANDREL_REPO}
 
 ## native bits
+pushd ${MANDREL_REPO}/substratevm
 ${MX_HOME}/mx build --projects com.oracle.svm.native.libchelper
 ${MX_HOME}/mx build --projects com.oracle.svm.native.jvm.posix
 ${MX_HOME}/mx build --projects com.oracle.svm.native.strictmath
