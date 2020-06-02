@@ -2,24 +2,27 @@
 
 if [[ "${VERBOSE}" == "true" ]]; then
     set -x
+    VERBOSE_BUILD=--verbose
+    VERBOSE_MX=-v
 fi
 
 MX_HOME=${MX_HOME:-/opt/mx}
 JAVA_HOME=${JAVA_HOME:-/opt/jdk}
 MANDREL_REPO=${MANDREL_REPO:-/tmp/mandrel}
 MANDREL_HOME=${MANDREL_HOME:-/opt/mandrelJDK}
+MAVEN_REPO=${MAVEN_REPO:-/tmp/.m2/repository}
 
 ### Build Mandrel
 ## JVM bits
 basename="$(dirname $0)"
-${JAVA_HOME}/bin/java -ea $basename/src/build.java --version 20.1.0.redhat-00001 --maven-local-repository /tmp/.m2/repository --mx-home ${MX_HOME} --mandrel-home ${MANDREL_REPO}
+${JAVA_HOME}/bin/java -ea $basename/src/build.java ${VERBOSE_BUILD} --version 20.1.0.redhat-00001 --maven-local-repository ${MAVEN_REPO} --mx-home ${MX_HOME} --mandrel-home ${MANDREL_REPO}
 
 ## native bits
 pushd ${MANDREL_REPO}/substratevm
-${MX_HOME}/mx build --projects com.oracle.svm.native.libchelper
-${MX_HOME}/mx build --projects com.oracle.svm.native.jvm.posix
-${MX_HOME}/mx build --projects com.oracle.svm.native.strictmath
-${MX_HOME}/mx build --only native-image.image-bash
+${MX_HOME}/mx ${VERBOSE_MX} build --projects com.oracle.svm.native.libchelper
+${MX_HOME}/mx ${VERBOSE_MX} build --projects com.oracle.svm.native.jvm.posix
+${MX_HOME}/mx ${VERBOSE_MX} build --projects com.oracle.svm.native.strictmath
+${MX_HOME}/mx ${VERBOSE_MX} build --only native-image.image-bash
 popd
 
 ### Copy default JDK
