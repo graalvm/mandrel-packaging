@@ -22,7 +22,7 @@ build-image:
 	$(AT)$(DOCKER) rm $(BOOT_CONTAINER)
 
 run-image:
-	$(AT)$(DOCKER) run -it $(DOCKER_RUN_OPTIONS) --rm $(IMAGE_NAME) || echo -e "\n\nPlease run make build-image first"
+	$(AT)$(DOCKER) run -it $(DOCKER_RUN_OPTIONS) -w /root --rm $(IMAGE_NAME) || echo -e "\n\nPlease run make build-image first"
 
 refresh-image:
 	$(AT)$(DOCKER) run --name=$(BOOT_CONTAINER) -itd $(IMAGE_NAME)
