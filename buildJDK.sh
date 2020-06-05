@@ -10,7 +10,7 @@ MX_HOME=${MX_HOME:-/opt/mx}
 JAVA_HOME=${JAVA_HOME:-/opt/jdk}
 MANDREL_REPO=${MANDREL_REPO:-/tmp/mandrel}
 MANDREL_HOME=${MANDREL_HOME:-/opt/mandrelJDK}
-MAVEN_REPO=${MAVEN_REPO:-/tmp/.m2/repository}
+MAVEN_REPO=${MAVEN_REPO:-~/.m2/repository}
 
 ### Build Mandrel
 ## JVM bits
