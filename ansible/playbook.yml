@@ -34,6 +34,10 @@
       copy:
         src: "{{ playbook_dir }}/../src/"
         dest: "/root/src/"
+    - name: Copy resources
+      copy:
+        src: "{{ playbook_dir }}/../resources/"
+        dest: "/root/resources/"
     - name: Set welcome message
       copy:
         dest: /etc/profile.d/welcome.sh
