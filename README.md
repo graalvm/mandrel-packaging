@@ -85,6 +85,18 @@ export DOCKER_RUN_OPTIONS="-v $pwd:/root:Z ${DOCKER_RUN_OPTIONS}"
 make run-image
 ```
 
+To use the local m2 repository:
+``` bash
+export DOCKER_RUN_OPTIONS="-v $HOME/.m2:/root/.m2:Z ${DOCKER_RUN_OPTIONS}"
+make run-image
+```
+
+To use the local mx cache:
+``` bash
+export DOCKER_RUN_OPTIONS="-v $HOME/.mx:/root/.mx:Z ${DOCKER_RUN_OPTIONS}"
+make run-image
+```
+
 #### Editing the ansible playbook
 
 To avoid building everything from scratch when editing the ansible playbook `make refresh-image` can be used.
