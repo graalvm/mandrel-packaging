@@ -21,7 +21,6 @@ ${JAVA_HOME}/bin/java -ea $basename/src/build.java ${VERBOSE_BUILD} --version 20
 pushd ${MANDREL_REPO}/substratevm
 ${MX_HOME}/mx ${VERBOSE_MX} build --projects com.oracle.svm.native.libchelper
 ${MX_HOME}/mx ${VERBOSE_MX} build --projects com.oracle.svm.native.jvm.posix
-${MX_HOME}/mx ${VERBOSE_MX} build --projects com.oracle.svm.native.strictmath
 ${MX_HOME}/mx ${VERBOSE_MX} build --only native-image.image-bash
 popd
 
@@ -60,7 +59,6 @@ cp ${MANDREL_REPO}/substratevm/src/com.oracle.svm.libffi/include/svm_libffi.h ${
 cp ${MANDREL_REPO}/truffle/src/com.oracle.truffle.nfi.native/include/trufflenfi.h ${MANDREL_HOME}/lib/svm/clibraries/linux-amd64/include
 cp ${MANDREL_REPO}/substratevm/mxbuild/linux-amd64/src/com.oracle.svm.native.libchelper/amd64/liblibchelper.a ${MANDREL_HOME}/lib/svm/clibraries/linux-amd64
 cp ${MANDREL_REPO}/substratevm/mxbuild/linux-amd64/src/com.oracle.svm.native.jvm.posix/amd64/libjvm.a ${MANDREL_HOME}/lib/svm/clibraries/linux-amd64
-cp ${MANDREL_REPO}/substratevm/mxbuild/linux-amd64/src/com.oracle.svm.native.strictmath/amd64/libstrictmath.a ${MANDREL_HOME}/lib/svm/clibraries/linux-amd64
 mkdir ${MANDREL_HOME}/lib/svm/bin
 cp ${MANDREL_REPO}/sdk/mxbuild/linux-amd64/native-image.image-bash/native-image ${MANDREL_HOME}/lib/svm/bin/native-image
 ## Create symbolic link in bin
