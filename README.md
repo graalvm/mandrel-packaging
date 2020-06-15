@@ -15,7 +15,7 @@ where:
 * `MANDREL_HOME` is the path where you want mandrel to be installed, after completion you will be
  able to use this as `JAVA_HOME` or/and `GRAALVM_HOME` in your projects (e.g. quarkus)
  
-You can also add `VERBOSE=true` to see the commands run by the script
+You can also add `VERBOSE=true` to see the commands run by the script and `MANDREL_VERSION` to define the version to be shown when running `native-image --version` (e.g. 20.1.0). Defaults to the result of `git describe` in `MANDREL_REPO`.
 
 ## Building mandrelJDK using a container or a VM
 

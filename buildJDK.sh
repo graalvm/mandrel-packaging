@@ -12,10 +12,14 @@ MANDREL_REPO=${MANDREL_REPO:-/tmp/mandrel}
 MANDREL_HOME=${MANDREL_HOME:-/opt/mandrelJDK}
 MAVEN_REPO=${MAVEN_REPO:-~/.m2/repository}
 
+pushd ${MANDREL_REPO}/substratevm
+MANDREL_VERSION=${MANDREL_VERSION:-$(git describe)}
+popd
+
 ### Build Mandrel
 ## JVM bits
 basename="$(dirname $0)"
-${JAVA_HOME}/bin/java -ea $basename/src/build.java ${VERBOSE_BUILD} --version 20.1.0.redhat-00001 --maven-local-repository ${MAVEN_REPO} --mx-home ${MX_HOME} --mandrel-home ${MANDREL_REPO}
+${JAVA_HOME}/bin/java -ea $basename/src/build.java ${VERBOSE_BUILD} --version ${MANDREL_VERSION}.redhat-00001 --maven-local-repository ${MAVEN_REPO} --mx-home ${MX_HOME} --mandrel-home ${MANDREL_REPO}
 
 ## native bits
 pushd ${MANDREL_REPO}/substratevm
@@ -65,8 +69,8 @@ cp ${MANDREL_REPO}/sdk/mxbuild/linux-amd64/native-image.image-bash/native-image 
 ln -s ../lib/svm/bin/native-image ${MANDREL_HOME}/bin/native-image
 
 ### Fix native-image launcher
-sed -i -e 's!EnableJVMCI!EnableJVMCI --upgrade-module-path ${location}/../../jvmci/graal.jar --add-modules "org.graalvm.truffle,org.graalvm.sdk" --module-path ${location}/../../truffle/truffle-api.jar:${location}/../../jvmci/graal-sdk.jar!' \
-    ${MANDREL_HOME}/lib/svm/bin/native-image
+sed -i -e "s!EnableJVMCI!EnableJVMCI -Dorg.graalvm.version=\"${MANDREL_VERSION} (Mandrel Distribution)\" --upgrade-module-path \${location}/../../jvmci/graal.jar --add-modules \"org.graalvm.truffle,org.graalvm.sdk\" --module-path \${location}/../../truffle/truffle-api.jar:\${location}/../../jvmci/graal-sdk.jar!" \
+    "${MANDREL_HOME}/lib/svm/bin/native-image"
 
 ### Create tarball
 tar -czf mandrel.tar.gz -C ${MANDREL_HOME}/.. mandrelJDK
