@@ -11,6 +11,9 @@ JAVA_HOME=${JAVA_HOME:-/opt/jdk}
 MANDREL_REPO=${MANDREL_REPO:-/tmp/mandrel}
 MANDREL_HOME=${MANDREL_HOME:-/opt/mandrelJDK}
 MAVEN_REPO=${MAVEN_REPO:-~/.m2/repository}
+if [[ "${SKIP_CLEAN}" == "true" ]]; then
+    SKIP_CLEAN_FLAG=--skipClean
+fi
 
 pushd ${MANDREL_REPO}/substratevm
 MANDREL_VERSION=${MANDREL_VERSION:-$(git describe)}
@@ -19,7 +22,7 @@ popd
 ### Build Mandrel
 ## JVM bits
 basename="$(dirname $0)"
-${JAVA_HOME}/bin/java -ea $basename/src/build.java ${VERBOSE_BUILD} --version ${MANDREL_VERSION}.redhat-00001 --maven-local-repository ${MAVEN_REPO} --mx-home ${MX_HOME} --mandrel-home ${MANDREL_REPO}
+${JAVA_HOME}/bin/java -ea $basename/src/build.java ${VERBOSE_BUILD} --version ${MANDREL_VERSION}.redhat-00001 --maven-local-repository ${MAVEN_REPO} --mx-home ${MX_HOME} --mandrel-home ${MANDREL_REPO} ${SKIP_CLEAN_FLAG}
 
 ## native bits
 pushd ${MANDREL_REPO}/substratevm
