@@ -9,12 +9,12 @@ JAVA_HOME=/opt/jvms/openjdk-11.0.8+4/ MX_HOME=~/code/mx MANDREL_REPO=~/code/mand
 ```
 
 where:
-* `JAVA_HOME` is the path to the OpenJDK you want to use for building mandrel
-* `MX_HOME` is the path where you cloned https://github.com/graalvm/mx
-* `MANDREL_REPO` is the path where you cloned https://github.com/graalvm/mandrel
+* `JAVA_HOME` is the path to the OpenJDK you want to use for building mandrel. Defaults to `/opt/jdk`.
+* `MX_HOME` is the path where you cloned https://github.com/graalvm/mx. Defaults to `/opt/mx`.
+* `MANDREL_REPO` is the path where you cloned https://github.com/graalvm/mandrel. Defaults to `/tmp/mandrel`.
 * `MANDREL_HOME` is the path where you want mandrel to be installed, after completion you will be
- able to use this as `JAVA_HOME` or/and `GRAALVM_HOME` in your projects (e.g. quarkus)
- 
+ able to use this as `JAVA_HOME` or/and `GRAALVM_HOME` in your projects (e.g. quarkus). Defaults to `/opt/mandrelJDK`
+
 You can also add `VERBOSE=true` to see the commands run by the script and `MANDREL_VERSION` to define the version to be shown when running `native-image --version` (e.g. 20.1.0). Defaults to the result of `git describe` in `MANDREL_REPO`.
 
 ## Building mandrelJDK using a container or a VM
