@@ -18,11 +18,13 @@ fi
 pushd ${MANDREL_REPO}/substratevm
 MANDREL_VERSION=${MANDREL_VERSION:-$(git describe)}
 popd
+MANDREL_VERSION_UNTIL_SPACE="$( echo ${MANDREL_VERSION} | sed -e 's/\([^ ]*\).*/\1/;t' )"
+ARCHIVE_NAME="mandrel-java11-linux-amd64-${MANDREL_VERSION_UNTIL_SPACE}.tar.gz"
 
 ### Build Mandrel
 ## JVM bits
 basename="$(dirname $0)"
-${JAVA_HOME}/bin/java -ea $basename/src/build.java ${VERBOSE_BUILD} --version ${MANDREL_VERSION}.redhat-00001 --maven-local-repository ${MAVEN_REPO} --mx-home ${MX_HOME} --mandrel-home ${MANDREL_REPO} ${SKIP_CLEAN_FLAG}
+${JAVA_HOME}/bin/java -ea $basename/src/build.java ${VERBOSE_BUILD} --version "${MANDREL_VERSION_UNTIL_SPACE}.redhat-00001" --maven-local-repository ${MAVEN_REPO} --mx-home ${MX_HOME} --mandrel-home ${MANDREL_REPO} ${SKIP_CLEAN_FLAG}
 
 ## native bits
 pushd ${MANDREL_REPO}/substratevm
@@ -76,4 +78,4 @@ sed -i -e "s!EnableJVMCI!EnableJVMCI -Dorg.graalvm.version=\"${MANDREL_VERSION} 
     "${MANDREL_HOME}/lib/svm/bin/native-image"
 
 ### Create tarball
-tar -czf mandrel.tar.gz -C ${MANDREL_HOME}/.. mandrelJDK
+tar -czf ${ARCHIVE_NAME} -C ${MANDREL_HOME}/.. mandrelJDK
