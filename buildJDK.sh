@@ -59,6 +59,11 @@ cp ${MANDREL_REPO}/compiler/mxbuild/dists/jdk11/graal.jar ${MANDREL_HOME}/lib/jv
 mkdir ${MANDREL_HOME}/lib/truffle
 cp ${MANDREL_REPO}/truffle/mxbuild/dists/jdk11/truffle-api.jar ${MANDREL_HOME}/lib/truffle
 
+### Docs
+cp ${MANDREL_REPO}/LICENSE ${MANDREL_HOME}
+cp ${MANDREL_REPO}/THIRD_PARTY_LICENSE.txt ${MANDREL_HOME}
+cp ${MANDREL_REPO}/README-Mandrel.md ${MANDREL_HOME}/README.md
+cp ${MANDREL_REPO}/SECURITY.md ${MANDREL_HOME}
 
 ### Copy native bits
 mkdir -p ${MANDREL_HOME}/lib/svm/clibraries/linux-amd64/include
