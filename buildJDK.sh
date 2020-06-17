@@ -62,7 +62,7 @@ cp ${MANDREL_REPO}/truffle/mxbuild/dists/jdk11/truffle-api.jar ${MANDREL_HOME}/l
 ### Docs
 cp ${MANDREL_REPO}/LICENSE ${MANDREL_HOME}
 cp ${MANDREL_REPO}/THIRD_PARTY_LICENSE.txt ${MANDREL_HOME}
-cp ${MANDREL_REPO}/README-Mandrel.md ${MANDREL_HOME}
+cp ${MANDREL_REPO}/README-Mandrel.md ${MANDREL_HOME}/README.md
 cp ${MANDREL_REPO}/SECURITY.md ${MANDREL_HOME}
 
 ### Copy native bits
