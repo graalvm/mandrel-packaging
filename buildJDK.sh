@@ -16,7 +16,7 @@ if [[ "${SKIP_CLEAN}" == "true" ]]; then
 fi
 
 pushd ${MANDREL_REPO}/substratevm
-MANDREL_VERSION=${MANDREL_VERSION:-$(git describe)}
+MANDREL_VERSION=${MANDREL_VERSION:-$(git describe | sed 's/mandrel-//')}
 popd
 MANDREL_VERSION_UNTIL_SPACE="$( echo ${MANDREL_VERSION} | sed -e 's/\([^ ]*\).*/\1/;t' )"
 ARCHIVE_NAME="mandrel-java11-linux-amd64-${MANDREL_VERSION_UNTIL_SPACE}.tar.gz"
