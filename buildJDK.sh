@@ -39,25 +39,25 @@ cp -r ${JAVA_HOME} ${MANDREL_HOME}
 
 ### Copy needed jars
 mkdir ${MANDREL_HOME}/lib/svm
-cp ${MANDREL_REPO}/substratevm/mxbuild/dists/jdk1.8/library-support.jar ${MANDREL_HOME}/lib/svm
+cp ${MANDREL_REPO}/substratevm/mxbuild/dists/jdk1.8/library-support{.jar,.src.zip} ${MANDREL_HOME}/lib/svm
 
 mkdir ${MANDREL_HOME}/lib/svm/builder
-cp ${MANDREL_REPO}/substratevm/mxbuild/dists/jdk11/{svm,pointsto}.jar ${MANDREL_HOME}/lib/svm/builder
-cp ${MANDREL_REPO}/substratevm/mxbuild/dists/jdk1.8/objectfile.jar ${MANDREL_HOME}/lib/svm/builder
+cp ${MANDREL_REPO}/substratevm/mxbuild/dists/jdk11/{svm,pointsto}{.jar,.src.zip} ${MANDREL_HOME}/lib/svm/builder
+cp ${MANDREL_REPO}/substratevm/mxbuild/dists/jdk1.8/objectfile{.jar,.src.zip} ${MANDREL_HOME}/lib/svm/builder
 
 mkdir ${MANDREL_HOME}/languages
-cp ${MANDREL_REPO}/truffle/mxbuild/dists/jdk11/truffle-nfi.jar ${MANDREL_HOME}/languages
+cp ${MANDREL_REPO}/truffle/mxbuild/dists/jdk11/truffle-nfi{.jar,.src.zip} ${MANDREL_HOME}/languages
 
 mkdir ${MANDREL_HOME}/lib/graalvm
-cp ${MANDREL_REPO}/substratevm/mxbuild/dists/jdk1.8/svm-driver.jar ${MANDREL_HOME}/lib/graalvm
+cp ${MANDREL_REPO}/substratevm/mxbuild/dists/jdk1.8/svm-driver{.jar,.src.zip} ${MANDREL_HOME}/lib/graalvm
 
 ## The following jars are not included in the GraalJDK created by `mx --components="Native Image" build`
 mkdir ${MANDREL_HOME}/lib/jvmci
-cp ${MANDREL_REPO}/sdk/mxbuild/dists/jdk11/graal-sdk.jar ${MANDREL_HOME}/lib/jvmci
-cp ${MANDREL_REPO}/compiler/mxbuild/dists/jdk11/graal.jar ${MANDREL_HOME}/lib/jvmci
+cp ${MANDREL_REPO}/sdk/mxbuild/dists/jdk11/graal-sdk{.jar,.src.zip} ${MANDREL_HOME}/lib/jvmci
+cp ${MANDREL_REPO}/compiler/mxbuild/dists/jdk11/graal{.jar,.src.zip} ${MANDREL_HOME}/lib/jvmci
 
 mkdir ${MANDREL_HOME}/lib/truffle
-cp ${MANDREL_REPO}/truffle/mxbuild/dists/jdk11/truffle-api.jar ${MANDREL_HOME}/lib/truffle
+cp ${MANDREL_REPO}/truffle/mxbuild/dists/jdk11/truffle-api{.jar,.src.zip} ${MANDREL_HOME}/lib/truffle
 
 ### Docs
 cp ${MANDREL_REPO}/LICENSE ${MANDREL_HOME}
