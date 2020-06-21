@@ -35,7 +35,7 @@ popd
 
 ### Copy default JDK
 rm -rf ${MANDREL_HOME}
-cp -r ${JAVA_HOME} ${MANDREL_HOME}
+cp -r -L ${JAVA_HOME} ${MANDREL_HOME}
 
 ### Copy needed jars
 mkdir ${MANDREL_HOME}/lib/svm
