@@ -21,12 +21,13 @@ pushd ${MANDREL_REPO}/substratevm
 MANDREL_VERSION=${MANDREL_VERSION:-$((git describe 2>dev/null || git rev-parse --short HEAD) | sed 's/mandrel-//')}
 popd
 MANDREL_VERSION_UNTIL_SPACE="$( echo ${MANDREL_VERSION} | sed -e 's/\([^ ]*\).*/\1/;t' )"
+MAVEN_ARTIFACTS_VERSION="${MANDREL_VERSION_UNTIL_SPACE}.redhat-00001"
 ARCHIVE_NAME="mandrel-java11-linux-amd64-${MANDREL_VERSION_UNTIL_SPACE}.${TAR_SUFFIX}"
 
 ### Build Mandrel
 ## JVM bits
 basename="$(dirname $0)"
-${JAVA_HOME}/bin/java -ea $basename/src/build.java ${VERBOSE_BUILD} --version "${MANDREL_VERSION_UNTIL_SPACE}.redhat-00001" --maven-local-repository ${MAVEN_REPO} --mx-home ${MX_HOME} --mandrel-home ${MANDREL_REPO} ${SKIP_CLEAN_FLAG}
+${JAVA_HOME}/bin/java -ea $basename/src/build.java ${VERBOSE_BUILD} --version "${MAVEN_ARTIFACTS_VERSION}" --maven-local-repository ${MAVEN_REPO} --mx-home ${MX_HOME} --mandrel-home ${MANDREL_REPO} ${SKIP_CLEAN_FLAG}
 
 ## native bits
 pushd ${MANDREL_REPO}/substratevm
@@ -40,26 +41,29 @@ rm -rf ${MANDREL_HOME}
 cp -r -L ${JAVA_HOME} ${MANDREL_HOME}
 
 ### Copy needed jars
-mkdir ${MANDREL_HOME}/lib/svm
-cp ${MANDREL_REPO}/substratevm/mxbuild/dists/jdk1.8/library-support{.jar,.src.zip} ${MANDREL_HOME}/lib/svm
 
-mkdir ${MANDREL_HOME}/lib/svm/builder
-cp ${MANDREL_REPO}/substratevm/mxbuild/dists/jdk11/{svm,pointsto}{.jar,.src.zip} ${MANDREL_HOME}/lib/svm/builder
-cp ${MANDREL_REPO}/substratevm/mxbuild/dists/jdk1.8/objectfile{.jar,.src.zip} ${MANDREL_HOME}/lib/svm/builder
-
-mkdir ${MANDREL_HOME}/languages
-cp ${MANDREL_REPO}/truffle/mxbuild/dists/jdk11/truffle-nfi{.jar,.src.zip} ${MANDREL_HOME}/languages
+mkdir -p ${MANDREL_HOME}/lib/svm/builder
+cp ${MAVEN_REPO}/org/graalvm/nativeimage/svm/${MAVEN_ARTIFACTS_VERSION}/svm-${MAVEN_ARTIFACTS_VERSION}.jar ${MANDREL_HOME}/lib/svm/builder/svm.jar
+cp ${MAVEN_REPO}/org/graalvm/nativeimage/svm/${MAVEN_ARTIFACTS_VERSION}/svm-${MAVEN_ARTIFACTS_VERSION}-sources.jar ${MANDREL_HOME}/lib/svm/builder/svm.src.zip
+cp ${MAVEN_REPO}/org/graalvm/nativeimage/pointsto/${MAVEN_ARTIFACTS_VERSION}/pointsto-${MAVEN_ARTIFACTS_VERSION}.jar ${MANDREL_HOME}/lib/svm/builder/pointsto.jar
+cp ${MAVEN_REPO}/org/graalvm/nativeimage/pointsto/${MAVEN_ARTIFACTS_VERSION}/pointsto-${MAVEN_ARTIFACTS_VERSION}-sources.jar ${MANDREL_HOME}/lib/svm/builder/pointsto.src.zip
+cp ${MAVEN_REPO}/org/graalvm/nativeimage/objectfile/${MAVEN_ARTIFACTS_VERSION}/objectfile-${MAVEN_ARTIFACTS_VERSION}.jar ${MANDREL_HOME}/lib/svm/builder/objectfile.jar
+cp ${MAVEN_REPO}/org/graalvm/nativeimage/objectfile/${MAVEN_ARTIFACTS_VERSION}/objectfile-${MAVEN_ARTIFACTS_VERSION}-sources.jar ${MANDREL_HOME}/lib/svm/builder/objectfile.src.zip
 
 mkdir ${MANDREL_HOME}/lib/graalvm
-cp ${MANDREL_REPO}/substratevm/mxbuild/dists/jdk1.8/svm-driver{.jar,.src.zip} ${MANDREL_HOME}/lib/graalvm
+cp ${MAVEN_REPO}/org/graalvm/nativeimage/svm-driver/${MAVEN_ARTIFACTS_VERSION}/svm-driver-${MAVEN_ARTIFACTS_VERSION}.jar ${MANDREL_HOME}/lib/graalvm/svm-driver.jar
+cp ${MAVEN_REPO}/org/graalvm/nativeimage/svm-driver/${MAVEN_ARTIFACTS_VERSION}/svm-driver-${MAVEN_ARTIFACTS_VERSION}-sources.jar ${MANDREL_HOME}/lib/graalvm/svm-driver.src.zip
 
 ## The following jars are not included in the GraalJDK created by `mx --components="Native Image" build`
 mkdir ${MANDREL_HOME}/lib/jvmci
-cp ${MANDREL_REPO}/sdk/mxbuild/dists/jdk11/graal-sdk{.jar,.src.zip} ${MANDREL_HOME}/lib/jvmci
-cp ${MANDREL_REPO}/compiler/mxbuild/dists/jdk11/graal{.jar,.src.zip} ${MANDREL_HOME}/lib/jvmci
+cp ${MAVEN_REPO}/org/graalvm/sdk/graal-sdk/${MAVEN_ARTIFACTS_VERSION}/graal-sdk-${MAVEN_ARTIFACTS_VERSION}.jar ${MANDREL_HOME}/lib/jvmci/graal-sdk.jar
+cp ${MAVEN_REPO}/org/graalvm/sdk/graal-sdk/${MAVEN_ARTIFACTS_VERSION}/graal-sdk-${MAVEN_ARTIFACTS_VERSION}-sources.jar ${MANDREL_HOME}/lib/jvmci/graal-sdk.src.zip
+cp ${MAVEN_REPO}/org/graalvm/compiler/compiler/${MAVEN_ARTIFACTS_VERSION}/compiler-${MAVEN_ARTIFACTS_VERSION}.jar ${MANDREL_HOME}/lib/jvmci/graal.jar
+cp ${MAVEN_REPO}/org/graalvm/compiler/compiler/${MAVEN_ARTIFACTS_VERSION}/compiler-${MAVEN_ARTIFACTS_VERSION}-sources.jar ${MANDREL_HOME}/lib/jvmci/graal.src.zip
 
 mkdir ${MANDREL_HOME}/lib/truffle
-cp ${MANDREL_REPO}/truffle/mxbuild/dists/jdk11/truffle-api{.jar,.src.zip} ${MANDREL_HOME}/lib/truffle
+cp ${MAVEN_REPO}/org/graalvm/truffle/truffle-api/${MAVEN_ARTIFACTS_VERSION}/truffle-api-${MAVEN_ARTIFACTS_VERSION}.jar ${MANDREL_HOME}/lib/truffle/truffle-api.jar
+cp ${MAVEN_REPO}/org/graalvm/truffle/truffle-api/${MAVEN_ARTIFACTS_VERSION}/truffle-api-${MAVEN_ARTIFACTS_VERSION}-sources.jar ${MANDREL_HOME}/lib/truffle/truffle-api.src.zip
 
 ### Docs
 cp ${MANDREL_REPO}/LICENSE ${MANDREL_HOME}
