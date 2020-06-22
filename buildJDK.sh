@@ -86,9 +86,9 @@ sed -i -e "s!EnableJVMCI!EnableJVMCI -Dorg.graalvm.version=\"${MANDREL_VERSION} 
 
 ### Create tarball
 if [[ "${TAR_SUFFIX}" == "tar.gz" ]]; then
-  tar -czf "${ARCHIVE_NAME}" -C "${MANDREL_HOME}/.." mandrelJDK
+  tar -czf "${ARCHIVE_NAME}" -C $(dirname ${MANDREL_HOME}) $(basename ${MANDREL_HOME})
 elif [[ "${TAR_SUFFIX}" == "tarxz" ]]; then
-  Z_OPT=-9e tar cJf "${ARCHIVE_NAME}" mandrelJDK
+  Z_OPT=-9e tar cJf "${ARCHIVE_NAME}" -C $(dirname ${MANDREL_HOME}) $(basename ${MANDREL_HOME})
 else
   echo "Unknown archive suffix ${TAR_SUFFIX}"
   exit 1
