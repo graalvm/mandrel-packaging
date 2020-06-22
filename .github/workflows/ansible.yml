@@ -1,0 +1,50 @@
+name: Test Ansible playbook
+
+on:
+  push:
+    paths-ignore:
+      - 'cekit/**'
+      - 'README.md'
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+    paths-ignore:
+      - 'cekit/**'
+      - 'README.md'
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+    - name: Build image
+      run: AT='' make build-image
+    - name: buildJDK
+      run: |
+        docker run --name=mandrel-builder -w /root --entrypoint "/bin/bash" -e VERBOSE=true mandrel-packaging --login ./buildJDK.sh
+        docker ps -a
+        docker cp mandrel-builder:/opt/mandrelJDK/ ${{ github.workspace }}/mandrel/
+    - name: Smoke tests
+      run: |
+        ${{ github.workspace }}/mandrel/bin/native-image --version
+        echo "
+        public class HelloStrict {
+            public static void main(String[] args) {
+                System.out.printf(
+                    \"Hello %1$,.12f %2$,.12f %3$,.12f %n\"
+                    , StrictMath.cos(0.0)
+                    , StrictMath.IEEEremainder(3.0, 5.0)
+                    , StrictMath.IEEEremainder(-16.3, 4.1)
+                );
+            }
+        }
+        " > HelloStrict.java
+        ${{ github.workspace }}/mandrel/bin/javac HelloStrict.java
+        ${{ github.workspace }}/mandrel/bin/java HelloStrict > java.txt
+        ${{ github.workspace }}/mandrel/bin/native-image HelloStrict
+        ./hellostrict > native.txt
+        diff java.txt native.txt
+    - name: Upload Mandrel build
+      uses: actions/upload-artifact@v1
+      with:
+        name: mandrel-java11-linux-amd64-test-build
+        path: ${{ github.workspace }}/mandrel
