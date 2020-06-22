@@ -1,6 +1,17 @@
 name: Build Mandrel using buildJDK and test it
 
-on: [push]
+on:
+  push:
+    paths:
+      - 'buildJDK.sh'
+      - 'src/**'
+      - 'resources/**'
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+    paths:
+      - 'buildJDK.sh'
+      - 'src/**'
+      - 'resources/**'
 
 env:
   MX_GIT_CACHE: refcache
