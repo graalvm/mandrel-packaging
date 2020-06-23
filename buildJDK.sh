@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 
+set -e
+
 if [[ "${VERBOSE}" == "true" ]]; then
     set -x
     VERBOSE_BUILD=--verbose
