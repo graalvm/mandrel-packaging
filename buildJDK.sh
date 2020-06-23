@@ -14,12 +14,14 @@ MAVEN_REPO=${MAVEN_REPO:-~/.m2/repository}
 if [[ "${SKIP_CLEAN}" == "true" ]]; then
     SKIP_CLEAN_FLAG=--skipClean
 fi
+# tarxz or tar.gz
+TAR_SUFFIX=${TAR_SUFFIX:-tar.gz}
 
 pushd ${MANDREL_REPO}/substratevm
 MANDREL_VERSION=${MANDREL_VERSION:-$(git describe | sed 's/mandrel-//')}
 popd
 MANDREL_VERSION_UNTIL_SPACE="$( echo ${MANDREL_VERSION} | sed -e 's/\([^ ]*\).*/\1/;t' )"
-ARCHIVE_NAME="mandrel-java11-linux-amd64-${MANDREL_VERSION_UNTIL_SPACE}.tar.gz"
+ARCHIVE_NAME="mandrel-java11-linux-amd64-${MANDREL_VERSION_UNTIL_SPACE}.${TAR_SUFFIX}"
 
 ### Build Mandrel
 ## JVM bits
@@ -83,4 +85,11 @@ sed -i -e "s!EnableJVMCI!EnableJVMCI -Dorg.graalvm.version=\"${MANDREL_VERSION} 
     "${MANDREL_HOME}/lib/svm/bin/native-image"
 
 ### Create tarball
-tar -czf ${ARCHIVE_NAME} -C ${MANDREL_HOME}/.. mandrelJDK
+if [[ "${TAR_SUFFIX}" == "tar.gz" ]]; then
+  tar -czf "${ARCHIVE_NAME}" -C "${MANDREL_HOME}/.." mandrelJDK
+elif [[ "${TAR_SUFFIX}" == "tarxz" ]]; then
+  Z_OPT=-9e tar cJf "${ARCHIVE_NAME}" mandrelJDK
+else
+  echo "Unknown archive suffix ${TAR_SUFFIX}"
+  exit 1
+fi
