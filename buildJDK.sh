@@ -8,9 +8,14 @@ fi
 
 MX_HOME=${MX_HOME:-/opt/mx}
 JAVA_HOME=${JAVA_HOME:-/opt/jdk}
+JAVA_MAJOR=$(${JAVA_HOME}/bin/java --version | awk -F'[. ]' '/openjdk / {print $2}')
 MANDREL_REPO=${MANDREL_REPO:-/tmp/mandrel}
-MANDREL_HOME=${MANDREL_HOME:-/opt/mandrelJDK}
 MAVEN_REPO=${MAVEN_REPO:-~/.m2/repository}
+MANDREL_VERSION=${MANDREL_VERSION:-$((git -C ${MANDREL_REPO} describe 2>/dev/null || git -C ${MANDREL_REPO} rev-parse --short HEAD) | sed 's/mandrel-//')}
+MANDREL_VERSION_UNTIL_SPACE="$( echo ${MANDREL_VERSION} | sed -e 's/\([^ ]*\).*/\1/;t' )"
+MANDREL_HOME=${MANDREL_HOME:-/opt/mandrel-java${JAVA_MAJOR}-${MANDREL_VERSION_UNTIL_SPACE}}
+MAVEN_ARTIFACTS_VERSION="${MANDREL_VERSION_UNTIL_SPACE}.redhat-00001"
+
 if [[ "${SKIP_CLEAN}" == "true" ]]; then
     SKIP_CLEAN_FLAG=--skipClean
 fi
@@ -21,12 +26,7 @@ tar.gz | tarxz ) true ;;
 * ) echo "Unknown archive suffix ${TAR_SUFFIX}"; exit 1 ;;
 esac
 
-pushd ${MANDREL_REPO}/substratevm
-MANDREL_VERSION=${MANDREL_VERSION:-$((git describe 2>/dev/null || git rev-parse --short HEAD) | sed 's/mandrel-//')}
-popd
-MANDREL_VERSION_UNTIL_SPACE="$( echo ${MANDREL_VERSION} | sed -e 's/\([^ ]*\).*/\1/;t' )"
-MAVEN_ARTIFACTS_VERSION="${MANDREL_VERSION_UNTIL_SPACE}.redhat-00001"
-ARCHIVE_NAME="mandrel-java11-linux-amd64-${MANDREL_VERSION_UNTIL_SPACE}.${TAR_SUFFIX}"
+ARCHIVE_NAME="mandrel-java${JAVA_MAJOR}-linux-amd64-${MANDREL_VERSION_UNTIL_SPACE}.${TAR_SUFFIX}"
 
 ### Build Mandrel
 ## JVM bits
