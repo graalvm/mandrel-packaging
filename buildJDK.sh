@@ -18,7 +18,7 @@ fi
 TAR_SUFFIX=${TAR_SUFFIX:-tar.gz}
 
 pushd ${MANDREL_REPO}/substratevm
-MANDREL_VERSION=${MANDREL_VERSION:-$((git describe 2>dev/null || git rev-parse --short HEAD) | sed 's/mandrel-//')}
+MANDREL_VERSION=${MANDREL_VERSION:-$((git describe 2>/dev/null || git rev-parse --short HEAD) | sed 's/mandrel-//')}
 popd
 MANDREL_VERSION_UNTIL_SPACE="$( echo ${MANDREL_VERSION} | sed -e 's/\([^ ]*\).*/\1/;t' )"
 MAVEN_ARTIFACTS_VERSION="${MANDREL_VERSION_UNTIL_SPACE}.redhat-00001"
