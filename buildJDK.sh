@@ -16,6 +16,10 @@ if [[ "${SKIP_CLEAN}" == "true" ]]; then
 fi
 # tarxz or tar.gz
 TAR_SUFFIX=${TAR_SUFFIX:-tar.gz}
+case $TAR_SUFFIX in
+tar.gz | tarxz ) true ;;
+* ) echo "Unknown archive suffix ${TAR_SUFFIX}"; exit 1 ;;
+esac
 
 pushd ${MANDREL_REPO}/substratevm
 MANDREL_VERSION=${MANDREL_VERSION:-$((git describe 2>/dev/null || git rev-parse --short HEAD) | sed 's/mandrel-//')}
@@ -89,11 +93,7 @@ sed -i -e "s!EnableJVMCI!EnableJVMCI -Dorg.graalvm.version=\"${MANDREL_VERSION} 
     "${MANDREL_HOME}/lib/svm/bin/native-image"
 
 ### Create tarball
-if [[ "${TAR_SUFFIX}" == "tar.gz" ]]; then
-  tar -czf "${ARCHIVE_NAME}" -C $(dirname ${MANDREL_HOME}) $(basename ${MANDREL_HOME})
-elif [[ "${TAR_SUFFIX}" == "tarxz" ]]; then
-  Z_OPT=-9e tar cJf "${ARCHIVE_NAME}" -C $(dirname ${MANDREL_HOME}) $(basename ${MANDREL_HOME})
-else
-  echo "Unknown archive suffix ${TAR_SUFFIX}"
-  exit 1
-fi
+case $TAR_SUFFIX in
+  tar.gz ) tar -czf "${ARCHIVE_NAME}" -C $(dirname ${MANDREL_HOME}) $(basename ${MANDREL_HOME}) ;;
+  tarxz  ) Z_OPT=-9e tar cJf "${ARCHIVE_NAME}" -C $(dirname ${MANDREL_HOME}) $(basename ${MANDREL_HOME}) ;;
+esac
