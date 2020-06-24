@@ -62,11 +62,15 @@ jobs:
     - name: Build Mandrel JDK
       run: |
         ./buildJDK.sh
-        mv mandrel-java11-linux-amd64-10.9.8.7.tar.gz mandrel-java11-linux-amd64.tar.gz
+        export MANDREL_VERSION_UNTIL_SPACE="$( echo ${MANDREL_VERSION} | sed -e 's/\([^ ]*\).*/\1/;t' )"
+        export ARCHIVE_NAME="mandrel-java11-linux-amd64-${MANDREL_VERSION_UNTIL_SPACE}.tar.gz"
+        mv ${ARCHIVE_NAME} mandrel-java11-linux-amd64.tar.gz
     - name: Smoke tests
       run: |
-        /opt/mandrelJDK/bin/native-image --version
-        /opt/mandrelJDK/bin/native-image --version | grep "${MANDREL_VERSION}"
+        export MANDREL_VERSION_UNTIL_SPACE="$( echo ${MANDREL_VERSION} | sed -e 's/\([^ ]*\).*/\1/;t' )"
+        export MANDREL_HOME=${PWD}/mandrel-java11-${MANDREL_VERSION_UNTIL_SPACE}
+        ${MANDREL_HOME}/bin/native-image --version
+        ${MANDREL_HOME}/bin/native-image --version | grep "${MANDREL_VERSION}"
         echo "
         public class HelloStrict {
             public static void main(String[] args) {
@@ -79,9 +83,9 @@ jobs:
             }
         }
         " > HelloStrict.java
-        /opt/mandrelJDK/bin/javac HelloStrict.java
-        /opt/mandrelJDK/bin/java HelloStrict > java.txt
-        /opt/mandrelJDK/bin/native-image HelloStrict
+        ${MANDREL_HOME}/bin/javac HelloStrict.java
+        ${MANDREL_HOME}/bin/java HelloStrict > java.txt
+        ${MANDREL_HOME}/bin/native-image HelloStrict
         ./hellostrict > native.txt
         diff java.txt native.txt
     - name: Upload Mandrel build
