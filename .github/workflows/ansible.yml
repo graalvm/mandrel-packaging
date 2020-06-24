@@ -43,8 +43,10 @@ jobs:
         ${{ github.workspace }}/mandrel/bin/native-image HelloStrict
         ./hellostrict > native.txt
         diff java.txt native.txt
+    - name: Archive Mandrel build
+      run: tar czf ${{ github.workspace }}/mandrel.tar.gz -C ${{ github.workspace }} mandrel
     - name: Upload Mandrel build
       uses: actions/upload-artifact@v1
       with:
         name: mandrel-java11-linux-amd64-test-build
-        path: ${{ github.workspace }}/mandrel
+        path: ${{ github.workspace }}/mandrel.tar.gz
