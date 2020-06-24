@@ -28,7 +28,15 @@ tar.gz | tarxz ) true ;;
 * ) echo "Unknown archive suffix ${TAR_SUFFIX}"; exit 1 ;;
 esac
 
-ARCHIVE_NAME="mandrel-java${JAVA_MAJOR}-linux-amd64-${MANDREL_VERSION_UNTIL_SPACE}.${TAR_SUFFIX}"
+# from https://stackoverflow.com/a/8597411/186429
+PLATFORM="unknown"
+if [[ "$OSTYPE" == "linux-gnu"* ]]; then
+  PLATFORM="linux"
+elif [[ "$OSTYPE" == "darwin"* ]]; then
+  PLATFORM="darwin"
+fi
+
+ARCHIVE_NAME="mandrel-java${JAVA_MAJOR}-${PLATFORM}-amd64-${MANDREL_VERSION_UNTIL_SPACE}.${TAR_SUFFIX}"
 
 ### Build Mandrel
 basename="$(dirname $0)"
@@ -36,7 +44,7 @@ ${JAVA_HOME}/bin/java -ea $basename/src/build.java ${VERBOSE_BUILD} --version "$
 
 ### Copy default JDK
 rm -rf ${MANDREL_HOME}
-cp -r -L ${JAVA_HOME} ${MANDREL_HOME}
+cp -R -L ${JAVA_HOME} ${MANDREL_HOME}
 
 ### Copy needed jars
 
@@ -70,15 +78,15 @@ cp ${MANDREL_REPO}/README-Mandrel.md ${MANDREL_HOME}/README.md
 cp ${MANDREL_REPO}/SECURITY.md ${MANDREL_HOME}
 
 ### Copy native bits
-mkdir -p ${MANDREL_HOME}/lib/svm/clibraries/linux-amd64/include
-cp ${MANDREL_REPO}/substratevm/src/com.oracle.svm.native.libchelper/include/amd64cpufeatures.h ${MANDREL_HOME}/lib/svm/clibraries/linux-amd64/include
-cp ${MANDREL_REPO}/substratevm/src/com.oracle.svm.native.libchelper/include/aarch64cpufeatures.h ${MANDREL_HOME}/lib/svm/clibraries/linux-amd64/include
-cp ${MANDREL_REPO}/substratevm/src/com.oracle.svm.libffi/include/svm_libffi.h ${MANDREL_HOME}/lib/svm/clibraries/linux-amd64/include
-cp ${MANDREL_REPO}/truffle/src/com.oracle.truffle.nfi.native/include/trufflenfi.h ${MANDREL_HOME}/lib/svm/clibraries/linux-amd64/include
-cp ${MANDREL_REPO}/substratevm/mxbuild/linux-amd64/src/com.oracle.svm.native.libchelper/amd64/liblibchelper.a ${MANDREL_HOME}/lib/svm/clibraries/linux-amd64
-cp ${MANDREL_REPO}/substratevm/mxbuild/linux-amd64/src/com.oracle.svm.native.jvm.posix/amd64/libjvm.a ${MANDREL_HOME}/lib/svm/clibraries/linux-amd64
+mkdir -p ${MANDREL_HOME}/lib/svm/clibraries/${PLATFORM}-amd64/include
+cp ${MANDREL_REPO}/substratevm/src/com.oracle.svm.native.libchelper/include/amd64cpufeatures.h ${MANDREL_HOME}/lib/svm/clibraries/${PLATFORM}-amd64/include
+cp ${MANDREL_REPO}/substratevm/src/com.oracle.svm.native.libchelper/include/aarch64cpufeatures.h ${MANDREL_HOME}/lib/svm/clibraries/${PLATFORM}-amd64/include
+cp ${MANDREL_REPO}/substratevm/src/com.oracle.svm.libffi/include/svm_libffi.h ${MANDREL_HOME}/lib/svm/clibraries/${PLATFORM}-amd64/include
+cp ${MANDREL_REPO}/truffle/src/com.oracle.truffle.nfi.native/include/trufflenfi.h ${MANDREL_HOME}/lib/svm/clibraries/${PLATFORM}-amd64/include
+cp ${MANDREL_REPO}/substratevm/mxbuild/${PLATFORM}-amd64/src/com.oracle.svm.native.libchelper/amd64/liblibchelper.a ${MANDREL_HOME}/lib/svm/clibraries/${PLATFORM}-amd64
+cp ${MANDREL_REPO}/substratevm/mxbuild/${PLATFORM}-amd64/src/com.oracle.svm.native.jvm.posix/amd64/libjvm.a ${MANDREL_HOME}/lib/svm/clibraries/${PLATFORM}-amd64
 mkdir ${MANDREL_HOME}/lib/svm/bin
-cp ${MANDREL_REPO}/sdk/mxbuild/linux-amd64/native-image.image-bash/native-image ${MANDREL_HOME}/lib/svm/bin/native-image
+cp ${MANDREL_REPO}/sdk/mxbuild/${PLATFORM}-amd64/native-image.image-bash/native-image ${MANDREL_HOME}/lib/svm/bin/native-image
 ## Create symbolic link in bin
 ln -s ../lib/svm/bin/native-image ${MANDREL_HOME}/bin/native-image
 
