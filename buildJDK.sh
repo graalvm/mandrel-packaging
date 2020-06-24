@@ -13,7 +13,7 @@ MANDREL_REPO=${MANDREL_REPO:-/tmp/mandrel}
 MAVEN_REPO=${MAVEN_REPO:-~/.m2/repository}
 MANDREL_VERSION=${MANDREL_VERSION:-$((git -C ${MANDREL_REPO} describe 2>/dev/null || git -C ${MANDREL_REPO} rev-parse --short HEAD) | sed 's/mandrel-//')}
 MANDREL_VERSION_UNTIL_SPACE="$( echo ${MANDREL_VERSION} | sed -e 's/\([^ ]*\).*/\1/;t' )"
-MANDREL_HOME=${MANDREL_HOME:-/opt/mandrel-java${JAVA_MAJOR}-${MANDREL_VERSION_UNTIL_SPACE}}
+MANDREL_HOME=${MANDREL_HOME:-${PWD}/mandrel-java${JAVA_MAJOR}-${MANDREL_VERSION_UNTIL_SPACE}}
 MAVEN_ARTIFACTS_VERSION="${MANDREL_VERSION_UNTIL_SPACE}.redhat-00001"
 
 if [[ "${SKIP_CLEAN}" == "true" ]]; then
