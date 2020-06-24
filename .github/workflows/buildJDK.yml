@@ -89,3 +89,12 @@ jobs:
       with:
         name: mandrel-java11-linux-amd64-test-build
         path: mandrel-java11-linux-amd64.tar.gz
+    - name: Build Mandrel JDK with tarxz suffix
+      run: |
+        TAR_SUFFIX="tarxz" ./buildJDK.sh
+        mv mandrel-java11-linux-amd64-10.9.8.7.tarxz mandrel-java11-linux-amd64.tarxz
+    - name: Upload tarxz Mandrel build
+      uses: actions/upload-artifact@v1
+      with:
+        name: mandrel-java11-linux-amd64-test-build-tarxz
+        path: mandrel-java11-linux-amd64.tarxz
