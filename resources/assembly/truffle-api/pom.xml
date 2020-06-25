@@ -55,6 +55,7 @@
                     <archive>
                         <manifestEntries>
                             <Implementation-Version>999</Implementation-Version>
+                            <Java-Build>${java.vm.version}</Java-Build>
                             <Multi-Release>true</Multi-Release>
                         </manifestEntries>
                     </archive>
