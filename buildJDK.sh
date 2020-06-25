@@ -29,16 +29,8 @@ esac
 ARCHIVE_NAME="mandrel-java${JAVA_MAJOR}-linux-amd64-${MANDREL_VERSION_UNTIL_SPACE}.${TAR_SUFFIX}"
 
 ### Build Mandrel
-## JVM bits
 basename="$(dirname $0)"
 ${JAVA_HOME}/bin/java -ea $basename/src/build.java ${VERBOSE_BUILD} --version "${MAVEN_ARTIFACTS_VERSION}" --maven-local-repository ${MAVEN_REPO} --mx-home ${MX_HOME} --mandrel-home ${MANDREL_REPO} ${SKIP_CLEAN_FLAG}
-
-## native bits
-pushd ${MANDREL_REPO}/substratevm
-${MX_HOME}/mx ${VERBOSE_MX} build --projects com.oracle.svm.native.libchelper
-${MX_HOME}/mx ${VERBOSE_MX} build --projects com.oracle.svm.native.jvm.posix
-${MX_HOME}/mx ${VERBOSE_MX} build --only native-image.image-bash
-popd
 
 ### Copy default JDK
 rm -rf ${MANDREL_HOME}

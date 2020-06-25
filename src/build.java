@@ -96,6 +96,8 @@ class Options
     final String mxHome;
     final List<Dependency> dependencies;
     final boolean skipClean;
+    final boolean skipJava;
+    final boolean skipNative;
 
     Options(
         Action action
@@ -109,6 +111,8 @@ class Options
         , String mxHome
         , List<Dependency> dependencies
         , boolean skipClean
+        , boolean skipJava
+        , boolean skipNative
     )
     {
         this.action = action;
@@ -122,6 +126,8 @@ class Options
         this.mxHome = mxHome;
         this.dependencies = dependencies;
         this.skipClean = skipClean;
+        this.skipJava = skipJava;
+        this.skipNative = skipNative;
     }
 
     public static Options from(Map<String, List<String>> args)
@@ -150,6 +156,8 @@ class Options
             : toDependencies(dependenciesArg);
 
         final var skipClean = args.containsKey("skipClean");
+        final var skipJava = args.containsKey("skipJava");
+        final var skipNative = args.containsKey("skipNative");
 
         return new Options(
             action
@@ -163,6 +171,8 @@ class Options
             , mxHome
             , dependencies
             , skipClean
+            , skipJava
+            , skipNative
         );
     }
 
@@ -237,7 +247,9 @@ class SequentialBuild
         final var exec = new Tasks.Exec.Effects(os::exec);
         final var replace = Tasks.FileReplace.Effects.ofSystem();
         Mx.build(options, exec, replace, fs::mxHome, fs::mandrelHome, os::javaHome);
-        Maven.mvn(options, exec, replace, fs::mandrelHome, fs::workingDir, fs::mavenRepoHome);
+        if (!options.skipJava) {
+            Maven.mvn(options, exec, replace, fs::mandrelHome, fs::workingDir, fs::mavenRepoHome);
+        }
     }
 }
 
@@ -391,13 +403,14 @@ class Mx
         , "com.oracle.truffle.nfi.spi"
     );
 
-    static final List<BuildArgs> BUILD_STEPS = List.of(
-        BuildArgs.of("--dependencies", "GRAAL_SDK")
-        , BuildArgs.of("--dependencies", "GRAAL")
-        , BuildArgs.of("--dependencies", "POINTSTO")
-        , BuildArgs.of("--dependencies", "OBJECTFILE")
-        , BuildArgs.of("--dependencies", "SVM_DRIVER")
-        , BuildArgs.of("--only", SVM_ONLY)
+    static final List<BuildArgs> BUILD_JAVA_STEPS = List.of(
+            BuildArgs.of("--no-native", "--dependencies", "GRAAL_SDK,GRAAL,POINTSTO,OBJECTFILE,SVM_DRIVER")
+            , BuildArgs.of("--no-native", "--only", SVM_ONLY)
+    );
+
+    static final List<BuildArgs> BUILD_NATIVE_STEPS = List.of(
+            BuildArgs.of("--projects", "com.oracle.svm.native.libchelper,com.oracle.svm.native.jvm.posix")
+            , BuildArgs.of("--only", "native-image.image-bash")
     );
 
     static void build(
@@ -416,9 +429,17 @@ class Mx
         if (clean)
             exec.exec.accept(Mx.mxclean(options, mxHome, mandrelHome));
 
-        BUILD_STEPS.stream()
-            .map(Mx.mxbuild(options, mxHome, mandrelHome, javaHome))
-            .forEach(exec.exec);
+        if(!options.skipJava) {
+            BUILD_JAVA_STEPS.stream()
+                    .map(Mx.mxbuild(options, mxHome, mandrelHome, javaHome))
+                    .forEach(exec.exec);
+        }
+
+        if(!options.skipNative) {
+            BUILD_NATIVE_STEPS.stream()
+                    .map(Mx.mxbuild(options, mxHome, mandrelHome, javaHome))
+                    .forEach(exec.exec);
+        }
     }
 
     private static Tasks.Exec mxclean(
@@ -456,7 +477,6 @@ class Mx
                     , "--java-home"
                     , javaHome.get().toString()
                     , "build"
-                    , "--no-native"
                 )
                 , buildArgs.args
             );
@@ -1273,17 +1293,15 @@ final class Check
         final Function<Path, Path> identity = Function.identity();
         final Supplier<Path> javaHome = () -> Path.of("java");
         Mx.build(options, exec, replace, identity, identity, javaHome);
-        os.assertNumberOfTasks(7);
+        os.assertNumberOfTasks(5);
         os.assertTask("mx clean");
-        os.assertTask("mx --trust-http --java-home java build --no-native --dependencies GRAAL_SDK");
-        os.assertTask("mx --trust-http --java-home java build --no-native --dependencies GRAAL");
-        os.assertTask("mx --trust-http --java-home java build --no-native --dependencies POINTSTO");
-        os.assertTask("mx --trust-http --java-home java build --no-native --dependencies OBJECTFILE");
-        os.assertTask("mx --trust-http --java-home java build --no-native --dependencies SVM_DRIVER");
+        os.assertTask("mx --trust-http --java-home java build --no-native --dependencies GRAAL_SDK,GRAAL,POINTSTO,OBJECTFILE,SVM_DRIVER");
         os.assertTask(String.format(
             "mx --trust-http --java-home java build --no-native --only %s"
             , Mx.SVM_ONLY
         ));
+        os.assertTask("mx --trust-http --java-home java build --projects com.oracle.svm.native.libchelper,com.oracle.svm.native.jvm.posix");
+        os.assertTask("mx --trust-http --java-home java build --only native-image.image-bash");
     }
 
     private static void shouldEnableAssertions()
