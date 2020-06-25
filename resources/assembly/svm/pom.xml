@@ -54,6 +54,7 @@
                     <archive>
                         <manifestEntries>
                             <Implementation-Version>999</Implementation-Version>
+                            <Java-Build>${java.vm.version}</Java-Build>
                             <Premain-Class>com.oracle.svm.hosted.agent.NativeImageBytecodeInstrumentationAgent</Premain-Class>
                             <Multi-Release>true</Multi-Release>
                         </manifestEntries>
