@@ -12,7 +12,7 @@
     <description>
         GraalVM is an ecosystem for compiling and running applications written in multiple languages. GraalVM removes the isolation between programming languages and enables interoperability in a shared runtime.
     </description>
-    <url>https://github.com/oracle/graal</url>
+    <url>https://github.com/graalvm/mandrel</url>
     <developers>
         <developer>
             <name>GraalVM Development</name>
@@ -28,8 +28,8 @@
         </license>
     </licenses>
     <scm>
-        <connection>scm:git:https://github.com/oracle/graal.git</connection>
-        <developerConnection>scm:git:git@github.com:oracle/graal.git</developerConnection>
-        <url>https://github.com/oracle/graal</url>
+        <connection>scm:git:https://github.com/graalvm/mandrel.git</connection>
+        <developerConnection>scm:git:git@github.com:graalvm/mandrel.git</developerConnection>
+        <url>https://github.com/graalvm/mandrel</url>
     </scm>
 </project>
