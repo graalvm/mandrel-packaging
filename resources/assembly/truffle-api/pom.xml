@@ -17,7 +17,7 @@
     <description>
         Truffle is a multi-language framework for executing dynamic languages that achieves high performance when combined with Graal.
     </description>
-    <url>https://github.com/oracle/graal</url>
+    <url>https://github.com/graalvm/mandrel</url>
     <developers>
         <developer>
             <name>GraalVM Development</name>
@@ -33,9 +33,9 @@
         </license>
     </licenses>
     <scm>
-        <connection>scm:git:https://github.com/oracle/graal.git</connection>
-        <developerConnection>scm:git:git@github.com:oracle/graal.git</developerConnection>
-        <url>https://github.com/oracle/graal</url>
+        <connection>scm:git:https://github.com/graalvm/mandrel.git</connection>
+        <developerConnection>scm:git:git@github.com:graalvm/mandrel.git</developerConnection>
+        <url>https://github.com/graalvm/mandrel</url>
     </scm>
 
     <dependencies>
