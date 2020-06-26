@@ -2,7 +2,7 @@
 # tasks file for maven
 - name: Download maven
   get_url:
-    url: http://mirror.easyname.ch/apache/maven/maven-3/3.6.3/binaries/apache-maven-3.6.3-bin.tar.gz
+    url: http://downloads.apache.org/maven/maven-3/3.6.3/binaries/apache-maven-3.6.3-bin.tar.gz
     dest: /tmp/maven.tar.gz
   register: maven_archive
 
