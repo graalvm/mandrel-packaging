@@ -6,12 +6,14 @@ on:
       - 'buildJDK.sh'
       - 'src/**'
       - 'resources/**'
+      - '.github/workflows/buildJDK.yml'
   pull_request:
     types: [opened, synchronize, reopened, ready_for_review]
     paths:
       - 'buildJDK.sh'
       - 'src/**'
       - 'resources/**'
+      - '.github/workflows/buildJDK.yml'
 
 env:
   MX_GIT_CACHE: refcache
@@ -23,14 +25,19 @@ env:
 
 jobs:
   build-and-test:
+    name: Build and test ${{ matrix.mandrel-ref }} branch/tag
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        mandrel-ref: [master, mandrel/20.1]
     steps:
     - uses: actions/checkout@v2
     - uses: actions/checkout@v2
       with:
         repository: graalvm/mandrel.git
         fetch-depth: 1
-        ref: master
+        ref: ${{ matrix.mandrel-ref }}
         path: ${{ github.workspace }}/mandrel
     - uses: actions/checkout@v2
       with:
