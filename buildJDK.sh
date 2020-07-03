@@ -38,9 +38,13 @@ fi
 
 ARCHIVE_NAME="mandrel-java${JAVA_MAJOR}-${PLATFORM}-amd64-${MANDREL_VERSION_UNTIL_SPACE}.${TAR_SUFFIX}"
 
+if [ -n "${MAVEN_HOME}" ]; then
+  MAVEN_HOME_ARGS="--maven-home ${MAVEN_HOME}"
+fi
+
 ### Build Mandrel
 basename="$(dirname $0)"
-${JAVA_HOME}/bin/java -ea $basename/src/build.java ${VERBOSE_BUILD} --version "${MAVEN_ARTIFACTS_VERSION}" --maven-local-repository ${MAVEN_REPO} --mx-home ${MX_HOME} --mandrel-home ${MANDREL_REPO} ${SKIP_CLEAN_FLAG}
+${JAVA_HOME}/bin/java -ea $basename/src/build.java ${VERBOSE_BUILD} --version "${MAVEN_ARTIFACTS_VERSION}" --maven-local-repository ${MAVEN_REPO} --mx-home ${MX_HOME} --mandrel-home ${MANDREL_REPO} ${SKIP_CLEAN_FLAG} ${MAVEN_HOME_ARGS}
 
 ### Copy default JDK
 rm -rf ${MANDREL_HOME}
