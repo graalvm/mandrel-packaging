@@ -97,6 +97,9 @@ ln -s ../lib/svm/bin/native-image ${MANDREL_HOME}/bin/native-image
 ### Fix native-image launcher
 sed -i -e "s!EnableJVMCI!EnableJVMCI -Dorg.graalvm.version=\"${MANDREL_VERSION}\" -Dorg.graalvm.config=\"(Mandrel Distribution)\" --upgrade-module-path \${location}/../../jvmci/graal.jar --add-modules \"org.graalvm.truffle,org.graalvm.sdk\" --module-path \${location}/../../truffle/truffle-api.jar:\${location}/../../jvmci/graal-sdk.jar!" \
     "${MANDREL_HOME}/lib/svm/bin/native-image"
+## Explicitly export jdk.vm.ci.code to jdk.internal.vm.compiler
+sed -i -e "s!JDK9Plus'!JDK9Plus' -J--add-exports=jdk.internal.vm.ci/jdk.vm.ci.code=jdk.internal.vm.compiler!" \
+    "${MANDREL_HOME}/lib/svm/bin/native-image"
 
 ### Create tarball
 case $TAR_SUFFIX in
