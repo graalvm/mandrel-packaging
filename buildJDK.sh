@@ -78,7 +78,12 @@ cp ${MAVEN_REPO}/org/graalvm/truffle/truffle-api/${MAVEN_ARTIFACTS_VERSION}/truf
 ### Docs
 cp ${MANDREL_REPO}/LICENSE ${MANDREL_HOME}
 cp ${MANDREL_REPO}/THIRD_PARTY_LICENSE.txt ${MANDREL_HOME}
-cp ${MANDREL_REPO}/README-Mandrel.md ${MANDREL_HOME}/README.md
+if [ -e ${MANDREL_REPO}/README-Mandrel.md ]
+then
+  cp ${MANDREL_REPO}/README-Mandrel.md ${MANDREL_HOME}/README.md
+else
+  cp ${MANDREL_REPO}/README.md ${MANDREL_HOME}/README.md
+fi
 cp ${MANDREL_REPO}/SECURITY.md ${MANDREL_HOME}
 
 ### Copy native bits
