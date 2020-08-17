@@ -98,6 +98,7 @@ class Options
     final boolean skipClean;
     final boolean skipJava;
     final boolean skipNative;
+    final boolean skipMaven;
     final String mavenHome;
 
     Options(
@@ -114,6 +115,7 @@ class Options
         , boolean skipClean
         , boolean skipJava
         , boolean skipNative
+        , boolean skipMaven
         , String mavenHome
     )
     {
@@ -130,6 +132,7 @@ class Options
         this.skipClean = skipClean;
         this.skipJava = skipJava;
         this.skipNative = skipNative;
+        this.skipMaven = skipMaven;
         this.mavenHome = mavenHome;
     }
 
@@ -161,6 +164,7 @@ class Options
         final var skipClean = args.containsKey("skipClean");
         final var skipJava = args.containsKey("skipJava");
         final var skipNative = args.containsKey("skipNative");
+        final var skipMaven = args.containsKey("skipMaven");
 
         final var mavenHome =
             optional("maven-home", args);
@@ -179,6 +183,7 @@ class Options
             , skipClean
             , skipJava
             , skipNative
+            , skipMaven
             , mavenHome
         );
     }
@@ -254,7 +259,7 @@ class SequentialBuild
         final var exec = new Tasks.Exec.Effects(os::exec);
         final var replace = Tasks.FileReplace.Effects.ofSystem();
         Mx.build(options, exec, replace, fs::mxHome, fs::mandrelHome, os::javaHome);
-        if (!options.skipJava) {
+        if (!options.skipMaven && !options.skipJava) {
             final var maven = Maven.of(fs::mavenHome, fs::mavenRepoHome);
             maven.mvn(options, exec, replace, fs::mandrelHome, fs::workingDir);
         }
