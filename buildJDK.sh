@@ -107,7 +107,9 @@ sed -i -e "s!JDK9Plus'!JDK9Plus' -J--add-exports=jdk.internal.vm.ci/jdk.vm.ci.co
     "${MANDREL_HOME}/lib/svm/bin/native-image"
 
 ### Create tarball
-case $TAR_SUFFIX in
-  tar.gz ) tar -czf "${ARCHIVE_NAME}" -C $(dirname ${MANDREL_HOME}) $(basename ${MANDREL_HOME}) ;;
-  tarxz  ) Z_OPT=-9e tar cJf "${ARCHIVE_NAME}" -C $(dirname ${MANDREL_HOME}) $(basename ${MANDREL_HOME}) ;;
-esac
+if [[ "${SKIP_ARCHIVE}" != "true" ]]; then
+  case $TAR_SUFFIX in
+    tar.gz ) tar -czf "${ARCHIVE_NAME}" -C $(dirname ${MANDREL_HOME}) $(basename ${MANDREL_HOME}) ;;
+    tarxz  ) Z_OPT=-9e tar cJf "${ARCHIVE_NAME}" -C $(dirname ${MANDREL_HOME}) $(basename ${MANDREL_HOME}) ;;
+  esac
+fi
