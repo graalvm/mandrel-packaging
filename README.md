@@ -5,24 +5,60 @@ This repo contains all the necessary scripts and tools to build [Mandrel](https:
 ## Building mandrelJDK locally
 
 ```shell
-JAVA_HOME=/opt/jvms/openjdk-11.0.8+4/ MX_HOME=~/code/mx MANDREL_REPO=~/code/mandrel MANDREL_HOME=./mandrelJDK  ./buildJDK.sh
+export JAVA_HOME=/opt/jvms/openjdk-11.0.8_10
+$JAVA_HOME/bin/java -ea build.java --mx-home ~/code/mx --mandrel-repo ~/code/mandrel
 ```
 
 where:
-* `JAVA_HOME` is the path to the OpenJDK you want to use for building mandrel. Defaults to `/opt/jdk`.
-* `MX_HOME` is the path where you cloned https://github.com/graalvm/mx. Defaults to `/opt/mx`.
-* `MANDREL_REPO` is the path where you cloned https://github.com/graalvm/mandrel. Defaults to `/tmp/mandrel`.
-* `MANDREL_HOME` is the path where you want mandrel to be installed, after completion you will be
- able to use this as `JAVA_HOME` or/and `GRAALVM_HOME` in your projects (e.g. quarkus). Defaults to `/opt/mandrelJDK`
+* `JAVA_HOME` is the path to the OpenJDK you want to use for building mandrel.
+* `--mx-home` is the path where you cloned https://github.com/graalvm/mx. Defaults to `/opt/mx`.
+* `--mandrel-repo` is the path where you cloned https://github.com/graalvm/mandrel. Defaults to `/tmp/mandrel`.
 
-You can also add `VERBOSE=true` to see the commands run by the script and `MANDREL_VERSION` to define the version to be shown when running `native-image --version` (e.g. 20.1.0). Defaults to the result of `git describe` in `MANDREL_REPO`.
+This should print something similar to:
+```
+INFO [build] Building!
+build: Checking SubstrateVM requirements for building ...
+build: Checking SubstrateVM requirements for building ...
+build: Checking SubstrateVM requirements for building ...
+build: Checking SubstrateVM requirements for building ...
+INFO [build] Creating JDK!
+INFO [build] Congratulations you successfully built Mandrel 20.1.0.1.Final-3-g9abceb5ac7d based on Java 11.0.8+10
+INFO [build] You can find your newly built native-image enabled JDK under ./mandrel-java11-20.1.0.1.Final-3-g9abceb5ac7d
+```
+
+### More options
+
+#### Generic
+* `--verbose` enables verbose logging.
+* `--skip-clean` skips cleaning before building.
+* `--skip-java` skips building java bits.
+* `--skip-native` skips building native bits.
+* `--archive-suffix` defines the suffix for creating an archive with the new JDK. By default no archive is built. Accepted values are `tar.gz` and `tarxz` (slower but with better compresion).
+* `--dependencies` overrides `mx` dependencies, e.g., `--dependencies id=ASM_7.1,version=7.1.0.redhat-00001,sha1=41bc48bf913569bd001cc132624f811d91004af4,sourceSha1=8c938bc977786f0f3964b394e28f31e726769bac`
+
+#### Mandrel related
+* `--mandrel-home` sets the path where you want mandrel to be installed, after completion you will be
+ able to use this as `JAVA_HOME` or/and `GRAALVM_HOME` in your projects (e.g. quarkus). 
+ By default mandrel is built in the current directory and the version-based path gets printed at the end.
+* `--mandrel-version` defines the version to be shown when running `native-image --version` (e.g. 20.1.0). Defaults to the result of `git describe` or `git rev-parse --short HEAD` in `mandrel-repo`.
+
+#### Maven-related
+
+* `--maven-install` generates maven artifacts and installs them to the local maven repository.
+* `--maven-deploy` generates maven artifacts, installs them to the local maven repository and deploys them.
+* `--maven-version-suffix` specifies the version suffix (e.g., `.redhat-00001`) to be used in the maven artifacts (required by `--maven-install` and `--maven-deploy`).
+* `--maven-proxy` specifies a maven proxy to use.
+* `--maven-repo-id` specifies the maven repository ID for deploying maven artifacts. Required by `--maven-deploy`.
+* `--maven-url` specifies the maven url for deploying maven artifacts. Required by `--maven-deploy`.
+* `--maven-local-repository` specifies the local repository. Defaults to `~/.m2/repository`.
+* `--maven-home` specifies the maven installation path in case one wants to use a different maven version than the one provided by the system. 
 
 ## Building mandrelJDK using a container or a VM
 
 ### Requirements
 
-* docker or podman or root access to a Fedora/CentOS/RHEL VM
-* ansible
+* `docker`, `podman`, or root access to a Fedora/CentOS/RHEL VM
+* `ansible`
 
 ### Description
 

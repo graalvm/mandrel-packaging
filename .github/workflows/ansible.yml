@@ -20,7 +20,7 @@ jobs:
       run: AT='' make build-image
     - name: buildJDK
       run: |
-        docker run --name=mandrel-builder -w /root --entrypoint "/bin/bash" -e VERBOSE=true -e MANDREL_HOME=/opt/mandrel mandrel-packaging --login ./buildJDK.sh
+        docker run --name=mandrel-builder -w /root --entrypoint "/bin/bash" mandrel-packaging --login -c "java -ea build.java --verbose --mandrel-home /opt/mandrel"
         docker ps -a
         docker cp mandrel-builder:/opt/mandrel/ ${{ github.workspace }}/mandrel/
     - name: Smoke tests
