@@ -29,15 +29,13 @@
         repo: "{{ mandrel_repo }}"
         dest: "{{ mandrel_path }}"
         version: "{{ mandrel_version }}"
-        depth: 1
     - name: Copy mandrel-packaging
       copy:
         src: "{{ item }}"
         dest: "/root/"
       with_items:
-        - "{{ playbook_dir }}/../src"
+        - "{{ playbook_dir }}/../build.java"
         - "{{ playbook_dir }}/../resources"
-        - "{{ playbook_dir }}/../buildJDK.sh"
     - name: Set welcome message
       copy:
         dest: /etc/profile.d/welcome.sh
@@ -50,23 +48,23 @@
               /_/  /_/\__,_/_/ /_/\__,_/_/   \___/_/
 
           To build Mandrel:
-            bash buildJDK.sh
+            java -ea build.java
 
           To build maven artifacts locally:
-            java -ea src/build.java --install --version 20.1.0.redhat-00001 --verbose
+            java -ea build.java --maven-install --maven-version .redhat-00001 --verbose
 
           To build maven artifacts with a maven proxy:
-            java -ea src/build.java --install --version 20.1.0.redhat-00001 --maven-proxy https://repo1.maven.org/maven2/ --verbose
+            java -ea build.java --maven-install --maven-version .redhat-00001 --maven-proxy https://repo1.maven.org/maven2/ --verbose
 
           To build maven artifacts using an alternative maven local repository:"
-            java -ea src/build.java --install --version 20.1.0.redhat-00001 --maven-local-repository /tmp/.m2/repository --verbose
+            java -ea build.java --maven-install --maven-version .redhat-00001 --maven-local-repository /tmp/.m2/repository --verbose
 
           To build maven artifacts overriding dependencies:
-            java -ea src/build.java --install --version 20.1.0.redhat-00001 --dependencies \\
+            java -ea build.java --maven-install --maven-version .redhat-00001 --dependencies \\
                 id=ASM_7.1,version=7.1.0.redhat-00001,sha1=41bc48bf913569bd001cc132624f811d91004af4,sourceSha1=8c938bc977786f0f3964b394e28f31e726769bac \\
                 id=...,version=...,sha1=...
 
           To deploy:
-            java -ea src/build.java --deploy --version 20.1.0.redhat-00001 --maven-repo-id abc --maven-url http://1.2.3.4 --verbose
+            java -ea build.java --maven-deploy --maven-version .redhat-00001 --maven-repo-id abc --maven-url http://1.2.3.4 --verbose
 
           EOF

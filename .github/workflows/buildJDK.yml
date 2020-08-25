@@ -1,17 +1,13 @@
-name: Build Mandrel using buildJDK and test it
-
 on:
   push:
     paths:
-      - 'buildJDK.sh'
-      - 'src/**'
+      - 'build.java'
       - 'resources/**'
       - '.github/workflows/buildJDK.yml'
   pull_request:
     types: [opened, synchronize, reopened, ready_for_review]
     paths:
-      - 'buildJDK.sh'
-      - 'src/**'
+      - 'build.java'
       - 'resources/**'
       - '.github/workflows/buildJDK.yml'
 
@@ -20,7 +16,6 @@ env:
   JAVA_HOME: /opt/jdk
   MANDREL_REPO: ${{ github.workspace }}/mandrel
   MX_HOME: ${{ github.workspace }}/mx
-  VERBOSE: true
   MANDREL_VERSION: 10.9.8.7 test-build
 
 jobs:
@@ -68,7 +63,7 @@ jobs:
         ${JAVA_HOME}/bin/java --version
     - name: Build Mandrel JDK
       run: |
-        ./buildJDK.sh
+        ${JAVA_HOME}/bin/java -ea build.java --verbose --mx-home ${MX_HOME} --mandrel-repo ${MANDREL_REPO} --mandrel-version "${MANDREL_VERSION}" --archive-suffix tar.gz
         export MANDREL_VERSION_UNTIL_SPACE="$( echo ${MANDREL_VERSION} | sed -e 's/\([^ ]*\).*/\1/;t' )"
         export ARCHIVE_NAME="mandrel-java11-linux-amd64-${MANDREL_VERSION_UNTIL_SPACE}.tar.gz"
         mv ${ARCHIVE_NAME} mandrel-java11-linux-amd64.tar.gz
@@ -91,9 +86,9 @@ jobs:
         }
         " > HelloStrict.java
         ${MANDREL_HOME}/bin/javac HelloStrict.java
-        ${MANDREL_HOME}/bin/java HelloStrict > java.txt
+        ${MANDREL_HOME}/bin/java HelloStrict | tee java.txt
         ${MANDREL_HOME}/bin/native-image HelloStrict
-        ./hellostrict > native.txt
+        ./hellostrict | tee native.txt
         diff java.txt native.txt
     - name: Upload Mandrel build
       uses: actions/upload-artifact@v1
@@ -102,8 +97,10 @@ jobs:
         path: mandrel-java11-linux-amd64.tar.gz
     - name: Build Mandrel JDK with tarxz suffix
       run: |
-        TAR_SUFFIX="tarxz" ./buildJDK.sh
-        mv mandrel-java11-linux-amd64-10.9.8.7.tarxz mandrel-java11-linux-amd64.tarxz
+        ${JAVA_HOME}/bin/java -ea build.java --mx-home ${MX_HOME} --mandrel-repo ${MANDREL_REPO} --mandrel-version "${MANDREL_VERSION}" --archive-suffix tarxz --skip-clean --skip-java --skip-native
+        export MANDREL_VERSION_UNTIL_SPACE="$( echo ${MANDREL_VERSION} | sed -e 's/\([^ ]*\).*/\1/;t' )"
+        export ARCHIVE_NAME="mandrel-java11-linux-amd64-${MANDREL_VERSION_UNTIL_SPACE}.tarxz"
+        mv ${ARCHIVE_NAME} mandrel-java11-linux-amd64.tarxz
     - name: Upload tarxz Mandrel build
       uses: actions/upload-artifact@v1
       with:
