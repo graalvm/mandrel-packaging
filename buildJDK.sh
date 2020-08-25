@@ -44,7 +44,7 @@ fi
 
 ### Build Mandrel
 basename="$(dirname $0)"
-${JAVA_HOME}/bin/java -ea $basename/src/build.java ${VERBOSE_BUILD} --version "${MAVEN_ARTIFACTS_VERSION}" --maven-local-repository ${MAVEN_REPO} --mx-home ${MX_HOME} --mandrel-home ${MANDREL_REPO} ${SKIP_CLEAN_FLAG} ${MAVEN_HOME_ARGS}
+${JAVA_HOME}/bin/java -ea $basename/src/build.java ${VERBOSE_BUILD} --version "${MAVEN_ARTIFACTS_VERSION}" --maven-local-repository ${MAVEN_REPO} --mx-home ${MX_HOME} --mandrel-home ${MANDREL_REPO} ${SKIP_CLEAN_FLAG} ${MAVEN_HOME_ARGS} ${*}
 
 ### Copy default JDK
 rm -rf ${MANDREL_HOME}
