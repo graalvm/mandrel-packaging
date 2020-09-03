@@ -52,8 +52,9 @@ public class build
             options.mandrelVersion = getMandrelVersion(os, mandrelRepo);
         }
         final String mandrelVersionUntilSpace = options.mandrelVersion.split(" ")[0];
-        assert options.mavenVersion == null;
-        options.mavenVersion = mandrelVersionUntilSpace + options.mavenVersionSuffix;
+        if (options.mavenVersion == null) {
+            options.mavenVersion = mandrelVersionUntilSpace + options.mavenVersionSuffix;
+        }
 
         build.build(options);
 
@@ -237,6 +238,7 @@ class Options
 
     Options(
         Action action
+        , String mavenVersion
         , String mavenVersionSuffix
         , String mandrelVersion
         , boolean verbose
@@ -257,6 +259,7 @@ class Options
     )
     {
         this.action = action;
+        this.mavenVersion = mavenVersion;
         this.mavenVersionSuffix = mavenVersionSuffix;
         this.mandrelVersion = mandrelVersion;
         this.verbose = verbose;
@@ -283,7 +286,8 @@ class Options
         final var action = args.containsKey("maven-deploy")
             ? Action.DEPLOY
             : Action.INSTALL;
-        final var mavenVersionSuffix = required("maven-version-suffix", args, runMaven || action == Action.DEPLOY);
+        final var mavenVersion = required("maven-version", args, runMaven || action == Action.DEPLOY);
+        final var mavenVersionSuffix = required("maven-version-suffix", args, (runMaven || action == Action.DEPLOY) && mavenVersion == null);
         final var mavenProxy = optional("maven-proxy", args);
         final var mavenRepoId = required("maven-repo-id", args, action == Action.DEPLOY);
         final var mavenURL = required("maven-url", args, action == Action.DEPLOY);
@@ -313,6 +317,7 @@ class Options
 
         return new Options(
             action
+            , mavenVersion
             , mavenVersionSuffix
             , mandrelVersion
             , verbose
