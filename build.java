@@ -2,6 +2,7 @@ import java.io.BufferedReader;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.lang.reflect.Array;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.FileVisitOption;
@@ -537,31 +538,8 @@ class Mx
     private static final Pattern DEPENDENCY_VERSION_PATTERN =
         Pattern.compile("\"version\"\\s*:\\s*\"([0-9.]*)\"");
 
-    static final String SVM_ONLY = String.join(","
-        , "SVM"
-        , "com.oracle.svm.graal"
-        , "com.oracle.svm.truffle"
-        , "com.oracle.svm.hosted"
-        , "com.oracle.svm.truffle.nfi"
-        , "com.oracle.svm.truffle.nfi.posix"
-        , "com.oracle.svm.truffle.nfi.windows"
-        , "com.oracle.svm.core.jdk11"
-        , "com.oracle.svm.core"
-        , "com.oracle.svm.core.posix"
-        , "com.oracle.svm.core.windows"
-        , "com.oracle.svm.core.genscavenge"
-        , "com.oracle.svm.jni"
-        , "com.oracle.svm.reflect"
-        , "com.oracle.svm.util" // svm.core dependency
-        // Explicit dependency to avoid pulling libffi
-        , "TRUFFLE_NFI"
-        , "com.oracle.truffle.nfi"
-        , "com.oracle.truffle.nfi.spi"
-    );
-
     static final List<BuildArgs> BUILD_JAVA_STEPS = List.of(
-            BuildArgs.of("--no-native", "--dependencies", "GRAAL_SDK,GRAAL,POINTSTO,OBJECTFILE,SVM_DRIVER")
-            , BuildArgs.of("--no-native", "--only", SVM_ONLY)
+            BuildArgs.of("--no-native", "--dependencies", "SVM,SVM_DRIVER")
     );
 
     static final List<BuildArgs> BUILD_NATIVE_STEPS = List.of(
@@ -579,6 +557,7 @@ class Mx
     )
     {
         Mx.swapDependencies(options, replace, mxHome);
+        Mx.removeDependencies(replace, mxHome, mandrelRepo);
         Mx.hookMavenProxy(options, replace, mxHome);
 
         final var clean = !options.skipClean;
@@ -642,6 +621,42 @@ class Mx
                 , mandrelRepo.apply(Path.of("substratevm"))
             );
         };
+    }
+
+    static void removeDependencies(Tasks.FileReplace.Effects effects, Function<Path, Path> mxHome, Function<Path, Path> mandrelRepo)
+    {
+        LOG.debugf("Remove dependencies");
+        final var suitePy = Path.of("substratevm", "mx.substratevm", "suite.py");
+        final var path = mandrelRepo.apply(suitePy);
+        final var dependencies = Arrays.asList("truffle:TRUFFLE_NFI",
+                "com.oracle.svm.truffle", "com.oracle.svm.polyglot", "truffle:TRUFFLE_API",
+                "com.oracle.svm.truffle.nfi", "com.oracle.svm.truffle.nfi.posix", "com.oracle.svm.truffle.nfi.windows",
+                "extracted-dependency:truffle:LIBFFI_DIST", "extracted-dependency:truffle:TRUFFLE_NFI_NATIVE/include/*",
+                "file:src/com.oracle.svm.libffi/include/svm_libffi.h");
+
+        Tasks.FileReplace.replace(
+                new Tasks.FileReplace(path, removeDependencies(dependencies))
+                , effects
+        );
+    }
+
+    private static Function<Stream<String>, List<String>> removeDependencies(List<String> dependencies)
+    {
+        return lines ->
+        {
+            return lines.filter(l -> dependenciesFilter(l, dependencies)).collect(Collectors.toList());
+        };
+    }
+
+    private static boolean dependenciesFilter(String line, List<String> dependencies) {
+        for (String dependency : dependencies) {
+            if (line.contains("\"" + dependency + "\",")) {
+                LOG.debugf("REMOVING dependency : " + dependency);
+                return false;
+            }
+        }
+        LOG.debugf("KEEPING : " + line);
+        return true;
     }
 
     static void swapDependencies(Options options, Tasks.FileReplace.Effects effects, Function<Path, Path> mxHome)
@@ -1565,13 +1580,9 @@ final class Check
         final Function<Path, Path> identity = Function.identity();
         final Supplier<Path> javaHome = () -> Path.of("java");
         Mx.build(options, exec, replace, identity, identity, javaHome);
-        os.assertNumberOfTasks(5);
+        os.assertNumberOfTasks(4);
         os.assertTask("mx clean");
-        os.assertTask("mx --trust-http --java-home java build --no-native --dependencies GRAAL_SDK,GRAAL,POINTSTO,OBJECTFILE,SVM_DRIVER");
-        os.assertTask(String.format(
-            "mx --trust-http --java-home java build --no-native --only %s"
-            , Mx.SVM_ONLY
-        ));
+        os.assertTask("mx --trust-http --java-home java build --no-native --dependencies SVM,SVM_DRIVER");
         os.assertTask("mx --trust-http --java-home java build --projects com.oracle.svm.native.libchelper,com.oracle.svm.native.jvm.posix");
         os.assertTask("mx --trust-http --java-home java build --only native-image.image-bash");
     }
