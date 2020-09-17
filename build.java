@@ -52,9 +52,6 @@ public class build
             options.mandrelVersion = getMandrelVersion(os, mandrelRepo);
         }
         final String mandrelVersionUntilSpace = options.mandrelVersion.split(" ")[0];
-        if (options.mavenVersion == null) {
-            options.mavenVersion = mandrelVersionUntilSpace + options.mavenVersionSuffix;
-        }
 
         build.build(options);
 
@@ -216,8 +213,7 @@ class Dependency
 
 class Options
 {
-    final Action action;
-    final String mavenVersionSuffix;
+    final MavenAction mavenAction;
     String mavenVersion;
     String mandrelVersion;
     final boolean verbose;
@@ -232,14 +228,12 @@ class Options
     final boolean skipClean;
     final boolean skipJava;
     final boolean skipNative;
-    final boolean runMaven;
     final String mavenHome;
     final String archiveSuffix;
 
     Options(
-        Action action
+        MavenAction action
         , String mavenVersion
-        , String mavenVersionSuffix
         , String mandrelVersion
         , boolean verbose
         , String mavenProxy
@@ -253,14 +247,12 @@ class Options
         , boolean skipClean
         , boolean skipJava
         , boolean skipNative
-        , boolean runMaven
         , String mavenHome
         , String archiveSuffix
     )
     {
-        this.action = action;
+        this.mavenAction = action;
         this.mavenVersion = mavenVersion;
-        this.mavenVersionSuffix = mavenVersionSuffix;
         this.mandrelVersion = mandrelVersion;
         this.verbose = verbose;
         this.mavenProxy = mavenProxy;
@@ -274,7 +266,6 @@ class Options
         this.skipClean = skipClean;
         this.skipJava = skipJava;
         this.skipNative = skipNative;
-        this.runMaven = runMaven;
         this.mavenHome = mavenHome;
         this.archiveSuffix = archiveSuffix;
     }
@@ -282,15 +273,17 @@ class Options
     public static Options from(Map<String, List<String>> args)
     {
         // Maven related
-        final var runMaven = args.containsKey("maven-install");
-        final var action = args.containsKey("maven-deploy")
-            ? Action.DEPLOY
-            : Action.INSTALL;
-        final var mavenVersion = required("maven-version", args, runMaven || action == Action.DEPLOY);
-        final var mavenVersionSuffix = required("maven-version-suffix", args, (runMaven || action == Action.DEPLOY) && mavenVersion == null);
+        var mavenAction = MavenAction.NOP;
+        if (args.containsKey("maven-install")) {
+            mavenAction = MavenAction.INSTALL;
+        }
+        if (args.containsKey("maven-deploy")) {
+            mavenAction = MavenAction.DEPLOY;
+        }
+        final var mavenVersion = required("maven-version", args, mavenAction != MavenAction.NOP);
         final var mavenProxy = optional("maven-proxy", args);
-        final var mavenRepoId = required("maven-repo-id", args, action == Action.DEPLOY);
-        final var mavenURL = required("maven-url", args, action == Action.DEPLOY);
+        final var mavenRepoId = required("maven-repo-id", args, mavenAction == MavenAction.DEPLOY);
+        final var mavenURL = required("maven-url", args, mavenAction == MavenAction.DEPLOY);
         final var mavenLocalRepository = optional("maven-local-repository", args);
         final var mavenHome = optional("maven-home", args);
 
@@ -316,9 +309,8 @@ class Options
         final var archiveSuffix = optional("archive-suffix", args);
 
         return new Options(
-            action
+            mavenAction
             , mavenVersion
-            , mavenVersionSuffix
             , mandrelVersion
             , verbose
             , mavenProxy
@@ -332,7 +324,6 @@ class Options
             , skipClean
             , skipJava
             , skipNative
-            , runMaven
             , mavenHome
             , archiveSuffix
         );
@@ -381,9 +372,9 @@ class Options
         return option.get(0);
     }
 
-    enum Action
+    enum MavenAction
     {
-        INSTALL, DEPLOY
+        INSTALL, DEPLOY, NOP
     }
 }
 
@@ -402,7 +393,7 @@ class SequentialBuild
         final var exec = new Tasks.Exec.Effects(os::exec);
         final var replace = Tasks.FileReplace.Effects.ofSystem();
         Mx.build(options, exec, replace, fs::mxHome, fs::mandrelRepo, os::javaHome);
-        if (options.runMaven && !options.skipJava) {
+        if (options.mavenAction != Options.MavenAction.NOP && !options.skipJava) {
             final var maven = Maven.of(fs::mavenHome, fs::mavenRepoHome);
             maven.mvn(options, exec, replace, fs::mandrelRepo, fs::workingDir);
         }
@@ -943,7 +934,7 @@ class Maven
                 .collect(Collectors.toList());
 
         // Only deploy if all mvn installs worked
-        if (options.action == Options.Action.DEPLOY)
+        if (options.mavenAction == Options.MavenAction.DEPLOY)
         {
             releaseArtifacts.forEach(mvnDeploy(options, exec, workingDir));
         }

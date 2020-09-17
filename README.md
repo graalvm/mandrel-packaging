@@ -46,7 +46,7 @@ INFO [build] You can find your newly built native-image enabled JDK under ./mand
 
 * `--maven-install` generates maven artifacts and installs them to the local maven repository.
 * `--maven-deploy` generates maven artifacts, installs them to the local maven repository and deploys them.
-* `--maven-version-suffix` specifies the version suffix (e.g., `.redhat-00001`) to be used in the maven artifacts (required by `--maven-install` and `--maven-deploy`).
+* `--maven-version` specifies the version (e.g., `20.1.0.2-0-redhat-00000`) to be used in the maven artifacts (required by `--maven-install` and `--maven-deploy`).
 * `--maven-proxy` specifies a maven proxy to use.
 * `--maven-repo-id` specifies the maven repository ID for deploying maven artifacts. Required by `--maven-deploy`.
 * `--maven-url` specifies the maven url for deploying maven artifacts. Required by `--maven-deploy`.
