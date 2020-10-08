@@ -1,8 +1,7 @@
 import java.io.BufferedReader;
 import java.io.File;
+import java.io.FileReader;
 import java.io.IOException;
-import java.io.InputStreamReader;
-import java.lang.reflect.Array;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.FileVisitOption;
@@ -38,7 +37,7 @@ public class build
 {
     static final Logger logger = LogManager.getLogger(build.class);
 
-    public static void main(String... args) throws IOException, InterruptedException {
+    public static void main(String... args) throws IOException {
         Check.main();
 
         final var options = Options.from(Args.read(args));
@@ -138,15 +137,18 @@ public class build
 
     private static String getMandrelVersion(OperatingSystem os, Path mandrelRepo) {
         // git -C ${MANDREL_REPO} describe 2>/dev/null || git -C ${MANDREL_REPO} rev-parse --short HEAD) | sed 's/mandrel-//'
-        var command = Tasks.Exec.of(Arrays.asList("git", "describe"), mandrelRepo);
-        String output = null;
+        List<String> output;
         try {
-            output = os.exec(command).findFirst().orElse("dev");
+            var command = Tasks.Exec.of(Arrays.asList("git", "describe"), mandrelRepo);
+            output = os.exec(command);
         } catch (RuntimeException e) {
-            command = Tasks.Exec.of(Arrays.asList("git", "rev-parse", "--short", "HEAD"), mandrelRepo);
-            output = os.exec(command).findFirst().orElse("dev");
+            var command = Tasks.Exec.of(Arrays.asList("git", "rev-parse", "--short", "HEAD"), mandrelRepo);
+            output = os.exec(command);
         }
-        return output.replace("mandrel-", "");
+        if (output.isEmpty()) {
+            return "dev";
+        }
+        return output.get(0).replace("mandrel-", "");
     }
 
     private static void patchNativeImageLauncher(Path nativeImage, String mandrelVersion) throws IOException {
@@ -1430,7 +1432,7 @@ class OperatingSystem
 {
     static final Logger LOG = LogManager.getLogger(OperatingSystem.class);
 
-    Stream<String> exec(Tasks.Exec task)
+    List<String> exec(Tasks.Exec task)
     {
         LOG.debugf("Execute %s in %s", task.args, task.directory);
         try
@@ -1444,10 +1446,10 @@ class OperatingSystem
                     .put(envVar.name, envVar.value)
             );
 
+            File outputFile = File.createTempFile("mandrel-builder-exec-output", "txt");
+            outputFile.deleteOnExit();
+            processBuilder.redirectOutput(outputFile);
             Process process = processBuilder.start();
-
-            final BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(process.getInputStream()));
-            var output = bufferedReader.lines();
 
             if (process.waitFor() != 0)
             {
@@ -1456,7 +1458,8 @@ class OperatingSystem
                 );
             }
 
-            return output;
+            final BufferedReader bufferedReader = new BufferedReader(new FileReader(outputFile));
+            return bufferedReader.lines().collect(Collectors.toList());
         }
         catch (Exception e)
         {
