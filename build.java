@@ -102,6 +102,10 @@ public class build
                 nativeImage);
         Files.createSymbolicLink(mandrelHome.resolve(Path.of("bin", "native-image")), Path.of("..", "lib", "svm", "bin", "native-image"));
 
+        // logger.info("Copy macros!");
+        fs.copyDirectory(mandrelRepo.resolve(Path.of("sdk", "mxbuild", "native-image.properties", "native-image-agent-library")),
+                mandrelHome.resolve(Path.of("lib", "svm", "macros", "native-image-agent-library")));
+
         // Patch native image
         patchNativeImageLauncher(nativeImage, options.mandrelVersion);
 
@@ -532,12 +536,12 @@ class Mx
         Pattern.compile("\"version\"\\s*:\\s*\"([0-9.]*)\"");
 
     static final List<BuildArgs> BUILD_JAVA_STEPS = List.of(
-            BuildArgs.of("--no-native", "--dependencies", "SVM,SVM_DRIVER")
+            BuildArgs.of("--no-native", "--dependencies", "SVM,SVM_DRIVER,SVM_AGENT")
     );
 
     static final List<BuildArgs> BUILD_NATIVE_STEPS = List.of(
             BuildArgs.of("--projects", "com.oracle.svm.native.libchelper,com.oracle.svm.native.jvm.posix")
-            , BuildArgs.of("--only", "native-image.image-bash")
+            , BuildArgs.of("--only", "native-image.image-bash,native-image-agent-library_native-image.properties")
     );
 
     static void build(
@@ -604,6 +608,8 @@ class Mx
                     , "--trust-http"
                     , "--java-home"
                     , javaHome.get().toString()
+                    , "--native-images=lib:native-image-agent"
+                    , "--exclude-components=nju"
                     , "build"
                 )
                 , buildArgs.args
@@ -870,10 +876,13 @@ class Maven
         "graal-sdk"
         , "svm"
         , "pointsto"
+        , "library-support"
         , "truffle-api"
         , "compiler"
         , "objectfile"
         , "svm-driver"
+        , "jvmti-agent-base"
+        , "svm-agent"
     );
 
     static final String INSTALL_FILE_VERSION = "2.4";
@@ -894,30 +903,39 @@ class Maven
         "graal-sdk", "org.graalvm.sdk"
         , "svm", "org.graalvm.nativeimage"
         , "pointsto", "org.graalvm.nativeimage"
+        , "library-support", "org.graalvm.nativeimage"
         , "truffle-api", "org.graalvm.truffle"
         , "compiler", "org.graalvm.compiler"
         , "objectfile", "org.graalvm.nativeimage"
         , "svm-driver", "org.graalvm.nativeimage"
+        , "jvmti-agent-base", "org.graalvm.nativeimage"
+        , "svm-agent", "org.graalvm.nativeimage"
     );
 
     static final Map<String, Path> DISTS_PATHS = Map.of(
         "graal-sdk", Path.of("sdk", "mxbuild", "dists", "jdk11", "graal-sdk")
         , "svm", Path.of("substratevm", "mxbuild", "dists", "jdk11", "svm")
         , "pointsto", Path.of("substratevm", "mxbuild", "dists", "jdk11", "pointsto")
+        , "library-support", Path.of("substratevm", "mxbuild", "dists", "jdk1.8", "library-support")
         , "truffle-api", Path.of("truffle", "mxbuild", "dists", "jdk11", "truffle-api")
         , "compiler", Path.of("compiler", "mxbuild", "dists", "jdk11", "graal")
         , "objectfile", Path.of("substratevm", "mxbuild", "dists", "jdk1.8", "objectfile")
         , "svm-driver", Path.of("substratevm", "mxbuild", "dists", "jdk1.8", "svm-driver")
+        , "jvmti-agent-base", Path.of("substratevm", "mxbuild", "dists", "jdk1.8", "jvmti-agent-base")
+        , "svm-agent", Path.of("substratevm", "mxbuild", "dists", "jdk11", "svm-agent")
     );
 
     static final Map<String, Path> JDK_PATHS = Map.of(
         "graal-sdk", Path.of("lib", "jvmci", "graal-sdk")
         , "svm", Path.of("lib", "svm", "builder", "svm")
         , "pointsto", Path.of("lib", "svm", "builder", "pointsto")
+        , "library-support", Path.of("lib", "svm", "library-support")
         , "truffle-api", Path.of("lib", "truffle", "truffle-api")
         , "compiler", Path.of("lib", "jvmci", "graal")
         , "objectfile", Path.of("lib", "svm", "builder", "objectfile")
         , "svm-driver", Path.of("lib", "graalvm", "svm-driver")
+        , "jvmti-agent-base", Path.of("lib", "graalvm", "jvmti-agent-base")
+        , "svm-agent", Path.of("lib", "graalvm", "svm-agent")
     );
 
     final Path mvn;
@@ -1576,9 +1594,9 @@ final class Check
         Mx.build(options, exec, replace, identity, identity, javaHome);
         os.assertNumberOfTasks(4);
         os.assertTask("mx clean");
-        os.assertTask("mx --trust-http --java-home java build --no-native --dependencies SVM,SVM_DRIVER");
-        os.assertTask("mx --trust-http --java-home java build --projects com.oracle.svm.native.libchelper,com.oracle.svm.native.jvm.posix");
-        os.assertTask("mx --trust-http --java-home java build --only native-image.image-bash");
+        os.assertTask("mx --trust-http --java-home java --native-images=lib:native-image-agent --exclude-components=nju build --no-native --dependencies SVM,SVM_DRIVER,SVM_AGENT");
+        os.assertTask("mx --trust-http --java-home java --native-images=lib:native-image-agent --exclude-components=nju build --projects com.oracle.svm.native.libchelper,com.oracle.svm.native.jvm.posix");
+        os.assertTask("mx --trust-http --java-home java --native-images=lib:native-image-agent --exclude-components=nju build --only native-image.image-bash,native-image-agent-library_native-image.properties");
     }
 
     private static void shouldEnableAssertions()
