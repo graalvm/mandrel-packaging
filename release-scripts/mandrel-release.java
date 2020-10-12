@@ -86,6 +86,9 @@ class MandrelRelease implements Callable<Integer> {
         version = getCurrentVersion();
         fullVersion = version + "." + suffix;
         newVersion = getNewVersion(version);
+        if (suffix.equals("Final")) {
+            info("New version will be " + newVersion);
+        }
         newFullVersion = newVersion + "." + suffix;
         releaseBranch = "release/mandrel-" + fullVersion;
         developBranch = "develop/mandrel-" + newVersion;
@@ -101,7 +104,10 @@ class MandrelRelease implements Callable<Integer> {
         }
 
         if (phase.equals("release")) {
-            createGHRelease(fullVersion);
+            createGHRelease();
+        }
+        if (!suffix.equals("Final")) {
+            return 0;
         }
         checkAndPrepareRepository();
         if (phase.equals("release")) {
@@ -383,16 +389,16 @@ class MandrelRelease implements Callable<Integer> {
         assert found;
         int pico = Integer.parseInt(versionMatcher.group(2)) + 1;
         final String newVersion = versionMatcher.group(1) + pico;
-        info("New version will be " + newVersion);
         return newVersion;
     }
 
-    private void createGHRelease(String fullVersion) {
+    private void createGHRelease() {
         GitHub github = connectToGitHub();
         try {
             final GHRepository repository = github.getRepository(REPOSITORY_NAME);
             final PagedIterable<GHMilestone> ghMilestones = repository.listMilestones(GHIssueState.OPEN);
-            final GHMilestone milestone = ghMilestones.toList().stream().filter(m -> m.getTitle().equals(fullVersion)).findAny().orElse(null);
+            final String finalVersion = version + ".Final";
+            final GHMilestone milestone = ghMilestones.toList().stream().filter(m -> m.getTitle().equals(finalVersion)).findAny().orElse(null);
             String changelog = createChangelog(fullVersion, repository, milestone);
             if (dryRun) {
                 warn("Skipping release due to --dry-run");
@@ -527,14 +533,10 @@ class MandrelRelease implements Callable<Integer> {
     }
 
     private String createChangelog(String fullVersion, GHRepository repository, GHMilestone milestone) throws IOException {
-        if (!suffix.equals("Final")) {
-            return null;
-        }
-
         if (milestone == null) {
             error("No milestone titled " + fullVersion + ". Can't produce changelog without it!");
         }
-        if (milestone.getOpenIssues() != 0) {
+        if (suffix.equals("Final") && milestone.getOpenIssues() != 0) {
             error("There are still open issues in milestone " + milestone.getTitle() + ". Please take care of them and try again.");
         }
         info("Getting merged PRs for " + milestone.getTitle() + " (" + milestone.getNumber() + ")");
@@ -559,7 +561,7 @@ class MandrelRelease implements Callable<Integer> {
     }
 
     private void manageMilestones(GHRepository repository, PagedIterable<GHMilestone> ghMilestones, GHMilestone milestone) throws IOException {
-        if (dryRun) {
+        if (dryRun || !suffix.equals("Final")) {
             return;
         }
         if (milestone != null) {
