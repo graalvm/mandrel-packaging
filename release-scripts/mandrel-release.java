@@ -629,4 +629,116 @@ class MandrelRelease implements Callable<Integer> {
         System.err.println(Ansi.AUTO.string("[@|bold,red ERROR|@] ") + message);
         System.exit(1);
     }
+
+    class MandrelVersion implements Comparable<MandrelVersion> {
+        final static String MANDREL_VERSION_REGEX = "(\\d+)\\.(\\d+)\\.(\\d+)\\.(\\d+)(\\.(Final|(Alpha|Beta)\\d*))?";
+
+        int major;
+        int minor;
+        int micro;
+        int pico;
+        String suffix;
+
+        public MandrelVersion(MandrelVersion mandrelVersion) {
+            this.major = mandrelVersion.major;
+            this.minor = mandrelVersion.minor;
+            this.micro = mandrelVersion.micro;
+            this.pico = mandrelVersion.pico;
+            this.suffix = mandrelVersion.suffix;
+        }
+
+        public MandrelVersion(String version) {
+            final Pattern versionPattern = Pattern.compile(MandrelVersion.MANDREL_VERSION_REGEX);
+            final Matcher versionMatcher = versionPattern.matcher(version);
+            boolean found = versionMatcher.find();
+            if (!found) {
+                error("Wrong version format! " + version + " does not match pattern: " + MandrelVersion.MANDREL_VERSION_REGEX);
+            }
+            major = Integer.parseInt(versionMatcher.group(1));
+            minor = Integer.parseInt(versionMatcher.group(2));
+            micro = Integer.parseInt(versionMatcher.group(3));
+            pico = Integer.parseInt(versionMatcher.group(4));
+            suffix = versionMatcher.group(6);
+        }
+
+        /**
+         * Calculates the new version by bumping pico in major.minor.micro.pico
+         *
+         * @return The new version
+         */
+        private MandrelVersion getNewVersion() {
+            final MandrelVersion mandrelVersion = new MandrelVersion(this);
+            mandrelVersion.pico++;
+            return mandrelVersion;
+        }
+
+        /**
+         * Calculates the latest final version by checking major.minor.micro.pico
+         *
+         * @return The latest final version
+         * @param tags
+         */
+        private String getLatestReleasedTag(List<GHTag> tags) {
+            final String tagPrefix = "mandrel-";
+            List<MandrelVersion> finalVersions = tags.stream()
+                    .filter(x -> x.getName().startsWith(tagPrefix + majorMinorMicro()) && x.getName().endsWith("Final"))
+                    .map(x -> new MandrelVersion(x.getName().substring(tagPrefix.length())))
+                    .sorted(Comparator.reverseOrder())
+                    .collect(Collectors.toList());
+            if (finalVersions.isEmpty()) {
+                // There is no Mandrel release for this major.minor.micro, return upstream graal tag instead
+                final String upstreamTag = "vm-" + majorMinorMicro();
+                if (tags.stream().noneMatch(x -> x.getName().equals(upstreamTag))) {
+                    error("Upstream tag " + upstreamTag + " not found in " + REPOSITORY_NAME + " please push it and try again.");
+                }
+                return upstreamTag;
+            }
+            return tagPrefix + finalVersions.get(0).toString();
+        }
+
+        private String majorMinor() {
+            return major + "." + minor;
+        }
+
+        private String majorMinorMicro() {
+            return major + "." + minor + "." + micro;
+        }
+
+        private String majorMinorMicroPico() {
+            return major + "." + minor + "." + micro + "." + pico;
+        }
+
+
+        @Override
+        public String toString() {
+            String version = majorMinorMicroPico();
+            if (suffix != null) {
+                version += "." + suffix;
+            }
+            return version;
+        }
+
+        @Override
+        public int compareTo(MandrelVersion o) {
+            assert suffix.equals(o.suffix);
+            if (major > o.major) {
+                return 1;
+            } else if (major == o.major) {
+                if (minor > o.minor) {
+                    return 1;
+                } else if (minor == o.minor) {
+                    if (micro > o.micro) {
+                        return 1;
+                    } else if (micro == o.micro) {
+                        if (pico > o.pico) {
+                            return 1;
+                        } else if (pico == o.pico) {
+                            return 0;
+                        }
+                    }
+                }
+            }
+            return -1;
+        }
+    }
 }
