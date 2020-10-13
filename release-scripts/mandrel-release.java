@@ -516,6 +516,7 @@ class MandrelRelease implements Callable<Integer> {
                 .filter(pr -> includeInChangelog(pr, milestone));
         final Map<Integer, List<GHPullRequest>> collect = mergedPRsInMilestone.collect(Collectors.groupingBy(this::getGroup));
         StringBuilder changelogBuilder = new StringBuilder("\n### Changelog\n\n");
+        final String latestReleasedTag = version.getLatestReleasedTag(tags);
         final List<GHPullRequest> noteworthyPRs = collect.get(0);
         if (noteworthyPRs != null && noteworthyPRs.size() != 0) {
             noteworthyPRs.forEach(pr ->
@@ -527,8 +528,8 @@ class MandrelRelease implements Callable<Integer> {
             backportPRs.forEach(pr ->
                     changelogBuilder.append(" * #").append(pr.getNumber()).append(" - ").append(pr.getTitle()).append("\n"));
         }
-        changelogBuilder.append("\nFor a complete list of changes please visit https://github.com/" + REPOSITORY_NAME + "/compare/mandrel-")
-                .append(version).append("...mandrel-").append(version).append("\n");
+        changelogBuilder.append("\nFor a complete list of changes please visit https://github.com/" + REPOSITORY_NAME + "/compare/")
+                .append(latestReleasedTag).append("...mandrel-").append(version).append("\n");
         return changelogBuilder.toString();
     }
 
