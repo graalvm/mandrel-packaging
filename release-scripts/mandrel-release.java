@@ -269,6 +269,7 @@ class MandrelRelease implements Callable<Integer> {
     }
 
     private void openPR(String authorEmail) {
+        assert suffix.equals("Final");
         GitHub github = connectToGitHub();
         try {
             final GHRepository repository = github.getRepository(REPOSITORY_NAME);
@@ -370,14 +371,19 @@ class MandrelRelease implements Callable<Integer> {
             final PagedIterable<GHMilestone> ghMilestones = repository.listMilestones(GHIssueState.OPEN);
             final String finalVersion = version.majorMinorMicroPico() + ".Final";
             final GHMilestone milestone = ghMilestones.toList().stream().filter(m -> m.getTitle().equals(finalVersion)).findAny().orElse(null);
-            String changelog = createChangelog(fullVersion, repository, milestone);
+            final List<GHTag> tags = repository.listTags().toList();
+            String changelog = createChangelog(repository, milestone, tags);
             if (dryRun) {
                 warn("Skipping release due to --dry-run");
                 info("Release body would look like");
                 System.out.println(releaseMainBody(version, changelog));
                 return;
             }
+            // Ensure that the tag exists
             final String tag = "mandrel-" + version;
+            if (tags.stream().noneMatch(x -> x.equals(tag))) {
+                error("Please create tag " + tag + " and try again");
+            }
             final GHRelease ghRelease = repository.createRelease(tag)
                     .name("Mandrel " + version)
                     .prerelease(!suffix.equals("Final"))
@@ -498,7 +504,7 @@ class MandrelRelease implements Callable<Integer> {
                 "OpenJDK used: " + System.getProperty("java.runtime.version") + "\n";
     }
 
-    private String createChangelog(String fullVersion, GHRepository repository, GHMilestone milestone) throws IOException {
+    private String createChangelog(GHRepository repository, GHMilestone milestone, List<GHTag> tags) throws IOException {
         if (milestone == null) {
             error("No milestone titled " + version.majorMinorMicroPico() + ".Final! Can't produce changelog without it!");
         }
