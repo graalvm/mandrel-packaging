@@ -304,7 +304,8 @@ class MandrelRelease implements Callable<Integer> {
                         "git tag -a mandrel-" + fullVersion + " -m \"mandrel-" + fullVersion + "\" -s\n" +
                         "git push upstream mandrel-" + fullVersion + "\n" +
                         "```\n" +
-                        "where `upstream` is a the git remote showing to https://github.com/graalvm/mandrel";
+                        "where `upstream` is the git remote showing to https://github.com/graalvm/mandrel\n\n" +
+                        "Make sure to create the same tag in the mandrel-packaging repository!";
             }
 
             final GHPullRequest pullRequest = repository.createPullRequest(title, head, baseBranch, body, true, false);
