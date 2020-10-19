@@ -23,7 +23,7 @@ First we invoke `./mandrel-release.java prepare -m <path/to/mandrel> -f <usernam
 
 For usage information please run `./mandrel-release.java -h`
 
-### Step 2: Tag creation
+### Step 2: Tags creation
 
 After the changes get approved and merged someone needs to tag the new commit
 like this:
@@ -34,6 +34,8 @@ git pull upstream mandrel/20.1
 git tag -a mandrel-20.1.0.2.Final -m "mandrel-20.1.0.2.Final" -s
 git push upstream mandrel-20.1.0.2.Final
 ```
+
+Make sure to create the same tag in the `mandrel-packaging` repository.
 
 NOTE: This can't be integrated into `mandrel-release.java` yet due to
 https://bugs.eclipse.org/bugs/show_bug.cgi?id=386908
@@ -56,7 +58,7 @@ For usage information please run `./mandrel-release.java -h`
 
 ## Creating an Alpha or Beta pre-release
 
-### Step 1: Tag creation
+### Step 1: Tags creation
 
 First we need to create a tag.
 
@@ -66,6 +68,8 @@ git pull upstream mandrel/20.2
 git tag -a mandrel-20.2.0.0.Beta2 -m "mandrel-20.2.0.0.Beta2" -s
 git push upstream mandrel-20.2.0.0.Beta2
 ```
+
+Make sure to create the same tag in the `mandrel-packaging` repository.
 
 ### Step 3: Create pre-release
 
