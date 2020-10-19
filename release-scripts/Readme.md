@@ -71,7 +71,7 @@ git push upstream mandrel-20.2.0.0.Beta2
 
 Make sure to create the same tag in the `mandrel-packaging` repository.
 
-### Step 3: Create pre-release
+### Step 2: Create pre-release
 
 Then `./mandrel-release.java release -s Beta2 -m <path/to/mandrel> -f <username/mandrel-fork>` must be invoked which is responsible for:
 
