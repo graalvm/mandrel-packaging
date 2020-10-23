@@ -474,18 +474,17 @@ class MandrelRelease implements Callable<Integer> {
                 "* glibc-devel\n" +
                 "* zlib-devel\n" +
                 "* gcc\n" +
-                "* libffi-devel\n" +
                 "\n" +
                 "On Fedora/CentOS/RHEL they can be installed with:\n" +
                 "```bash\n" +
-                "dnf install glibc-devel zlib-devel gcc libffi-devel libstdc++-static\n" +
+                "dnf install glibc-devel zlib-devel gcc libstdc++-static\n" +
                 "```\n" +
                 "\n" +
                 "Note the package might be called `glibc-static` instead of `libstdc++-static`.\n" +
                 "\n" +
                 "On Ubuntu-like systems with:\n" +
                 "```bash\n" +
-                "apt install gcc zlib1g-dev libffi-dev build-essential\n" +
+                "apt install gcc zlib1g-dev build-essential\n" +
                 "```\n" +
                 "\n" +
                 "## Quick start\n" +
