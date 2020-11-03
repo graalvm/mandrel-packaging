@@ -11,6 +11,7 @@ import java.nio.file.Paths;
 import java.nio.file.SimpleFileVisitor;
 import java.nio.file.StandardOpenOption;
 import java.nio.file.attribute.BasicFileAttributes;
+import java.util.AbstractMap.SimpleEntry;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -142,6 +143,8 @@ public class build
             mandrelHome.resolve(Path.of("lib", "svm", "macros", "native-image-agent-library")));
         fs.copyDirectory(mandrelRepo.resolve(Path.of("sdk", "mxbuild", "native-image.properties", "native-image-launcher")),
             mandrelHome.resolve(Path.of("lib", "svm", "macros", "native-image-launcher")));
+        fs.copyDirectory(mandrelRepo.resolve(Path.of("sdk", "mxbuild", "native-image.properties", "native-image-diagnostics-agent-library")),
+            mandrelHome.resolve(Path.of("lib", "svm", "macros", "native-image-diagnostics-agent-library")));
 
         logger.debugf("Patch native image...");
         patchNativeImageLauncher(nativeImage, options.mandrelVersion);
@@ -635,7 +638,7 @@ class Mx
         Pattern.compile("\"version\"\\s*:\\s*\"([0-9.]*)\"");
 
     static final List<BuildArgs> BUILD_JAVA_STEPS = List.of(
-        BuildArgs.of("--no-native", "--dependencies", "SVM,SVM_DRIVER,SVM_AGENT")
+        BuildArgs.of("--no-native", "--dependencies", "SVM,SVM_DRIVER,SVM_AGENT,SVM_DIAGNOSTICS_AGENT")
     );
 
     static final List<BuildArgs> BUILD_NATIVE_STEPS = List.of(
@@ -650,11 +653,13 @@ class Mx
             build.IS_WINDOWS ?
                 "native-image.exe.image-bash," +
                     "native-image-agent-library_native-image.properties," +
-                    "native-image-launcher_native-image.properties"
+                    "native-image-launcher_native-image.properties," +
+                    "native-image-diagnostics-agent-library_native-image.properties"
                 :
                 "native-image.image-bash," +
                     "native-image-agent-library_native-image.properties," +
-                    "native-image-launcher_native-image.properties")
+                    "native-image-launcher_native-image.properties," +
+                    "native-image-diagnostics-agent-library_native-image.properties")
     );
 
     static void build(
@@ -723,7 +728,7 @@ class Mx
                     , "--trust-http"
                     , "--java-home"
                     , javaHome.get().toString()
-                    , "--native-images=lib:native-image-agent"
+                    , "--native-images=lib:native-image-agent,lib:native-image-diagnostics-agent"
                     , "--exclude-components=nju"
                     , "build"
                 )
@@ -1001,6 +1006,7 @@ class Maven
         , "svm-driver"
         , "jvmti-agent-base"
         , "svm-agent"
+        , "svm-diagnostics-agent"
     );
 
     static final String INSTALL_FILE_VERSION = "2.4";
@@ -1017,43 +1023,46 @@ class Maven
         , DEPLOY_FILE_VERSION
     );
 
-    static final Map<String, String> GROUP_IDS = Map.of(
-        "graal-sdk", "org.graalvm.sdk"
-        , "svm", "org.graalvm.nativeimage"
-        , "pointsto", "org.graalvm.nativeimage"
-        , "library-support", "org.graalvm.nativeimage"
-        , "truffle-api", "org.graalvm.truffle"
-        , "compiler", "org.graalvm.compiler"
-        , "objectfile", "org.graalvm.nativeimage"
-        , "svm-driver", "org.graalvm.nativeimage"
-        , "jvmti-agent-base", "org.graalvm.nativeimage"
-        , "svm-agent", "org.graalvm.nativeimage"
+    static final Map<String, String> GROUP_IDS = Map.ofEntries(
+        new SimpleEntry<>("graal-sdk", "org.graalvm.sdk"),
+        new SimpleEntry<>("svm", "org.graalvm.nativeimage"),
+        new SimpleEntry<>("pointsto", "org.graalvm.nativeimage"),
+        new SimpleEntry<>("library-support", "org.graalvm.nativeimage"),
+        new SimpleEntry<>("truffle-api", "org.graalvm.truffle"),
+        new SimpleEntry<>("compiler", "org.graalvm.compiler"),
+        new SimpleEntry<>("objectfile", "org.graalvm.nativeimage"),
+        new SimpleEntry<>("svm-driver", "org.graalvm.nativeimage"),
+        new SimpleEntry<>("jvmti-agent-base", "org.graalvm.nativeimage"),
+        new SimpleEntry<>("svm-agent", "org.graalvm.nativeimage"),
+        new SimpleEntry<>("svm-diagnostics-agent", "org.graalvm.nativeimage")
     );
 
-    static final Map<String, Path> DISTS_PATHS = Map.of(
-        "graal-sdk", Path.of("sdk", "mxbuild", "dists", "jdk11", "graal-sdk")
-        , "svm", Path.of("substratevm", "mxbuild", "dists", "jdk11", "svm")
-        , "pointsto", Path.of("substratevm", "mxbuild", "dists", "jdk11", "pointsto")
-        , "library-support", Path.of("substratevm", "mxbuild", "dists", "jdk1.8", "library-support")
-        , "truffle-api", Path.of("truffle", "mxbuild", "dists", "jdk11", "truffle-api")
-        , "compiler", Path.of("compiler", "mxbuild", "dists", "jdk11", "graal")
-        , "objectfile", Path.of("substratevm", "mxbuild", "dists", "jdk1.8", "objectfile")
-        , "svm-driver", Path.of("substratevm", "mxbuild", "dists", "jdk1.8", "svm-driver")
-        , "jvmti-agent-base", Path.of("substratevm", "mxbuild", "dists", "jdk1.8", "jvmti-agent-base")
-        , "svm-agent", Path.of("substratevm", "mxbuild", "dists", "jdk11", "svm-agent")
+    static final Map<String, Path> DISTS_PATHS = Map.ofEntries(
+        new SimpleEntry<>("graal-sdk", Path.of("sdk", "mxbuild", "dists", "jdk11", "graal-sdk")),
+        new SimpleEntry<>("svm", Path.of("substratevm", "mxbuild", "dists", "jdk11", "svm")),
+        new SimpleEntry<>("pointsto", Path.of("substratevm", "mxbuild", "dists", "jdk11", "pointsto")),
+        new SimpleEntry<>("library-support", Path.of("substratevm", "mxbuild", "dists", "jdk1.8", "library-support")),
+        new SimpleEntry<>("truffle-api", Path.of("truffle", "mxbuild", "dists", "jdk11", "truffle-api")),
+        new SimpleEntry<>("compiler", Path.of("compiler", "mxbuild", "dists", "jdk11", "graal")),
+        new SimpleEntry<>("objectfile", Path.of("substratevm", "mxbuild", "dists", "jdk1.8", "objectfile")),
+        new SimpleEntry<>("svm-driver", Path.of("substratevm", "mxbuild", "dists", "jdk1.8", "svm-driver")),
+        new SimpleEntry<>("jvmti-agent-base", Path.of("substratevm", "mxbuild", "dists", "jdk1.8", "jvmti-agent-base")),
+        new SimpleEntry<>("svm-agent", Path.of("substratevm", "mxbuild", "dists", "jdk11", "svm-agent")),
+        new SimpleEntry<>("svm-diagnostics-agent", Path.of("substratevm", "mxbuild", "dists", "jdk1.8", "svm-diagnostics-agent"))
     );
 
-    static final Map<String, Path> JDK_PATHS = Map.of(
-        "graal-sdk", Path.of("lib", "jvmci", "graal-sdk")
-        , "svm", Path.of("lib", "svm", "builder", "svm")
-        , "pointsto", Path.of("lib", "svm", "builder", "pointsto")
-        , "library-support", Path.of("lib", "svm", "library-support")
-        , "truffle-api", Path.of("lib", "truffle", "truffle-api")
-        , "compiler", Path.of("lib", "jvmci", "graal")
-        , "objectfile", Path.of("lib", "svm", "builder", "objectfile")
-        , "svm-driver", Path.of("lib", "graalvm", "svm-driver")
-        , "jvmti-agent-base", Path.of("lib", "graalvm", "jvmti-agent-base")
-        , "svm-agent", Path.of("lib", "graalvm", "svm-agent")
+    static final Map<String, Path> JDK_PATHS = Map.ofEntries(
+        new SimpleEntry<>("graal-sdk", Path.of("lib", "jvmci", "graal-sdk")),
+        new SimpleEntry<>("svm", Path.of("lib", "svm", "builder", "svm")),
+        new SimpleEntry<>("pointsto", Path.of("lib", "svm", "builder", "pointsto")),
+        new SimpleEntry<>("library-support", Path.of("lib", "svm", "library-support")),
+        new SimpleEntry<>("truffle-api", Path.of("lib", "truffle", "truffle-api")),
+        new SimpleEntry<>("compiler", Path.of("lib", "jvmci", "graal")),
+        new SimpleEntry<>("objectfile", Path.of("lib", "svm", "builder", "objectfile")),
+        new SimpleEntry<>("svm-driver", Path.of("lib", "graalvm", "svm-driver")),
+        new SimpleEntry<>("jvmti-agent-base", Path.of("lib", "graalvm", "jvmti-agent-base")),
+        new SimpleEntry<>("svm-agent", Path.of("lib", "graalvm", "svm-agent")),
+        new SimpleEntry<>("svm-diagnostics-agent", Path.of("lib", "graalvm", "svm-diagnostics-agent"))
     );
 
     final Path mvn;

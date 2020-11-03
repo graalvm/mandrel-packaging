@@ -5,11 +5,11 @@
     <modelVersion>4.0.0</modelVersion>
 
     <groupId>org.graalvm.nativeimage</groupId>
-    <artifactId>svm-agent</artifactId>
+    <artifactId>svm-diagnostics-agent</artifactId>
     <version>999</version>
 
-    <name>SVM Agent</name>
-    <description>SubstrateVM native-image-agent library</description>
+    <name>SVM Diagnostics Agent</name>
+    <description>SubstrateVM native-image-diagnostics-agent library</description>
     <url>https://github.com/graalvm/mandrel</url>
     <developers>
         <developer>
