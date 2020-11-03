@@ -140,6 +140,8 @@ public class build
         logger.debugf("Copy macros...");
         fs.copyDirectory(mandrelRepo.resolve(Path.of("sdk", "mxbuild", "native-image.properties", "native-image-agent-library")),
             mandrelHome.resolve(Path.of("lib", "svm", "macros", "native-image-agent-library")));
+        fs.copyDirectory(mandrelRepo.resolve(Path.of("sdk", "mxbuild", "native-image.properties", "native-image-launcher")),
+            mandrelHome.resolve(Path.of("lib", "svm", "macros", "native-image-launcher")));
 
         logger.debugf("Patch native image...");
         patchNativeImageLauncher(nativeImage, options.mandrelVersion);
@@ -647,10 +649,12 @@ class Mx
         , BuildArgs.of("--only",
             build.IS_WINDOWS ?
                 "native-image.exe.image-bash," +
-                    "native-image-agent-library_native-image.properties"
+                    "native-image-agent-library_native-image.properties," +
+                    "native-image-launcher_native-image.properties"
                 :
                 "native-image.image-bash," +
-                    "native-image-agent-library_native-image.properties")
+                    "native-image-agent-library_native-image.properties," +
+                    "native-image-launcher_native-image.properties")
     );
 
     static void build(
