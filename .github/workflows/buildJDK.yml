@@ -25,7 +25,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        mandrel-ref: [graal/master, mandrel/20.1, mandrel/20.2]
+        mandrel-ref: [graal/master, mandrel/20.3]
     steps:
     - uses: actions/checkout@v2
     - uses: actions/checkout@v2
