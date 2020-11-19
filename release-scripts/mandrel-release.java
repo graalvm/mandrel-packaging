@@ -381,7 +381,7 @@ class MandrelRelease implements Callable<Integer> {
             }
             // Ensure that the tag exists
             final String tag = "mandrel-" + version;
-            if (tags.stream().noneMatch(x -> x.equals(tag))) {
+            if (tags.stream().noneMatch(x -> x.getName().equals(tag))) {
                 error("Please create tag " + tag + " and try again");
             }
             final GHRelease ghRelease = repository.createRelease(tag)
