@@ -149,6 +149,11 @@ public class build
         logger.debugf("Patch native image...");
         patchNativeImageLauncher(nativeImage, options.mandrelVersion);
 
+        if (!options.skipNative)
+        {
+            buildAgents(nativeImage, fs, os);
+        }
+
         logger.info("Congratulations you successfully built Mandrel " + mandrelVersionUntilSpace + " based on Java " + System.getProperty("java.runtime.version"));
         logger.info("You can find your newly built native-image enabled JDK under " + mandrelHome);
         if (options.archiveSuffix != null)
@@ -158,6 +163,14 @@ public class build
             logger.info("Creating Archive " + archiveName);
             createArchive(fs, os, mandrelHome, archiveName);
         }
+    }
+
+    private static void buildAgents(Path nativeImage, FileSystem fs, OperatingSystem os)
+    {
+        final Tasks.Exec agent = Tasks.Exec.of(Arrays.asList(nativeImage.toString(), "--macro:native-image-agent-library"), fs.workingDir());
+        os.exec(agent);
+        final Tasks.Exec dagent = Tasks.Exec.of(Arrays.asList(nativeImage.toString(), "--macro:native-image-diagnostics-agent-library"), fs.workingDir());
+        os.exec(dagent);
     }
 
     private static void createArchive(FileSystem fs, OperatingSystem os, Path mandrelHome, String archiveName)
