@@ -401,21 +401,32 @@ class MandrelRelease implements Callable<Integer> {
     }
 
     private void uploadAssets(String fullVersion, GHRelease ghRelease) throws IOException {
-        final File archive = new File("mandrel-java11-linux-amd64-" + fullVersion + ".tar.gz");
-        final File archiveSHA1 = new File("mandrel-java11-linux-amd64-" + fullVersion + ".tar.gz.sha1");
-        if (!archive.exists()) {
-            warn("Archive \"" + archive.getName() + "\" was not found. Skipping asset upload.");
-            warn("Please upload asset manually.");
-        } else if (!archiveSHA1.exists()) {
-            warn("Archive sha1 \"" + archive.getName() + "\" was not found. Skipping asset upload.");
-            warn("Please upload asset manually.");
-        } else {
-            info("Uploading " + archive.getName());
-            ghRelease.uploadAsset(archive, "application/gzip");
-            info("Uploaded " + archive.getName());
-            info("Uploading " + archiveSHA1.getName());
-            ghRelease.uploadAsset(archiveSHA1, "text/plain");
-            info("Uploaded " + archiveSHA1.getName());
+        final File[] assets = {
+                new File("mandrel-java11-linux-amd64-" + fullVersion + ".tar.gz"),
+                new File("mandrel-java11-linux-amd64-" + fullVersion + ".tar.gz.sha1"),
+                new File("mandrel-java11-linux-amd64-" + fullVersion + ".tar.gz.sha256"),
+                new File("mandrel-java11-windows-amd64-" + fullVersion + ".zip"),
+                new File("mandrel-java11-windows-amd64-" + fullVersion + ".zip.sha1"),
+                new File("mandrel-java11-windows-amd64-" + fullVersion + ".zip.sha256")};
+
+        for (File f : assets) {
+            if (!f.exists()) {
+                warn("Archive \"" + f.getName() + "\" was not found. Skipping asset upload.");
+                warn("Please upload assets manually.");
+                return;
+            }
+        }
+
+        for (File f : assets) {
+            info("Uploading " + f.getName());
+            if (f.getName().endsWith("tar.gz")) {
+                ghRelease.uploadAsset(f, "application/gzip");
+            } else if (f.getName().endsWith("zip")) {
+                ghRelease.uploadAsset(f, "application/zip");
+            } else {
+                ghRelease.uploadAsset(f, "text/plain");
+            }
+            info("Uploaded " + f.getName());
         }
     }
 
