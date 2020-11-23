@@ -54,8 +54,8 @@ jobs:
           ${{ runner.os }}-${{ matrix.quarkus-name }}-maven-
     - name: Get latest openJDK11 with static libs
       run: |
-        curl -sL https://api.adoptopenjdk.net/v3/binary/latest/11/ea/linux/x64/jdk/hotspot/normal/openjdk -o jdk.tar.gz
-        curl -sL https://api.adoptopenjdk.net/v3/binary/latest/11/ea/linux/x64/staticlibs/hotspot/normal/openjdk -o jdk-static-libs.tar.gz
+        curl -sL https://api.adoptopenjdk.net/v3/binary/latest/11/ga/linux/x64/jdk/hotspot/normal/openjdk -o jdk.tar.gz
+        curl -sL https://api.adoptopenjdk.net/v3/binary/latest/11/ga/linux/x64/staticlibs/hotspot/normal/openjdk -o jdk-static-libs.tar.gz
         mkdir -p ${JAVA_HOME}
         tar xf jdk.tar.gz -C ${JAVA_HOME} --strip-components=1
         tar xf jdk-static-libs.tar.gz -C ${JAVA_HOME} --strip-components=1

@@ -24,6 +24,12 @@
     - maven
 
   tasks:
+    - name: Install native-image dependencies
+      dnf:
+        name:
+          - zlib-devel
+          - glibc-devel
+        state: latest
     - name: Clone mandrel repository
       git:
         repo: "{{ mandrel_repo }}"
