@@ -161,7 +161,7 @@ if [[ "`./hello`" == "Hello." ]]; then echo Done; else echo Native image fail;ex
             }
         }
         downstreamParameterized {
-            trigger(['mandrel-linux-quarkus-tests/LABEL=el8,MANDREL_VERSION=master,QUARKUS_VERSION=1.10.5.Final/',
+            trigger(['mandrel-linux-quarkus-tests/LABEL=el8,MANDREL_VERSION=master,QUARKUS_VERSION=1.11.0.Beta1/',
                      'mandrel-linux-integration-tests/MANDREL_VERSION=master,label=el8']) {
                 condition('SUCCESS')
                 parameters {

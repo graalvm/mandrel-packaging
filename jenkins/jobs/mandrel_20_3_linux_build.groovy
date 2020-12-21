@@ -45,8 +45,8 @@ Linux build for 20.3 branch.
         choiceParam(
                 'PACKAGING_REPOSITORY',
                 [
-                        'https://github.com/Karm/mandrel-packaging.git',
                         'https://github.com/mandrel/mandrel-packaging.git',
+                        'https://github.com/Karm/mandrel-packaging.git',
                         'https://github.com/zakkak/mandrel-packaging.git'
                 ],
                 'Mandrel packaging scripts.'
@@ -62,7 +62,7 @@ Linux build for 20.3 branch.
         )
         stringParam(
                 'PACKAGING_REPOSITORY_BRANCH_OR_TAG',
-                'jenkins',
+                'master',
                 'e.g. master if you use heads or some tag if you use tags.'
         )
         stringParam(
@@ -127,7 +127,7 @@ Could be e.g. 20.1.0.0.Alpha1. It must not contain spaces as it is used in tarba
             }
         }
         downstreamParameterized {
-            trigger(['mandrel-linux-quarkus-tests/LABEL=el8,MANDREL_VERSION=20.3,QUARKUS_VERSION=1.10.5.Final/',
+            trigger(['mandrel-linux-quarkus-tests/LABEL=el8,MANDREL_VERSION=20.3,QUARKUS_VERSION=1.11.0.Beta1/',
                      'mandrel-linux-integration-tests/MANDREL_VERSION=20.3,label=el8']) {
                 condition('SUCCESS')
                 parameters {

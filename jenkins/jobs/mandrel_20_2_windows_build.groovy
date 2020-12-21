@@ -45,8 +45,8 @@ Windows build for 20.2 branch.
         choiceParam(
                 'PACKAGING_REPOSITORY',
                 [
-                        'https://github.com/Karm/mandrel-packaging.git',
                         'https://github.com/mandrel/mandrel-packaging.git',
+                        'https://github.com/Karm/mandrel-packaging.git',
                         'https://github.com/zakkak/mandrel-packaging.git'
 
                 ],
@@ -63,7 +63,7 @@ Windows build for 20.2 branch.
         )
         stringParam(
                 'PACKAGING_REPOSITORY_BRANCH_OR_TAG',
-                '20.1-jenkins',
+                '20.1',
                 'e.g. master if you use heads or some tag if you use tags.'
         )
         stringParam(
