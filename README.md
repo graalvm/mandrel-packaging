@@ -53,6 +53,25 @@ INFO [build] You can find your newly built native-image enabled JDK under ./mand
 * `--maven-local-repository` specifies the local repository. Defaults to `~/.m2/repository`.
 * `--maven-home` specifies the maven installation path in case one wants to use a different maven version than the one provided by the system. 
 
+## Building mandrelJDK java parts separately from native parts
+
+If your build infrastructure requires building java parts separately from native parts you can use the following steps.
+
+**Step 1: Build the java parts**
+```shell
+$JAVA_HOME/bin/java -ea build.java --mx-home ~/code/mx --mandrel-repo ~/code/mandrel --mandrel-home /tmp/java_step --skip-native
+```
+
+**Step 2: Build the java parts**
+```shell
+/tmp/java_step/bin/java -ea build.java --mx-home ~/code/mx --mandrel-repo ~/code/mandrel --skip-java --skip-clean
+```
+
+After the last step you can delete the intermediate JDK with:
+```shell
+rm -rf /tmp/java_step
+```
+
 ## Building mandrelJDK using a container or a VM
 
 ### Requirements
