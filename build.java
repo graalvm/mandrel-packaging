@@ -67,90 +67,95 @@ public class build
         FileSystem.deleteDirectoryIfExists(mandrelHome.toFile());
         fs.copyDirectory(os.javaHome(), mandrelHome);
 
-        logger.debugf("Copy jars...");
-        Maven.ARTIFACT_IDS.forEach(artifact ->
+        if (!options.skipJava)
         {
-            final String source = mandrelRepo.resolve(Maven.DISTS_PATHS.get(artifact)).toString();
-            final String destination = mandrelHome.resolve(Maven.JDK_PATHS.get(artifact)).toString();
-            FileSystem.copy(Path.of(source + ".jar"), Path.of(destination + ".jar"));
-            FileSystem.copy(Path.of(source + ".src.zip"), Path.of(destination + ".src.zip"));
-            logger.debugf("Copying .jar and .src.zip for src: %s, dst: %s", source, destination);
-        });
-
-        logger.debugf("Copy docs...");
-        FileSystem.copy(mandrelRepo.resolve("LICENSE"), mandrelHome.resolve("LICENSE"));
-        FileSystem.copy(mandrelRepo.resolve("THIRD_PARTY_LICENSE.txt"), mandrelHome.resolve("THIRD_PARTY_LICENSE.txt"));
-        if (mandrelRepo.resolve("README-Mandrel.md").toFile().exists())
-        {
-            FileSystem.copy(mandrelRepo.resolve("README-Mandrel.md"), mandrelHome.resolve("README.md"));
+            logger.debugf("Copy jars...");
+            Maven.ARTIFACT_IDS.forEach(artifact ->
+            {
+                final String source = mandrelRepo.resolve(Maven.DISTS_PATHS.get(artifact)).toString();
+                final String destination = mandrelHome.resolve(Maven.JDK_PATHS.get(artifact)).toString();
+                FileSystem.copy(Path.of(source + ".jar"), Path.of(destination + ".jar"));
+                FileSystem.copy(Path.of(source + ".src.zip"), Path.of(destination + ".src.zip"));
+                logger.debugf("Copying .jar and .src.zip for src: %s, dst: %s", source, destination);
+            });
         }
-        else
-        {
-            FileSystem.copy(mandrelRepo.resolve("README.md"), mandrelHome.resolve("README.md"));
-        }
-        FileSystem.copy(mandrelRepo.resolve("SECURITY.md"), mandrelHome.resolve("SECURITY.md"));
 
-        logger.debugf("Native bits...");
         final String OS = System.getProperty("os.name").toLowerCase().split(" ")[0]; // We want "windows" not e.g. "windows 10"
         final String ARCH = System.getProperty("os.arch");
         final String PLATFORM = OS + "-" + ARCH;
-        FileSystem.copy(mandrelRepo.resolve(Path.of("substratevm", "src", "com.oracle.svm.native.libchelper", "include", "amd64cpufeatures.h")),
-            mandrelHome.resolve(Path.of("lib", "svm", "clibraries", PLATFORM, "include", "amd64cpufeatures.h")));
-        FileSystem.copy(mandrelRepo.resolve(Path.of("substratevm", "src", "com.oracle.svm.native.libchelper", "include", "aarch64cpufeatures.h")),
-            mandrelHome.resolve(Path.of("lib", "svm", "clibraries", PLATFORM, "include", "aarch64cpufeatures.h")));
-        FileSystem.copy(mandrelRepo.resolve(Path.of("substratevm", "src", "com.oracle.svm.libffi", "include", "svm_libffi.h")),
-            mandrelHome.resolve(Path.of("lib", "svm", "clibraries", PLATFORM, "include", "svm_libffi.h")));
-        FileSystem.copy(mandrelRepo.resolve(Path.of("truffle", "src", "com.oracle.truffle.nfi.native", "include", "trufflenfi.h")),
-            mandrelHome.resolve(Path.of("lib", "svm", "clibraries", PLATFORM, "include", "trufflenfi.h")));
-        FileSystem.copy(mandrelRepo.resolve(
-            Path.of("substratevm", "mxbuild", PLATFORM, "src", "com.oracle.svm.native.libchelper", ARCH, IS_WINDOWS ? "libchelper.lib" : "liblibchelper.a")),
-            mandrelHome.resolve(Path.of("lib", "svm", "clibraries", PLATFORM, IS_WINDOWS ? "libchelper.lib" : "liblibchelper.a")));
-        if (IS_WINDOWS)
-        {
-            FileSystem.copy(mandrelRepo.resolve(Path.of("substratevm", "mxbuild", PLATFORM, "src", "com.oracle.svm.native.jvm.windows", ARCH, "jvm.lib")),
-                mandrelHome.resolve(Path.of("lib", "svm", "clibraries", PLATFORM, "jvm.lib")));
-        }
-        else
-        {
-            FileSystem.copy(mandrelRepo.resolve(Path.of("substratevm", "mxbuild", PLATFORM, "src", "com.oracle.svm.native.jvm.posix", ARCH, "libjvm.a")),
-                mandrelHome.resolve(Path.of("lib", "svm", "clibraries", PLATFORM, "libjvm.a")));
-        }
-        final Path nativeImage = mandrelHome.resolve(Path.of("lib", "svm", "bin", IS_WINDOWS ? "native-image.cmd" : "native-image"));
-
-        logger.debugf("Copy native-image...");
-        FileSystem.copy(mandrelRepo.resolve(
-            Path.of("sdk", "mxbuild", PLATFORM, IS_WINDOWS ? "native-image.exe.image-bash" : "native-image.image-bash", IS_WINDOWS ? "native-image.cmd" : "native-image")),
-            nativeImage);
-        // We don't create symlink on Windows, See https://github.com/graalvm/mandrel-packaging/pull/71#discussion_r517268470
-        if (IS_WINDOWS)
-        {
-            // exe_link_template.cmd: DOS batch file, ASCII text, with CRLF line terminators
-            final String nativeImageCmd = Files.readString(mandrelRepo.resolve(
-                Path.of("sdk", "mx.sdk", "vm", "exe_link_template.cmd")), StandardCharsets.US_ASCII)
-                .replace("<target>", "..\\lib\\svm\\bin\\native-image.cmd");
-            Files.writeString(mandrelHome.resolve(
-                Path.of("bin", "native-image.cmd")), nativeImageCmd, StandardCharsets.US_ASCII, StandardOpenOption.CREATE_NEW);
-        }
-        else
-        {
-            logger.debugf("Symlink native-image...");
-            Files.createSymbolicLink(mandrelHome.resolve(
-                Path.of("bin", "native-image")), Path.of("..", "lib", "svm", "bin", "native-image"));
-        }
-
-        logger.debugf("Copy macros...");
-        fs.copyDirectory(mandrelRepo.resolve(Path.of("sdk", "mxbuild", "native-image.properties", "native-image-agent-library")),
-            mandrelHome.resolve(Path.of("lib", "svm", "macros", "native-image-agent-library")));
-        fs.copyDirectory(mandrelRepo.resolve(Path.of("sdk", "mxbuild", "native-image.properties", "native-image-launcher")),
-            mandrelHome.resolve(Path.of("lib", "svm", "macros", "native-image-launcher")));
-        fs.copyDirectory(mandrelRepo.resolve(Path.of("sdk", "mxbuild", "native-image.properties", "native-image-diagnostics-agent-library")),
-            mandrelHome.resolve(Path.of("lib", "svm", "macros", "native-image-diagnostics-agent-library")));
-
-        logger.debugf("Patch native image...");
-        patchNativeImageLauncher(nativeImage, options.mandrelVersion);
 
         if (!options.skipNative)
         {
+            // Although docs are not native per se we chose to install them during the native part of the build
+            logger.debugf("Copy docs...");
+            FileSystem.copy(mandrelRepo.resolve("LICENSE"), mandrelHome.resolve("LICENSE"));
+            FileSystem.copy(mandrelRepo.resolve("THIRD_PARTY_LICENSE.txt"), mandrelHome.resolve("THIRD_PARTY_LICENSE.txt"));
+            if (mandrelRepo.resolve("README-Mandrel.md").toFile().exists())
+            {
+                FileSystem.copy(mandrelRepo.resolve("README-Mandrel.md"), mandrelHome.resolve("README.md"));
+            }
+            else
+            {
+                FileSystem.copy(mandrelRepo.resolve("README.md"), mandrelHome.resolve("README.md"));
+            }
+            FileSystem.copy(mandrelRepo.resolve("SECURITY.md"), mandrelHome.resolve("SECURITY.md"));
+
+            logger.debugf("Native bits...");
+            FileSystem.copy(mandrelRepo.resolve(Path.of("substratevm", "src", "com.oracle.svm.native.libchelper", "include", "amd64cpufeatures.h")),
+                    mandrelHome.resolve(Path.of("lib", "svm", "clibraries", PLATFORM, "include", "amd64cpufeatures.h")));
+            FileSystem.copy(mandrelRepo.resolve(Path.of("substratevm", "src", "com.oracle.svm.native.libchelper", "include", "aarch64cpufeatures.h")),
+                    mandrelHome.resolve(Path.of("lib", "svm", "clibraries", PLATFORM, "include", "aarch64cpufeatures.h")));
+            FileSystem.copy(mandrelRepo.resolve(Path.of("substratevm", "src", "com.oracle.svm.libffi", "include", "svm_libffi.h")),
+                    mandrelHome.resolve(Path.of("lib", "svm", "clibraries", PLATFORM, "include", "svm_libffi.h")));
+            FileSystem.copy(mandrelRepo.resolve(Path.of("truffle", "src", "com.oracle.truffle.nfi.native", "include", "trufflenfi.h")),
+                    mandrelHome.resolve(Path.of("lib", "svm", "clibraries", PLATFORM, "include", "trufflenfi.h")));
+            FileSystem.copy(mandrelRepo.resolve(
+                    Path.of("substratevm", "mxbuild", PLATFORM, "src", "com.oracle.svm.native.libchelper", ARCH, IS_WINDOWS ? "libchelper.lib" : "liblibchelper.a")),
+                    mandrelHome.resolve(Path.of("lib", "svm", "clibraries", PLATFORM, IS_WINDOWS ? "libchelper.lib" : "liblibchelper.a")));
+            if (IS_WINDOWS)
+            {
+                FileSystem.copy(mandrelRepo.resolve(Path.of("substratevm", "mxbuild", PLATFORM, "src", "com.oracle.svm.native.jvm.windows", ARCH, "jvm.lib")),
+                        mandrelHome.resolve(Path.of("lib", "svm", "clibraries", PLATFORM, "jvm.lib")));
+            }
+            else
+            {
+                FileSystem.copy(mandrelRepo.resolve(Path.of("substratevm", "mxbuild", PLATFORM, "src", "com.oracle.svm.native.jvm.posix", ARCH, "libjvm.a")),
+                        mandrelHome.resolve(Path.of("lib", "svm", "clibraries", PLATFORM, "libjvm.a")));
+            }
+            final Path nativeImage = mandrelHome.resolve(Path.of("lib", "svm", "bin", IS_WINDOWS ? "native-image.cmd" : "native-image"));
+
+            logger.debugf("Copy native-image...");
+            FileSystem.copy(mandrelRepo.resolve(
+                    Path.of("sdk", "mxbuild", PLATFORM, IS_WINDOWS ? "native-image.exe.image-bash" : "native-image.image-bash", IS_WINDOWS ? "native-image.cmd" : "native-image")),
+                    nativeImage);
+            // We don't create symlink on Windows, See https://github.com/graalvm/mandrel-packaging/pull/71#discussion_r517268470
+            if (IS_WINDOWS)
+            {
+                // exe_link_template.cmd: DOS batch file, ASCII text, with CRLF line terminators
+                final String nativeImageCmd = Files.readString(mandrelRepo.resolve(
+                        Path.of("sdk", "mx.sdk", "vm", "exe_link_template.cmd")), StandardCharsets.US_ASCII)
+                        .replace("<target>", "..\\lib\\svm\\bin\\native-image.cmd");
+                Files.writeString(mandrelHome.resolve(
+                        Path.of("bin", "native-image.cmd")), nativeImageCmd, StandardCharsets.US_ASCII, StandardOpenOption.CREATE_NEW);
+            }
+            else
+            {
+                logger.debugf("Symlink native-image...");
+                Files.createSymbolicLink(mandrelHome.resolve(
+                        Path.of("bin", "native-image")), Path.of("..", "lib", "svm", "bin", "native-image"));
+            }
+
+            logger.debugf("Copy macros...");
+            fs.copyDirectory(mandrelRepo.resolve(Path.of("sdk", "mxbuild", "native-image.properties", "native-image-agent-library")),
+                    mandrelHome.resolve(Path.of("lib", "svm", "macros", "native-image-agent-library")));
+            fs.copyDirectory(mandrelRepo.resolve(Path.of("sdk", "mxbuild", "native-image.properties", "native-image-launcher")),
+                    mandrelHome.resolve(Path.of("lib", "svm", "macros", "native-image-launcher")));
+            fs.copyDirectory(mandrelRepo.resolve(Path.of("sdk", "mxbuild", "native-image.properties", "native-image-diagnostics-agent-library")),
+                    mandrelHome.resolve(Path.of("lib", "svm", "macros", "native-image-diagnostics-agent-library")));
+
+            logger.debugf("Patch native image...");
+            patchNativeImageLauncher(nativeImage, options.mandrelVersion);
+
             buildAgents(nativeImage, fs, os);
         }
 
