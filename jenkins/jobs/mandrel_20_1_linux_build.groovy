@@ -128,7 +128,7 @@ Could be e.g. 20.1.0.0.Alpha1. It must not contain spaces as it is used in tarba
             }
         }
         downstreamParameterized {
-            trigger(['mandrel-linux-quarkus-tests/LABEL=el8,MANDREL_VERSION=20.1,QUARKUS_VERSION=1.7.5.Final/',
+            trigger(['mandrel-linux-quarkus-tests/LABEL=el8,MANDREL_VERSION=20.1,QUARKUS_VERSION=1.7.6.Final/',
                      'mandrel-linux-integration-tests/MANDREL_VERSION=20.1,label=el8']) {
                 condition('SUCCESS')
                 parameters {
