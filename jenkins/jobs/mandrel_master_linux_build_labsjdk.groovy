@@ -149,7 +149,7 @@ if [[ "`./hello`" == "Hello." ]]; then echo Done; else echo Native image fail;ex
                  ''')
     }
     publishers {
-        archiveArtifacts('*.tar.gz,MANDREL.md,*.sha1,*.sha256')
+        archiveArtifacts('mandrel/*.tar.gz,MANDREL.md,*.sha1,*.sha256')
         wsCleanup()
         extendedEmail {
             recipientList('karm@redhat.com,fzakkak@redhat.com')
