@@ -6,8 +6,8 @@ matrixJob('mandrel-linux-quarkus-tests') {
                 'master'
         )
         text('QUARKUS_VERSION',
-                '1.11.0.Beta1',
-                '1.7.5.Final'
+                '1.11.0.Beta2',
+                '1.7.6.Final'
         )
         labelExpression('LABEL', ['el8', 'el7||just_smoke_test'])
     }
@@ -23,8 +23,8 @@ matrixJob('mandrel-linux-quarkus-tests') {
             absolute(360)
         }
     }
-    combinationFilter('(MANDREL_VERSION=="20.1" && QUARKUS_VERSION=="1.7.5.Final") ||' +
-            ' ((MANDREL_VERSION=="20.3" || MANDREL_VERSION=="master") && QUARKUS_VERSION=="1.11.0.Beta1")')
+    combinationFilter('(MANDREL_VERSION=="20.1" && QUARKUS_VERSION=="1.7.6.Final") ||' +
+            ' ((MANDREL_VERSION=="20.3" || MANDREL_VERSION=="master") && QUARKUS_VERSION=="1.11.0.Beta2")')
     parameters {
         stringParam('QUARKUS_REPO', 'https://github.com/quarkusio/quarkus.git', 'Quarkus repository.')
     }
