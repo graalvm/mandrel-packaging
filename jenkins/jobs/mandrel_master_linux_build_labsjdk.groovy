@@ -36,6 +36,7 @@ Linux build for master branch with LabsJDK
                 'OPENJDK',
                 [
                         'labsjdk-ce-11-latest',
+                        'openjdk-11.0.9.1_1',
                         'openjdk-11.0.9_11',
                         'openjdk-11-ea',
                         'openjdk-11-latest'
