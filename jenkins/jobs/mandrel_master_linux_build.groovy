@@ -1,5 +1,5 @@
 job('mandrel-master-linux-build') {
-    label 'centos8'
+    label 'el8'
     displayName('Linux Build :: master')
     description('''
 Linux build for master branch.
@@ -128,7 +128,7 @@ Could be e.g. 20.1.0.0.Alpha1. It must not contain spaces as it is used in tarba
             }
         }
         downstreamParameterized {
-            trigger(['mandrel-linux-quarkus-tests/LABEL=el8,MANDREL_VERSION=master,QUARKUS_VERSION=1.11.0.Beta2/',
+            trigger(['mandrel-linux-quarkus-tests/LABEL=el8,MANDREL_VERSION=master,QUARKUS_VERSION=1.11.0.Final/',
                      'mandrel-linux-integration-tests/MANDREL_VERSION=master,label=el8']) {
                 condition('SUCCESS')
                 parameters {

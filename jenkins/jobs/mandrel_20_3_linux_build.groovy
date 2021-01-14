@@ -1,5 +1,5 @@
 job('mandrel-20.3-linux-build') {
-    label 'centos8'
+    label 'el8'
     displayName('Linux Build :: 20.3')
     description('''
 Linux build for 20.3 branch.
@@ -128,7 +128,7 @@ Could be e.g. 20.1.0.0.Alpha1. It must not contain spaces as it is used in tarba
             }
         }
         downstreamParameterized {
-            trigger(['mandrel-linux-quarkus-tests/LABEL=el8,MANDREL_VERSION=20.3,QUARKUS_VERSION=1.11.0.Beta2/',
+            trigger(['mandrel-linux-quarkus-tests/LABEL=el8,MANDREL_VERSION=20.3,QUARKUS_VERSION=1.11.0.Final/',
                      'mandrel-linux-integration-tests/MANDREL_VERSION=20.3,label=el8']) {
                 condition('SUCCESS')
                 parameters {

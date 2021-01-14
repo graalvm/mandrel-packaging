@@ -1,5 +1,5 @@
 job('mandrel-master-linux-build-labsjdk') {
-    label 'centos8'
+    label 'el8'
     displayName('Linux Build :: master labsjdk')
     description('''
 Linux build for master branch with LabsJDK
@@ -121,6 +121,7 @@ pushd mandrel
 pushd substratevm
 mx --java-home=${JAVA_HOME} build
 popd
+mx --primary-suite substratevm native-image --macro:native-image-agent-library
 BUILD=./sdk/mxbuild/linux-amd64/GRAALVM_*_JAVA11/graalvm-*-java11-*-dev
 MANDREL_DIR=mandrel-labsjava11-${MANDREL_VERSION_SUBSTRING}-SNAPSHOT
 mv ${BUILD} ${MANDREL_DIR}
@@ -162,7 +163,7 @@ if [[ "`./hello`" == "Hello." ]]; then echo Done; else echo Native image fail;ex
             }
         }
         downstreamParameterized {
-            trigger(['mandrel-linux-quarkus-tests/LABEL=el8,MANDREL_VERSION=master,QUARKUS_VERSION=1.11.0.Beta2/',
+            trigger(['mandrel-linux-quarkus-tests/LABEL=el8,MANDREL_VERSION=master,QUARKUS_VERSION=1.11.0.Final/',
                      'mandrel-linux-integration-tests/MANDREL_VERSION=master,label=el8']) {
                 condition('SUCCESS')
                 parameters {
