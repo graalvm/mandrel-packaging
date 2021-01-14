@@ -1,5 +1,5 @@
 job('mandrel-20.2-linux-build') {
-    label 'centos8'
+    label 'el8'
     displayName('Linux Build :: 20.2')
     description('''
 Linux build for 20.2 branch.
