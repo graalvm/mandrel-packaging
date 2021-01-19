@@ -5,7 +5,7 @@
     <modelVersion>4.0.0</modelVersion>
 
     <groupId>org.graalvm.nativeimage</groupId>
-    <artifactId>svn-agent</artifactId>
+    <artifactId>svm-agent</artifactId>
     <version>999</version>
 
     <name>SVM Agent</name>
