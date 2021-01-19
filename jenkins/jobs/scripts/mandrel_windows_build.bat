@@ -3,7 +3,7 @@
 pushd %WORKSPACE%
 
 set PYTHONHTTPSVERIFY=0
-set "JAVA_HOME=C:\Program Files\AdoptOpenJDK\%OPENJDK%"
+set "JAVA_HOME=C:\Program Files\%OPENJDK%"
 set "PATH=%JAVA_HOME%\bin;%PATH%"
 set MAVEN_REPO=C:\tmp\.m2\repository
 set "MANDREL_REPO=%WORKSPACE%\mandrel"
