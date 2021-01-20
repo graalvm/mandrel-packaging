@@ -35,9 +35,7 @@ call vcvars64
 IF NOT %ERRORLEVEL% == 0 ( exit 1 )
 
 set BUILD_JOB=""
-IF "%MANDREL_VERSION%"=="20.2" (
-    set BUILD_JOB=mandrel-20.2-windows-build
-) ELSE IF "%MANDREL_VERSION%"=="20.3" (
+IF "%MANDREL_VERSION%"=="20.3" (
     set BUILD_JOB=mandrel-20.3-windows-build
 ) ELSE IF "%MANDREL_VERSION%"=="master" (
     set BUILD_JOB=mandrel-master-windows-build
