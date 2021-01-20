@@ -35,10 +35,10 @@ Linux build for 20.3 branch.
         choiceParam(
                 'OPENJDK',
                 [
+                        'openjdk-11.0.10_9',
                         'openjdk-11.0.9.1_1',
-                        'openjdk-11.0.9_11',
                         'openjdk-11-ea',
-                        'openjdk-11-latest'
+                        'openjdk-11'
 
                 ],
                 'OpenJDK including Static libs'
