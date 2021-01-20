@@ -45,7 +45,7 @@ matrixJob('mandrel-linux-container-integration-tests') {
         buildDescription(/DESCRIPTION_STRING=([^\s]*)/, '\\1')
         shell('''
             docker volume prune
-            export JAVA_HOME="/usr/java/openjdk-11-latest"
+            export JAVA_HOME="/usr/java/openjdk-11"
             export PATH="${JAVA_HOME}/bin:${PATH}"
             mvn clean verify -Ptestsuite-builder-image -Dquarkus.native.builder-image=${BUILDER_IMAGE}
         ''')
