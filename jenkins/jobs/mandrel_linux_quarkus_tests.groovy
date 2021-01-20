@@ -3,6 +3,7 @@ matrixJob('mandrel-linux-quarkus-tests') {
         text('MANDREL_VERSION',
                 '20.1',
                 '20.3',
+                '21.0',
                 'master'
         )
         text('QUARKUS_VERSION',
@@ -24,7 +25,7 @@ matrixJob('mandrel-linux-quarkus-tests') {
         }
     }
     combinationFilter('(MANDREL_VERSION=="20.1" && QUARKUS_VERSION=="1.7.6.Final") ||' +
-            ' ((MANDREL_VERSION=="20.3" || MANDREL_VERSION=="master") && QUARKUS_VERSION=="1.11.0.Final")')
+            ' ((MANDREL_VERSION=="20.3" || MANDREL_VERSION=="21.0" || MANDREL_VERSION=="master") && QUARKUS_VERSION=="1.11.0.Final")')
     parameters {
         stringParam('QUARKUS_REPO', 'https://github.com/quarkusio/quarkus.git', 'Quarkus repository.')
     }
@@ -34,6 +35,7 @@ matrixJob('mandrel-linux-quarkus-tests') {
             case $MANDREL_VERSION in
                 20.1)    BUILD_JOB='mandrel-20.1-linux-build';;
                 20.3)    BUILD_JOB='mandrel-20.3-linux-build';;
+                21.0)    BUILD_JOB='mandrel-21.0-linux-build';;
                 master)  BUILD_JOB='mandrel-master-linux-build';;
                 *)
                     echo "UNKNOWN Mandrel version: $MANDREL_VERSION"

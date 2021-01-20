@@ -2,8 +2,8 @@ matrixJob('mandrel-linux-integration-tests') {
     axes {
         text('MANDREL_VERSION',
                 '20.1',
-                '20.2',
                 '20.3',
+                '21.0',
                 'master'
         )
         labelExpression('label', ['el8'])
@@ -43,8 +43,8 @@ matrixJob('mandrel-linux-integration-tests') {
         shell('''
             case $MANDREL_VERSION in
                 20.1)    BUILD_JOB='mandrel-20.1-linux-build';;
-                20.2)    BUILD_JOB='mandrel-20.2-linux-build';;
                 20.3)    BUILD_JOB='mandrel-20.3-linux-build';;
+                21.0)    BUILD_JOB='mandrel-21.0-linux-build';;
                 master)  BUILD_JOB='mandrel-master-linux-build';;
                 *)
                     echo "UNKNOWN Mandrel version: $MANDREL_VERSION"

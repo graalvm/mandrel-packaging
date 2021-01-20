@@ -1,8 +1,8 @@
 matrixJob('mandrel-windows-integration-tests') {
     axes {
         text('MANDREL_VERSION',
-                '20.2',
                 '20.3',
+                '21.0',
                 'master'
         )
         labelExpression('label', ['w2k19'])
@@ -45,8 +45,8 @@ call vcvars64
 IF NOT %ERRORLEVEL% == 0 ( exit 1 )
 
 set BUILD_JOB=""
-IF "%MANDREL_VERSION%"=="20.2" (
-    set BUILD_JOB=mandrel-20.2-windows-build
+IF "%MANDREL_VERSION%"=="21.0" (
+    set BUILD_JOB=mandrel-21.0-windows-build
 ) ELSE IF "%MANDREL_VERSION%"=="20.3" (
     set BUILD_JOB=mandrel-20.3-windows-build
 ) ELSE IF "%MANDREL_VERSION%"=="master" (
