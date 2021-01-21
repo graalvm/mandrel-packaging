@@ -2,6 +2,7 @@ matrixJob('mandrel-windows-quarkus-tests') {
     axes {
         text('MANDREL_VERSION',
                 '20.3',
+                '21.0',
                 'master'
         )
         text('QUARKUS_VERSION',
@@ -23,6 +24,7 @@ matrixJob('mandrel-windows-quarkus-tests') {
         }
     }
     combinationFilter('(MANDREL_VERSION=="20.3" && QUARKUS_VERSION=="1.11.0.Final") ||' +
+            ' (MANDREL_VERSION=="21.0" && QUARKUS_VERSION=="1.11.0.Final") ||' +
             ' (MANDREL_VERSION=="master" && QUARKUS_VERSION=="master")')
     parameters {
         stringParam('QUARKUS_REPO', 'https://github.com/quarkusio/quarkus.git', 'Quarkus repository.')
@@ -37,6 +39,8 @@ IF NOT %ERRORLEVEL% == 0 ( exit 1 )
 set BUILD_JOB=""
 IF "%MANDREL_VERSION%"=="20.3" (
     set BUILD_JOB=mandrel-20.3-windows-build
+) ELSE IF "%MANDREL_VERSION%"=="21.0" (
+    set BUILD_JOB=mandrel-21.0-windows-build
 ) ELSE IF "%MANDREL_VERSION%"=="master" (
     set BUILD_JOB=mandrel-master-windows-build
 ) ELSE (
