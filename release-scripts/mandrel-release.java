@@ -456,18 +456,19 @@ class MandrelRelease implements Callable<Integer> {
                 "Mandrel's `native-image` depends on the following packages:\n" +
                 "* glibc-devel\n" +
                 "* zlib-devel\n" +
+                "* freetype-devel\n" +
                 "* gcc\n" +
                 "\n" +
                 "On Fedora/CentOS/RHEL they can be installed with:\n" +
                 "```bash\n" +
-                "dnf install glibc-devel zlib-devel gcc libstdc++-static\n" +
+                "dnf install glibc-devel zlib-devel gcc freetype-devel libstdc++-static\n" +
                 "```\n" +
                 "\n" +
                 "Note the package might be called `glibc-static` instead of `libstdc++-static`.\n" +
                 "\n" +
                 "On Ubuntu-like systems with:\n" +
                 "```bash\n" +
-                "apt install gcc zlib1g-dev build-essential\n" +
+                "apt install g++ zlib1g-dev libfreetype6-dev\n" +
                 "```\n" +
                 "\n" +
                 "## Quick start\n" +
@@ -477,7 +478,7 @@ class MandrelRelease implements Callable<Integer> {
                 "$ export JAVA_HOME=\"$( pwd )/mandrel-java11-" + version + "\"\n" +
                 "$ export GRAALVM_HOME=\"${JAVA_HOME}\"\n" +
                 "$ export PATH=\"${JAVA_HOME}/bin:${PATH}\"\n" +
-                "$ curl -O -J  https://code.quarkus.io/api/download\n" +
+                "$ curl -O -J https://code.quarkus.io/d?e=io.quarkus:quarkus-resteasy\n" +
                 "$ unzip code-with-quarkus.zip\n" +
                 "$ cd code-with-quarkus/\n" +
                 "$ ./mvnw package -Pnative\n" +
@@ -491,7 +492,7 @@ class MandrelRelease implements Callable<Integer> {
                 "Mandrel Quarkus builder image can be used to build a Quarkus native Linux executable right away without any GRAALVM_HOME setup.\n" +
                 "\n" +
                 "```bash\n" +
-                "curl -O -J  https://code.quarkus.io/api/download\n" +
+                "curl -O -J  https://code.quarkus.io/d?e=io.quarkus:quarkus-resteasy\n" +
                 "unzip code-with-quarkus.zip\n" +
                 "cd code-with-quarkus\n" +
                 "        ./mvnw package -Pnative -Dquarkus.native.container-build=true -Dquarkus.native.builder-image=quay.io/quarkus/ubi-quarkus-mandrel:" + version + "-java11\n" +
@@ -501,7 +502,7 @@ class MandrelRelease implements Callable<Integer> {
                 "One can use the builder image on Windows with Docker Desktop (mind `Resources-> File sharing` settings so as Quarkus project directory is mountable).\n" +
                 "\n" +
                 "```batchfile\n" +
-                "powershell -c \"Invoke-WebRequest -OutFile quarkus.zip -Uri https://code.quarkus.io/api/download\"\n" +
+                "powershell -c \"Invoke-WebRequest -OutFile quarkus.zip -Uri https://code.quarkus.io/d?e=io.quarkus:quarkus-resteasy\"\n" +
                 "powershell -c \"Expand-Archive -Path quarkus.zip -DestinationPath . -Force\n" +
                 "cd code-with-quarkus\n" +
                 "mvnw package -Pnative -Dquarkus.native.container-build=true -Dquarkus.native.builder-image=quay.io/quarkus/ubi-quarkus-mandrel:" + version + "-java11\n" +
