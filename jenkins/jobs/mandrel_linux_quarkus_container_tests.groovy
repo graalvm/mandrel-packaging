@@ -51,7 +51,7 @@ job('mandrel-linux-quarkus-container-tests') {
             fi
             
             # Build Quarkus
-            ./mvnw clean install -DskipTests -pl '!docs'
+            ./mvnw -Dquickly
             
             # Test Quarkus
             export MODULES="-pl \\
@@ -59,7 +59,7 @@ job('mandrel-linux-quarkus-container-tests') {
 !maven"
             
             ./mvnw verify -f integration-tests/pom.xml --fail-at-end \\
-   ${MODULES} -Dno-format -Ddocker -Dnative \\
+   ${MODULES} -Dno-format -Ddocker -Dnative -Dnative.surefire.skip \\
   -Dquarkus.native.container-build=true \\
   -Dquarkus.native.builder-image="${CONTAINER_IMAGE}" \\
   -Dquarkus.native.container-runtime=${CONTAINER_RUNTIME}
