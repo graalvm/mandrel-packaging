@@ -23,9 +23,8 @@ matrixJob('mandrel-windows-quarkus-tests') {
             absolute(720)
         }
     }
-    combinationFilter('(MANDREL_VERSION=="20.3" && QUARKUS_VERSION=="1.11.0.Final") ||' +
-            ' (MANDREL_VERSION=="21.0" && QUARKUS_VERSION=="1.11.0.Final") ||' +
-            ' (MANDREL_VERSION=="master" && QUARKUS_VERSION=="master")')
+    combinationFilter(' (MANDREL_VERSION=="20.3" && QUARKUS_VERSION=="1.11.1.Final") ||' +
+            ' ((MANDREL_VERSION=="21.0" || MANDREL_VERSION=="master") && QUARKUS_VERSION=="master")')
     parameters {
         stringParam('QUARKUS_REPO', 'https://github.com/quarkusio/quarkus.git', 'Quarkus repository.')
     }
