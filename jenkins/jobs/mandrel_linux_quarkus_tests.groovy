@@ -7,7 +7,7 @@ matrixJob('mandrel-linux-quarkus-tests') {
                 'master'
         )
         text('QUARKUS_VERSION',
-                '1.11.0.Final',
+                '1.11.1.Final',
                 '1.7.6.Final'
         )
         labelExpression('LABEL', ['el8', 'el7||just_smoke_test'])

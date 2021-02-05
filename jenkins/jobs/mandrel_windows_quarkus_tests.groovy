@@ -6,7 +6,7 @@ matrixJob('mandrel-windows-quarkus-tests') {
                 'master'
         )
         text('QUARKUS_VERSION',
-                '1.11.0.Final',
+                '1.11.1.Final',
                 'master'
         )
         labelExpression('LABEL', ['w2k19'])
