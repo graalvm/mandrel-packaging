@@ -369,7 +369,7 @@ class MandrelRelease implements Callable<Integer> {
         try {
             final GHRepository repository = github.getRepository(REPOSITORY_NAME);
             final PagedIterable<GHMilestone> ghMilestones = repository.listMilestones(GHIssueState.OPEN);
-            final String finalVersion = version.majorMinorMicroPico() + ".Final";
+            final String finalVersion = version.majorMinorMicroPico() + "-Final";
             final GHMilestone milestone = ghMilestones.toList().stream().filter(m -> m.getTitle().equals(finalVersion)).findAny().orElse(null);
             final List<GHTag> tags = repository.listTags().toList();
             String changelog = createChangelog(repository, milestone, tags);
@@ -517,7 +517,7 @@ class MandrelRelease implements Callable<Integer> {
 
     private String createChangelog(GHRepository repository, GHMilestone milestone, List<GHTag> tags) throws IOException {
         if (milestone == null) {
-            error("No milestone titled " + version.majorMinorMicroPico() + ".Final! Can't produce changelog without it!");
+            error("No milestone titled " + version.majorMinorMicroPico() + "-Final! Can't produce changelog without it!");
         }
         if (suffix.equals("Final") && milestone.getOpenIssues() != 0) {
             error("There are still open issues in milestone " + milestone.getTitle() + ". Please take care of them and try again.");
@@ -615,7 +615,7 @@ class MandrelRelease implements Callable<Integer> {
     }
 
     class MandrelVersion implements Comparable<MandrelVersion> {
-        final static String MANDREL_VERSION_REGEX = "(\\d+)\\.(\\d+)\\.(\\d+)\\.(\\d+)(\\.(Final|(Alpha|Beta)\\d*))?";
+        final static String MANDREL_VERSION_REGEX = "(\\d+)\\.(\\d+)\\.(\\d+)\\.(\\d+)(-(Final|(Alpha|Beta)\\d*))?";
 
         int major;
         int minor;
@@ -697,7 +697,7 @@ class MandrelRelease implements Callable<Integer> {
         public String toString() {
             String version = majorMinorMicroPico();
             if (suffix != null) {
-                version += "." + suffix;
+                version += "-" + suffix;
             }
             return version;
         }
