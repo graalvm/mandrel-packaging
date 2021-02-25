@@ -6,7 +6,7 @@ matrixJob('mandrel-linux-integration-tests') {
                 '21.0',
                 'master'
         )
-        labelExpression('label', ['el8'])
+        labelExpression('LABEL', ['el8'])
     }
     description('Run Mandrel integration tests')
     displayName('Linux :: Integration tests')
