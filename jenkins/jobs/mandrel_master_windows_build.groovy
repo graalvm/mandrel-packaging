@@ -128,11 +128,12 @@ Could be e.g. 20.1.0.0.Alpha1. It must not contain spaces as it is used in tarba
             }
         }
         downstreamParameterized {
-            trigger(['mandrel-windows-quarkus-tests/LABEL=w2k19,MANDREL_VERSION=master,QUARKUS_VERSION=master',
-                     'mandrel-windows-integration-tests/MANDREL_VERSION=master,label=w2k19']) {
+            trigger(['mandrel-windows-quarkus-tests', 'mandrel-windows-integration-tests']) {
                 condition('SUCCESS')
                 parameters {
                     currentBuild()
+                    matrixSubset('(MANDREL_VERSION=="master" && QUARKUS_VERSION=="master" && LABEL=w2k19) ||' +
+                                 '(MANDREL_VERSION=="master" && LABEL=w2k19)')
                 }
             }
         }
