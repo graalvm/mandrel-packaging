@@ -167,8 +167,7 @@ if [[ "`./hello`" == "Hello." ]]; then echo Done; else echo Native image fail;ex
                 condition('SUCCESS')
                 parameters {
                     currentBuild()
-                    matrixSubset('(MANDREL_VERSION=="master" && QUARKUS_VERSION=="master" && LABEL=="el8") ||' +
-                                 '(MANDREL_VERSION=="master" && LABEL=="el8")')
+                    matrixSubset('(MANDREL_VERSION=="master" && LABEL=="el8")')
                 }
             }
         }
