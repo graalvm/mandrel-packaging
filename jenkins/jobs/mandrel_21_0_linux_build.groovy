@@ -132,8 +132,7 @@ Could be e.g. 20.1.0.0.Alpha1. It must not contain spaces as it is used in tarba
                 condition('SUCCESS')
                 parameters {
                     currentBuild()
-                    matrixSubset('(MANDREL_VERSION=="21.0" && QUARKUS_VERSION=="master" && LABEL=="el8") ||' +
-                                 '(MANDREL_VERSION=="21.0" && LABEL=="el8")')
+                    matrixSubset('(MANDREL_VERSION=="21.0" && LABEL=="el8")')
                 }
             }
         }
