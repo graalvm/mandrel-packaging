@@ -35,8 +35,8 @@ Linux build for 21.0 branch.
         choiceParam(
                 'OPENJDK',
                 [
+                        'openjdk-11.0.11_4',
                         'openjdk-11.0.10_9',
-                        'openjdk-11.0.9.1_1',
                         'openjdk-11-ea',
                         'openjdk-11'
 
