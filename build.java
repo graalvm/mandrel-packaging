@@ -35,6 +35,8 @@ import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import javax.management.MBeanException;
+
 import static java.nio.file.StandardCopyOption.REPLACE_EXISTING;
 
 public class build
@@ -56,7 +58,7 @@ public class build
         logger.debugf("Building...");
         if (options.mandrelVersion == null)
         {
-            options.mandrelVersion = getMandrelVersion(os, mandrelRepo);
+            options.mandrelVersion = getMandrelVersion(options, fs, os, mandrelRepo);
         }
         final String mandrelVersionUntilSpace = options.mandrelVersion.split(" ")[0];
 
@@ -217,26 +219,21 @@ public class build
         os.exec(archiveCommand);
     }
 
-    private static String getMandrelVersion(OperatingSystem os, Path mandrelRepo)
+    private static String getMandrelVersion(Options options, FileSystem fs, OperatingSystem os, Path mandrelRepo)
     {
-        // git -C ${MANDREL_REPO} describe 2>/dev/null || git -C ${MANDREL_REPO} rev-parse --short HEAD) | sed 's/mandrel-//'
-        List<String> output;
-        try
-        {
-            final Tasks.Exec command = Tasks.Exec.of(Arrays.asList("git", "describe"), mandrelRepo);
-            output = os.exec(command);
-        }
-        catch (RuntimeException e)
-        {
+        String mxVersion = os.exec(Mx.mxversion(options, fs::mxHome, fs::mandrelRepo)).get(0);
+
+        if (mxVersion.endsWith("-dev")) {
             final Tasks.Exec command = Tasks.Exec.of(Arrays.asList("git", "rev-parse", "--short", "HEAD"), mandrelRepo);
-            output = os.exec(command);
+            List<String> output = os.exec(command);
+            if (!output.isEmpty())
+            {
+                mxVersion += output.get(0);
+            }
         }
-        if (output.isEmpty())
-        {
-            return "dev";
-        }
-        return output.get(0).replace("mandrel-", "");
+        return mxVersion;
     }
+    
 
     private static void patchNativeImageLauncher(Path nativeImage, String mandrelVersion) throws IOException
     {
@@ -724,6 +721,22 @@ class Mx
                 mx.toString()
                 , options.verbose ? "-V" : ""
                 , "clean"
+            )
+            , mandrelRepo.apply(Path.of("substratevm"))
+        );
+    }
+
+    static Tasks.Exec mxversion(
+        Options options
+        , Function<Path, Path> mxHome
+        , Function<Path, Path> mandrelRepo
+    )
+    {
+        final Path mx = mxHome.apply(Paths.get("mx"));
+        return Tasks.Exec.of(
+            Arrays.asList(
+                mx.toString()
+                , "graalvm-version"
             )
             , mandrelRepo.apply(Path.of("substratevm"))
         );
