@@ -118,11 +118,9 @@ export JAVA_HOME=/usr/java/${OPENJDK}
 export MX_HOME=${WORKSPACE}/mx
 export PATH=${JAVA_HOME}/bin:${MX_HOME}:${PATH}
 pushd mandrel
-pushd substratevm
-mx --java-home=${JAVA_HOME} build
-popd
-mx --primary-suite substratevm native-image --macro:native-image-agent-library
-BUILD=./sdk/mxbuild/linux-amd64/GRAALVM_*_JAVA11/graalvm-*-java11-*-dev
+mx --primary-suite-path substratevm --components='Native Image' --native-images=lib:native-image-agent clean
+mx --primary-suite-path substratevm --components='Native Image' --native-images=lib:native-image-agent build
+BUILD=$(mx --primary-suite substratevm --components='Native Image' --native-images=lib:native-image-agent graalvm-home)
 MANDREL_DIR=mandrel-labsjava11-${MANDREL_VERSION_SUBSTRING}-SNAPSHOT
 mv ${BUILD} ${MANDREL_DIR}
 export MANDREL_HOME="$(pwd)/${MANDREL_DIR}"
