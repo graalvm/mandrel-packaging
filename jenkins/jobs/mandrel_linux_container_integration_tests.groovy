@@ -2,8 +2,8 @@ matrixJob('mandrel-linux-container-integration-tests') {
     axes {
         text('BUILDER_IMAGE',
                 'quay.io/quarkus/ubi-quarkus-mandrel:20.1-java11',
-                'quay.io/quarkus/ubi-quarkus-mandrel:20.2-java11',
                 'quay.io/quarkus/ubi-quarkus-mandrel:20.3-java11',
+                'quay.io/quarkus/ubi-quarkus-mandrel:21.0-java11',
                 'registry.access.redhat.com/quarkus/mandrel-20-rhel8',
                 'registry-proxy.engineering.redhat.com/rh-osbs/quarkus-quarkus-mandrel-20-rhel8'
         )
