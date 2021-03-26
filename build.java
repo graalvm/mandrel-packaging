@@ -280,7 +280,13 @@ public class build
                 logger.debugf("relativeCpMatcher.group(2): %s", relativeCpMatcher.group(2));
                 StringBuilder relativeCpLine = new StringBuilder(lines.get(i).length() * 2);
                 relativeCpLine.append(relativeCpMatcher.group(1));
-                relativeCpLine.append(":../../truffle/truffle-api.jar:../../jvmci/graal-sdk.jar");
+                if (IS_WINDOWS) {
+                    relativeCpLine.append(";..\\..\\truffle\\truffle-api.jar;..\\..\\jvmci\\graal-sdk.jar");
+                }
+                else
+                {
+                    relativeCpLine.append(":../../truffle/truffle-api.jar:../../jvmci/graal-sdk.jar");
+                }
                 relativeCpLine.append(relativeCpMatcher.group(2));
                 lines.set(i, relativeCpLine.toString());
                 logger.debugf("Classpath line AFTER: %s", lines.get(i));
