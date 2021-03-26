@@ -240,11 +240,13 @@ public class build
         final List<String> lines = Files.readAllLines(nativeImage);
         // This is jamming two sets of parameters in between three sections of command line.
         // It is fragile at best. We should probably just generate the line fresh.
-        final Pattern launcherPattern = Pattern.compile("(.*EnableJVMCI)(.*JDK9Plus.?)(.*)");
+        final Pattern launcherPattern = Pattern.compile("(.*EnableJVMCI)(.*NativeImage.?)(.*)");
+        final Pattern relativeCp = Pattern.compile("(IFS=: read -ra relative_cp <<< \".*)(\")");
         logger.debugf("mandrelVersion: %s", mandrelVersion);
         for (int i = 0; i < lines.size(); i++)
         {
             final Matcher launcherMatcher = launcherPattern.matcher(lines.get(i));
+            final Matcher relativeCpMatcher = relativeCp.matcher(lines.get(i));
             if (launcherMatcher.find())
             {
                 logger.debugf("Launcher line BEFORE: %s", lines.get(i));
@@ -263,21 +265,24 @@ public class build
                 {
                     launcherLine.append(" --upgrade-module-path ${location}/../../jvmci/graal.jar");
                 }
-                launcherLine.append(" --add-modules \"org.graalvm.truffle,org.graalvm.sdk\"");
-                if (IS_WINDOWS)
-                {
-                    launcherLine.append(" --module-path \"%location%\\..\\..\\truffle\\truffle-api.jar;%location%\\..\\..\\jvmci\\graal-sdk.jar\" ");
-                }
-                else
-                {
-                    launcherLine.append(" --module-path ${location}/../../truffle/truffle-api.jar:${location}/../../jvmci/graal-sdk.jar ");
-                }
                 launcherLine.append(launcherMatcher.group(2));
                 launcherLine.append(" -J--add-exports=jdk.internal.vm.ci/jdk.vm.ci.code=jdk.internal.vm.compiler ");
                 launcherLine.append(launcherMatcher.group(3));
                 lines.set(i, launcherLine.toString());
                 logger.debugf("Launcher line AFTER: %s", lines.get(i));
                 break;
+            }
+            else if(relativeCpMatcher.find())
+            {
+                logger.debugf("Classpath line BEFORE: %s", lines.get(i));
+                logger.debugf("relativeCpMatcher.group(1): %s", relativeCpMatcher.group(1));
+                logger.debugf("relativeCpMatcher.group(2): %s", relativeCpMatcher.group(2));
+                StringBuilder relativeCpLine = new StringBuilder(lines.get(i).length() * 2);
+                relativeCpLine.append(relativeCpMatcher.group(1));
+                relativeCpLine.append(":../../truffle/truffle-api.jar:../../jvmci/graal-sdk.jar");
+                relativeCpLine.append(relativeCpMatcher.group(2));
+                lines.set(i, relativeCpLine.toString());
+                logger.debugf("Classpath line AFTER: %s", lines.get(i));
             }
         }
         Files.write(nativeImage, lines, StandardCharsets.UTF_8);
@@ -1072,11 +1077,11 @@ class Maven
         new SimpleEntry<>("graal-sdk", Path.of("sdk", "mxbuild", "dists", "jdk11", "graal-sdk")),
         new SimpleEntry<>("svm", Path.of("substratevm", "mxbuild", "dists", "jdk11", "svm")),
         new SimpleEntry<>("pointsto", Path.of("substratevm", "mxbuild", "dists", "jdk11", "pointsto")),
-        new SimpleEntry<>("library-support", Path.of("substratevm", "mxbuild", "dists", "jdk1.8", "library-support")),
+        new SimpleEntry<>("library-support", Path.of("substratevm", "mxbuild", "dists", "jdk11", "library-support")),
         new SimpleEntry<>("truffle-api", Path.of("truffle", "mxbuild", "dists", "jdk11", "truffle-api")),
         new SimpleEntry<>("compiler", Path.of("compiler", "mxbuild", "dists", "jdk11", "graal")),
-        new SimpleEntry<>("objectfile", Path.of("substratevm", "mxbuild", "dists", "jdk1.8", "objectfile")),
-        new SimpleEntry<>("svm-driver", Path.of("substratevm", "mxbuild", "dists", "jdk1.8", "svm-driver")),
+        new SimpleEntry<>("objectfile", Path.of("substratevm", "mxbuild", "dists", "jdk11", "objectfile")),
+        new SimpleEntry<>("svm-driver", Path.of("substratevm", "mxbuild", "dists", "jdk11", "svm-driver")),
         new SimpleEntry<>("jvmti-agent-base", Path.of("substratevm", "mxbuild", "dists", "jdk1.8", "jvmti-agent-base")),
         new SimpleEntry<>("svm-agent", Path.of("substratevm", "mxbuild", "dists", "jdk11", "svm-agent")),
         new SimpleEntry<>("svm-diagnostics-agent", Path.of("substratevm", "mxbuild", "dists", "jdk1.8", "svm-diagnostics-agent"))
