@@ -158,6 +158,7 @@ public class build
             logger.debugf("Patch native image...");
             patchNativeImageLauncher(nativeImage, options.mandrelVersion);
 
+            logger.debugf("Build native agents...");
             buildAgents(nativeImage, fs, os);
         }
 
@@ -175,9 +176,9 @@ public class build
     private static void buildAgents(Path nativeImage, FileSystem fs, OperatingSystem os)
     {
         final Tasks.Exec agent = Tasks.Exec.of(Arrays.asList(nativeImage.toString(), "--macro:native-image-agent-library"), fs.workingDir());
-        os.exec(agent);
+        os.exec(agent, false);
         final Tasks.Exec dagent = Tasks.Exec.of(Arrays.asList(nativeImage.toString(), "--macro:native-image-diagnostics-agent-library"), fs.workingDir());
-        os.exec(dagent);
+        os.exec(dagent, false);
     }
 
     private static void createArchive(FileSystem fs, OperatingSystem os, Path mandrelHome, String archiveName)
@@ -216,16 +217,16 @@ public class build
         {
             throw new IllegalArgumentException("Unsupported archive suffix. Please use one of tar.gz or tarxz or zip");
         }
-        os.exec(archiveCommand);
+        os.exec(archiveCommand, false);
     }
 
     private static String getMandrelVersion(Options options, FileSystem fs, OperatingSystem os, Path mandrelRepo)
     {
-        String mxVersion = os.exec(Mx.mxversion(options, fs::mxHome, fs::mandrelRepo)).get(0);
+        String mxVersion = os.exec(Mx.mxversion(options, fs::mxHome, fs::mandrelRepo), true).get(0);
 
         if (mxVersion.endsWith("-dev")) {
             final Tasks.Exec command = Tasks.Exec.of(Arrays.asList("git", "rev-parse", "--short", "HEAD"), mandrelRepo);
-            List<String> output = os.exec(command);
+            List<String> output = os.exec(command, true);
             if (!output.isEmpty())
             {
                 mxVersion += output.get(0);
@@ -509,7 +510,7 @@ class SequentialBuild
 
     void build(Options options)
     {
-        final Tasks.Exec.Effects exec = new Tasks.Exec.Effects(os::exec);
+        final Tasks.Exec.Effects exec = new Tasks.Exec.Effects(task -> os.exec(task, false));
         final Tasks.FileReplace.Effects replace = Tasks.FileReplace.Effects.ofSystem();
         Mx.build(options, exec, replace, fs::mxHome, fs::mandrelRepo, os::javaHome);
         if (options.mavenAction != Options.MavenAction.NOP && !options.skipJava)
@@ -1623,7 +1624,7 @@ class OperatingSystem
 {
     static final Logger LOG = LogManager.getLogger(OperatingSystem.class);
 
-    List<String> exec(Tasks.Exec task)
+    List<String> exec(Tasks.Exec task, boolean getOuput)
     {
         LOG.debugf("Execute %s in %s", task.args, task.directory);
         try
@@ -1644,9 +1645,13 @@ class OperatingSystem
                     .put(envVar.name, envVar.value)
             );
 
-            final File outputFile = File.createTempFile("mandrel-builder-exec-output", "txt");
-            outputFile.deleteOnExit();
-            processBuilder.redirectOutput(outputFile);
+            File outputFile = null;
+            if (getOuput)
+            {
+                outputFile = File.createTempFile("mandrel-builder-exec-output", "txt");
+                outputFile.deleteOnExit();
+                processBuilder.redirectOutput(outputFile);
+            }
             Process process = processBuilder.start();
 
             if (process.waitFor() != 0)
@@ -1656,8 +1661,14 @@ class OperatingSystem
                 );
             }
 
-            final BufferedReader bufferedReader = new BufferedReader(new FileReader(outputFile));
-            return bufferedReader.lines().collect(Collectors.toList());
+            if (getOuput)
+            {
+                final BufferedReader bufferedReader = new BufferedReader(new FileReader(outputFile));
+                List<String> result = bufferedReader.lines().collect(Collectors.toList());
+                bufferedReader.close();
+                return result;
+            }
+            return null;
         }
         catch (Exception e)
         {
