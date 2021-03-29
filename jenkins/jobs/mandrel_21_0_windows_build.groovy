@@ -63,7 +63,7 @@ Windows build for 21.0 branch.
         )
         stringParam(
                 'PACKAGING_REPOSITORY_BRANCH_OR_TAG',
-                'master',
+                '21.0',
                 'e.g. master if you use heads or some tag if you use tags.'
         )
         stringParam(
