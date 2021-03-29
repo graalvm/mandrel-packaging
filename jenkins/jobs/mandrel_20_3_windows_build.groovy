@@ -63,7 +63,7 @@ Windows build for 20.3 branch.
         )
         stringParam(
                 'PACKAGING_REPOSITORY_BRANCH_OR_TAG',
-                'master',
+                '20.3',
                 'e.g. master if you use heads or some tag if you use tags.'
         )
         stringParam(
