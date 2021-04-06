@@ -56,6 +56,8 @@ job('mandrel-linux-quarkus-container-tests') {
             # Test Quarkus
             export MODULES="-pl \\
 !google-cloud-functions,\\
+!devtools,\\
+!bouncycastle-fips-jsse,\\
 !maven"
             
             ./mvnw verify -f integration-tests/pom.xml --fail-at-end \\
