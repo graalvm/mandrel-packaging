@@ -1635,7 +1635,7 @@ class OperatingSystem
 {
     static final Logger LOG = LogManager.getLogger(OperatingSystem.class);
 
-    List<String> exec(Tasks.Exec task, boolean getOuput)
+    List<String> exec(Tasks.Exec task, boolean getOutput)
     {
         LOG.debugf("Execute %s in %s", task.args, task.directory);
         try
@@ -1657,7 +1657,7 @@ class OperatingSystem
             );
 
             File outputFile = null;
-            if (getOuput)
+            if (getOutput)
             {
                 outputFile = File.createTempFile("mandrel-builder-exec-output", "txt");
                 outputFile.deleteOnExit();
@@ -1672,7 +1672,7 @@ class OperatingSystem
                 );
             }
 
-            if (getOuput)
+            if (getOutput)
             {
                 final BufferedReader bufferedReader = new BufferedReader(new FileReader(outputFile));
                 List<String> result = bufferedReader.lines().collect(Collectors.toList());
