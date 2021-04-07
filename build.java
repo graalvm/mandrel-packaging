@@ -257,7 +257,7 @@ public class build
                 StringBuilder launcherLine = new StringBuilder(lines.get(i).length() * 2);
                 launcherLine.append(launcherMatcher.group(1));
                 launcherLine.append(" -Dorg.graalvm.version=\"" + mandrelVersion + "\"");
-                launcherLine.append(" -Dorg.graalvm.config=\"(Mandrel Distribution)\"");
+                launcherLine.append(" -Dorg.graalvm.config=\"Mandrel Distribution\"");
                 if (IS_WINDOWS)
                 {
                     launcherLine.append(" --upgrade-module-path \"%location%\\..\\..\\jvmci\\graal.jar\"");
