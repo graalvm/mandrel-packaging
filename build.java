@@ -158,8 +158,11 @@ public class build
             logger.debugf("Patch native image...");
             patchNativeImageLauncher(nativeImage, options.mandrelVersion);
 
-            logger.debugf("Build native agents...");
-            buildAgents(nativeImage, fs, os);
+            if (!options.skipNativeAgents)
+            {
+                logger.debugf("Build native agents...");
+                buildAgents(nativeImage, fs, os);
+            }
         }
 
         logger.info("Congratulations you successfully built Mandrel " + mandrelVersionUntilSpace + " based on Java " + System.getProperty("java.runtime.version"));
@@ -353,6 +356,7 @@ class Options
     final boolean skipClean;
     final boolean skipJava;
     final boolean skipNative;
+    final boolean skipNativeAgents;
     final String mavenHome;
     final String archiveSuffix;
 
@@ -372,6 +376,7 @@ class Options
         , boolean skipClean
         , boolean skipJava
         , boolean skipNative
+        , boolean skipNativeAgents
         , String mavenHome
         , String archiveSuffix
     )
@@ -391,6 +396,7 @@ class Options
         this.skipClean = skipClean;
         this.skipJava = skipJava;
         this.skipNative = skipNative;
+        this.skipNativeAgents = skipNativeAgents;
         this.mavenHome = mavenHome;
         this.archiveSuffix = archiveSuffix;
     }
@@ -432,6 +438,7 @@ class Options
         final boolean skipClean = args.containsKey("skip-clean");
         final boolean skipJava = args.containsKey("skip-java");
         final boolean skipNative = args.containsKey("skip-native");
+        final boolean skipNativeAgents = args.containsKey("skip-native-agents");
 
         final String archiveSuffix = optional("archive-suffix", args);
 
@@ -451,6 +458,7 @@ class Options
             , skipClean
             , skipJava
             , skipNative
+            , skipNativeAgents
             , mavenHome
             , archiveSuffix
         );
