@@ -777,6 +777,7 @@ class Mx
                     mx.toString()
                     , options.verbose ? "-V" : ""
                     , "--trust-http"
+                    , "--no-jlinking"
                     , "--java-home"
                     , javaHome.get().toString()
                     , "--native-images=lib:native-image-agent,lib:native-image-diagnostics-agent"
