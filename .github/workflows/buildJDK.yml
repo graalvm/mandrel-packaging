@@ -90,8 +90,6 @@ jobs:
         ${MANDREL_HOME}/bin/native-image HelloStrict
         ./hellostrict | tee native.txt
         diff java.txt native.txt
-        ${MANDREL_HOME}/bin/native-image --macro:native-image-agent-library
-        ${MANDREL_HOME}/bin/native-image --macro:native-image-diagnostics-agent-library
         ${MANDREL_HOME}/bin/native-image --macro:native-image-launcher
     - name: Upload Mandrel build
       uses: actions/upload-artifact@v1
