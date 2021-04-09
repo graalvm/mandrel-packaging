@@ -2,7 +2,7 @@
 - name: Setup machine for mandrel-packaging
   hosts: all
   vars:
-    configuration: mandrel20.3-openjdk
+    configuration: default-openjdk
     mx_path: /opt/mx
     mandrel_path: /tmp/mandrel
     mandrel_repo: https://github.com/graalvm/mandrel.git
