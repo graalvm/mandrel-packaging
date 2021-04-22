@@ -47,10 +47,13 @@ IF NOT %ERRORLEVEL% == 0 ( exit 1 )
 set BUILD_JOB=""
 IF "%MANDREL_VERSION%"=="21.1" (
     set BUILD_JOB=mandrel-21.1-windows-build
+    powershell -c "(Get-Content pom.xml) -replace '<quarkus.version>.*', '<quarkus.version>2.0.0.Alpha1</quarkus.version>' | Out-File pom.xml"
 ) ELSE IF "%MANDREL_VERSION%"=="20.3" (
     set BUILD_JOB=mandrel-20.3-windows-build
+    powershell -c "(Get-Content pom.xml) -replace '<quarkus.version>.*', '<quarkus.version>1.11.6.Final</quarkus.version>' | Out-File pom.xml"
 ) ELSE IF "%MANDREL_VERSION%"=="master" (
     set BUILD_JOB=mandrel-master-windows-build
+    powershell -c "(Get-Content pom.xml) -replace '<quarkus.version>.*', '<quarkus.version>2.0.0.Alpha1</quarkus.version>' | Out-File pom.xml"
 ) ELSE (
     echo "UNKNOWN Mandrel version: %MANDREL_VERSION%"
     exit 1
