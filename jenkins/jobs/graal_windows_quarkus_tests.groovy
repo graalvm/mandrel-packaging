@@ -1,7 +1,7 @@
 matrixJob('graal-windows-quarkus-tests') {
     axes {
         text('GRAAL_VERSION',
-                '20.3.1',
+                '20.3.2',
         )
         text('QUARKUS_VERSION',
                 '1.11.6.Final',
@@ -21,7 +21,7 @@ matrixJob('graal-windows-quarkus-tests') {
             absolute(720)
         }
     }
-    combinationFilter('(GRAAL_VERSION=="20.3.1" && QUARKUS_VERSION=="master")')
+    combinationFilter('(GRAAL_VERSION=="20.3.2" && QUARKUS_VERSION=="master")')
     parameters {
         stringParam('QUARKUS_REPO', 'https://github.com/quarkusio/quarkus.git', 'Quarkus repository.')
     }
