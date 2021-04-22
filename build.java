@@ -779,16 +779,16 @@ class Mx
         LOG.debugf("Remove dependencies");
         final Path suitePy = Path.of("substratevm", "mx.substratevm", "suite.py");
         final Path path = mandrelRepo.apply(suitePy);
-        final List<String> dependencies = Arrays.asList(
-            "truffle:TRUFFLE_NFI",
-            "com.oracle.svm.truffle",
-            "com.oracle.svm.polyglot",
-            "truffle:TRUFFLE_API",
-            "com.oracle.svm.truffle.nfi",
-            "com.oracle.svm.truffle.nfi.posix",
-            "extracted-dependency:truffle:LIBFFI_DIST",
-            "extracted-dependency:truffle:TRUFFLE_NFI_NATIVE/include/*",
-            "file:src/com.oracle.svm.libffi/include/svm_libffi.h");
+        final List<String> dependencies = new ArrayList<>(Arrays.asList(
+                "truffle:TRUFFLE_NFI",
+                "com.oracle.svm.truffle",
+                "com.oracle.svm.polyglot",
+                "truffle:TRUFFLE_API",
+                "com.oracle.svm.truffle.nfi",
+                "com.oracle.svm.truffle.nfi.posix",
+                "extracted-dependency:truffle:LIBFFI_DIST",
+                "extracted-dependency:truffle:TRUFFLE_NFI_NATIVE/include/*",
+                "file:src/com.oracle.svm.libffi/include/svm_libffi.h"));
         if (!build.IS_WINDOWS)
         {
             dependencies.add("com.oracle.svm.truffle.nfi.windows");
