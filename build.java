@@ -786,10 +786,13 @@ class Mx
             "truffle:TRUFFLE_API",
             "com.oracle.svm.truffle.nfi",
             "com.oracle.svm.truffle.nfi.posix",
-            "com.oracle.svm.truffle.nfi.windows",
             "extracted-dependency:truffle:LIBFFI_DIST",
             "extracted-dependency:truffle:TRUFFLE_NFI_NATIVE/include/*",
             "file:src/com.oracle.svm.libffi/include/svm_libffi.h");
+        if (!build.IS_WINDOWS)
+        {
+            dependencies.add("com.oracle.svm.truffle.nfi.windows");
+        }
         Tasks.FileReplace.replace(
             new Tasks.FileReplace(path, removeDependencies(dependencies))
             , effects
