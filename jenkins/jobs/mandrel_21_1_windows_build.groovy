@@ -98,9 +98,9 @@ Could be e.g. 20.1.0.0.Alpha1. It must not contain spaces as it is used in tarba
             remote {
                 url('https://github.com/graalvm/mx.git')
             }
-            branches('refs/tags/5.279.1')
+            branches('refs/tags/5.282.0')
             extensions {
-                localBranch('5.279.1')
+                localBranch('5.282.0')
                 relativeTargetDirectory('mx')
             }
         }
