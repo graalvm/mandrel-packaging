@@ -1,8 +1,8 @@
-job('mandrel-20.1-linux-build') {
-    label 'el8'
-    displayName('Linux Build :: 20.1')
+job('mandrel-21.1-windows-build') {
+    label 'w2k19'
+    displayName('Windows Build :: 21.1')
     description('''
-Linux build for 20.1 branch.
+Windows build for 21.1 branch.
     ''')
     logRotator {
         numToKeep(5)
@@ -29,7 +29,7 @@ Linux build for 20.1 branch.
         )
         stringParam(
                 'BRANCH_OR_TAG',
-                'mandrel/20.1',
+                'mandrel/21.1',
                 'e.g. your PR branch or a specific tag.'
         )
         choiceParam(
@@ -63,12 +63,12 @@ Linux build for 20.1 branch.
         )
         stringParam(
                 'PACKAGING_REPOSITORY_BRANCH_OR_TAG',
-                '20.1',
+                '21.1',
                 'e.g. master if you use heads or some tag if you use tags.'
         )
         stringParam(
                 'MANDREL_VERSION_SUBSTRING',
-                '20.1-SNAPSHOT',
+                '21.1-SNAPSHOT',
                 '''Used as a part of Mandrel version, i.e. <pre>export MANDREL_VERSION="${MANDREL_VERSION_SUBSTRING} 
 git rev.: $( git log --pretty=format:%h -n1 ) </pre> it defaults to <pre>${BRANCH_OR_TAG}</pre>. 
 Could be e.g. 20.1.0.0.Alpha1. It must not contain spaces as it is used in tarball name too.'''
@@ -98,9 +98,9 @@ Could be e.g. 20.1.0.0.Alpha1. It must not contain spaces as it is used in tarba
             remote {
                 url('https://github.com/graalvm/mx.git')
             }
-            branches('refs/tags/5.259.0')
+            branches('refs/tags/5.279.1')
             extensions {
-                localBranch('5.259.0')
+                localBranch('5.279.1')
                 relativeTargetDirectory('mx')
             }
         }
@@ -109,12 +109,12 @@ Could be e.g. 20.1.0.0.Alpha1. It must not contain spaces as it is used in tarba
         scm('H H/2 * * *')
     }
     steps {
-        shell('echo MANDREL_VERSION_SUBSTRING=${MANDREL_VERSION_SUBSTRING}')
+        batchFile('echo MANDREL_VERSION_SUBSTRING=%MANDREL_VERSION_SUBSTRING%')
         buildDescription(/MANDREL_VERSION_SUBSTRING=([^\s]*)/, '\\1')
-        shell('./jenkins/jobs/scripts/mandrel_linux_build.sh')
+        batchFile('cmd /C jenkins\\jobs\\scripts\\mandrel_windows_build.bat')
     }
     publishers {
-        archiveArtifacts('*.tar.gz,MANDREL.md,*.sha1,*.sha256')
+        archiveArtifacts('*.zip,MANDREL.md,*.sha1,*.sha256')
         wsCleanup()
         extendedEmail {
             recipientList('karm@redhat.com,fzakkak@redhat.com')
@@ -128,11 +128,11 @@ Could be e.g. 20.1.0.0.Alpha1. It must not contain spaces as it is used in tarba
             }
         }
         downstreamParameterized {
-            trigger(['mandrel-linux-quarkus-tests', 'mandrel-linux-integration-tests']) {
+            trigger(['mandrel-windows-quarkus-tests', 'mandrel-windows-integration-tests']) {
                 condition('SUCCESS')
                 parameters {
                     currentBuild()
-                    matrixSubset('(MANDREL_VERSION=="20.1" && LABEL=="el8")')
+                    matrixSubset('(MANDREL_VERSION=="21.1" && LABEL=="w2k19")')
                 }
             }
         }

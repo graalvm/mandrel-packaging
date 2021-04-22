@@ -1,17 +1,16 @@
 matrixJob('mandrel-linux-quarkus-tests') {
     axes {
         text('MANDREL_VERSION',
-                '20.1',
                 '20.3',
-                '21.0',
+                '21.1',
                 'master'
         )
         text('QUARKUS_VERSION',
                 '1.11.6.Final',
-                '1.7.6.Final',
+                '1.13.2.Final',
                 'master'
         )
-        labelExpression('LABEL', ['el8', 'el7||just_smoke_test'])
+        labelExpression('LABEL', ['el8'])
     }
     description('Run Quarkus TS with Mandrel distros. Quarkus versions differ according to particular Mandrel versions.')
     displayName('Linux :: Quarkus TS')
@@ -25,9 +24,10 @@ matrixJob('mandrel-linux-quarkus-tests') {
             absolute(360)
         }
     }
-    combinationFilter('(MANDREL_VERSION=="20.1" && QUARKUS_VERSION=="1.7.6.Final") ||' +
+    combinationFilter(
             ' (MANDREL_VERSION=="20.3" && QUARKUS_VERSION=="1.11.6.Final") ||' +
-            ' ((MANDREL_VERSION=="21.0" || MANDREL_VERSION=="master") && QUARKUS_VERSION=="master")')
+            ' (MANDREL_VERSION=="21.1" && QUARKUS_VERSION=="1.13.2.Final") ||' +
+            ' ((MANDREL_VERSION=="21.1" || MANDREL_VERSION=="master") && QUARKUS_VERSION=="master")')
     parameters {
         stringParam('QUARKUS_REPO', 'https://github.com/quarkusio/quarkus.git', 'Quarkus repository.')
     }
@@ -35,9 +35,8 @@ matrixJob('mandrel-linux-quarkus-tests') {
         shell('''
             # Prepare Mandrel
             case $MANDREL_VERSION in
-                20.1)    BUILD_JOB='mandrel-20.1-linux-build';;
                 20.3)    BUILD_JOB='mandrel-20.3-linux-build';;
-                21.0)    BUILD_JOB='mandrel-21.0-linux-build';;
+                21.1)    BUILD_JOB='mandrel-21.1-linux-build';;
                 master)  BUILD_JOB='mandrel-master-linux-build';;
                 *)
                     echo "UNKNOWN Mandrel version: $MANDREL_VERSION"
@@ -62,33 +61,17 @@ matrixJob('mandrel-linux-quarkus-tests') {
             cd quarkus
             
             # Build Quarkus
-            ./mvnw clean install -DskipTests -pl '!docs'
+            ./mvnw install -Dquickly
             
             # Test Quarkus
-             if [[ "${LABEL}" =~ "el8" ]]; then
-                export MODULES="-pl \\
+            export MODULES="-pl \\
+!bouncycastle-fips-jsse,\\
+!devtools,\\
 !google-cloud-functions,\\
 !google-cloud-functions-http,\\
-!kubernetes/maven-invoker-way"
-             else
-                # The rest runs a subset, el7 VM has just 8G RAM
-                export MODULES="-pl \\
-bootstrap-config,\\
-class-transformer,\\
-common-jpa-entities,\\
-elytron-resteasy,\\
-jackson,\\
-logging-gelf,\\
-packaging,\\
-quartz,\\
-rest-client,\\
-resteasy-jackson,\\
-resteasy-mutiny,\\
-shared-library,\\
-test-extension,\\
-vertx-graphql,\\
-virtual-http-resteasy"
-             fi
+!kubernetes-client,\\
+!kubernetes/maven-invoker-way,\\
+!maven"
             ./mvnw verify -f integration-tests/pom.xml --fail-at-end --batch-mode -DfailIfNoTests=false -Dnative ${MODULES}
         ''')
     }

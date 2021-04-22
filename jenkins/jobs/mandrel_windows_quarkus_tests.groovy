@@ -2,11 +2,12 @@ matrixJob('mandrel-windows-quarkus-tests') {
     axes {
         text('MANDREL_VERSION',
                 '20.3',
-                '21.0',
+                '21.1',
                 'master'
         )
         text('QUARKUS_VERSION',
                 '1.11.6.Final',
+                '1.13.2.Final',
                 'master'
         )
         labelExpression('LABEL', ['w2k19'])
@@ -23,8 +24,10 @@ matrixJob('mandrel-windows-quarkus-tests') {
             absolute(720)
         }
     }
-    combinationFilter(' (MANDREL_VERSION=="20.3" && QUARKUS_VERSION=="1.11.6.Final") ||' +
-            ' ((MANDREL_VERSION=="21.0" || MANDREL_VERSION=="master") && QUARKUS_VERSION=="master")')
+    combinationFilter(
+            ' (MANDREL_VERSION=="20.3" && QUARKUS_VERSION=="1.11.6.Final") ||' +
+            ' (MANDREL_VERSION=="21.1" && QUARKUS_VERSION=="1.13.2.Final") ||' +
+            ' ((MANDREL_VERSION=="21.1" || MANDREL_VERSION=="master") && QUARKUS_VERSION=="master")')
     parameters {
         stringParam('QUARKUS_REPO', 'https://github.com/quarkusio/quarkus.git', 'Quarkus repository.')
     }
@@ -38,8 +41,8 @@ IF NOT %ERRORLEVEL% == 0 ( exit 1 )
 set BUILD_JOB=""
 IF "%MANDREL_VERSION%"=="20.3" (
     set BUILD_JOB=mandrel-20.3-windows-build
-) ELSE IF "%MANDREL_VERSION%"=="21.0" (
-    set BUILD_JOB=mandrel-21.0-windows-build
+) ELSE IF "%MANDREL_VERSION%"=="21.1" (
+    set BUILD_JOB=mandrel-21.1-windows-build
 ) ELSE IF "%MANDREL_VERSION%"=="master" (
     set BUILD_JOB=mandrel-master-windows-build
 ) ELSE (
@@ -84,9 +87,9 @@ cd quarkus
 
 REM Build and test Quarkus
 
-set "MODULES=-pl !google-cloud-functions,!google-cloud-functions-http,!kubernetes/maven-invoker-way,!kubernetes-client"
+set "MODULES=-pl !bouncycastle-fips-jsse,!devtools,!google-cloud-functions,!google-cloud-functions-http,!kubernetes-client,!kubernetes/maven-invoker-way,!maven"
 
-mvnw clean install -DskipTests -pl '!docs' & mvnw verify -f integration-tests/pom.xml --fail-at-end --batch-mode -DfailIfNoTests=false -Dnative %MODULES%
+mvnw install -Dquickly & mvnw verify -f integration-tests/pom.xml --fail-at-end --batch-mode -DfailIfNoTests=false -Dnative %MODULES%
 
         ''')
     }
