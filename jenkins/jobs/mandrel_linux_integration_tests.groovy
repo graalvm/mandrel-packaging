@@ -41,9 +41,9 @@ matrixJob('mandrel-linux-integration-tests') {
     steps {
         shell('''
             case $MANDREL_VERSION in
-                20.3)    BUILD_JOB='mandrel-20.3-linux-build';;
-                21.1)    BUILD_JOB='mandrel-21.1-linux-build';;
-                master)  BUILD_JOB='mandrel-master-linux-build';;
+                20.3)    BUILD_JOB='mandrel-20.3-linux-build' && sed -i 's~<quarkus.version>.*~<quarkus.version>1.11.6.Final</quarkus.version>~g' pom.xml;;
+                21.1)    BUILD_JOB='mandrel-21.1-linux-build' && sed -i 's~<quarkus.version>.*~<quarkus.version>2.0.0.Alpha1</quarkus.version>~g' pom.xml;;
+                master)  BUILD_JOB='mandrel-master-linux-build' && sed -i 's~<quarkus.version>.*~<quarkus.version>2.0.0.Alpha1</quarkus.version>~g' pom.xml;;
                 *)
                     echo "UNKNOWN Mandrel version: $MANDREL_VERSION"
                     exit 1
