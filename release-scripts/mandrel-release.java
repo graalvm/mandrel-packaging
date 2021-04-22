@@ -241,9 +241,9 @@ class MandrelRelease implements Callable<Integer> {
             ConsoleCredentialsProvider.install(); // Needed for gpg signing
             final String message;
             if (phase.equals("release")) {
-                message = "Unmark suites and bump version to " + newVersion.majorMinorMicroPico();
+                message = "Unmark suites and bump version to " + newVersion.majorMinorMicroPico() + " [skip ci]";
             } else {
-                message = "Mark suites for " + version + " release";
+                message = "Mark suites for " + version + " release [skip ci]";
             }
             final RevCommit commit = git.commit().setAll(true).setMessage(message).setSign(signCommits).call();
             final String author = commit.getAuthorIdent().getEmailAddress();
