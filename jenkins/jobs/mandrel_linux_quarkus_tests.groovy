@@ -21,7 +21,7 @@ matrixJob('mandrel-linux-quarkus-tests') {
     wrappers {
         timestamps()
         timeout {
-            absolute(360)
+            absolute(720)
         }
     }
     combinationFilter(
