@@ -19,15 +19,8 @@ matrixJob('mandrel-windows-integration-tests') {
             absolute(120)
         }
     }
-    //combinationFilter('jdk=="jdk-8" || label=="linux"')
     parameters {
         stringParam('MANDREL_INTEGRATION_TESTS_REPO', 'https://github.com/Karm/mandrel-integration-tests.git', 'Test suite repository.')
-        choiceParam(
-                'MANDREL_INTEGRATION_TESTS_REF_TYPE',
-                ['heads', 'tags'],
-                'Choose "heads" if you want to build from a branch, or "tags" if you want to build from a tag.'
-        )
-        stringParam('MANDREL_INTEGRATION_TESTS_REF', 'master', 'Branch or tag.')
     }
     scm {
         git {
@@ -47,13 +40,13 @@ IF NOT %ERRORLEVEL% == 0 ( exit 1 )
 set BUILD_JOB=""
 IF "%MANDREL_VERSION%"=="21.1" (
     set BUILD_JOB=mandrel-21.1-windows-build
-    powershell -c "(Get-Content -raw pom.xml) -replace '<quarkus.version>.*', '<quarkus.version>2.0.0.Alpha1</quarkus.version>' | Set-Content -nonewline pom.xml"
+    git clone --single-branch master %MANDREL_INTEGRATION_TESTS_REPO% .
 ) ELSE IF "%MANDREL_VERSION%"=="20.3" (
     set BUILD_JOB=mandrel-20.3-windows-build
-    powershell -c "(Get-Content -raw pom.xml) -replace '<quarkus.version>.*', '<quarkus.version>1.11.6.Final</quarkus.version>' | Set-Content -nonewline pom.xml"
+    git clone --single-branch --branch quarkus-1.11.x-mandrel-20.3.y %MANDREL_INTEGRATION_TESTS_REPO% .
 ) ELSE IF "%MANDREL_VERSION%"=="master" (
     set BUILD_JOB=mandrel-master-windows-build
-    powershell -c "(Get-Content -raw pom.xml) -replace '<quarkus.version>.*', '<quarkus.version>2.0.0.Alpha1</quarkus.version>' | Set-Content -nonewline pom.xml"
+    git clone --single-branch master %MANDREL_INTEGRATION_TESTS_REPO% .
 ) ELSE (
     echo "UNKNOWN Mandrel version: %MANDREL_VERSION%"
     exit 1

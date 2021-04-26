@@ -19,31 +19,19 @@ matrixJob('mandrel-linux-integration-tests') {
             absolute(120)
         }
     }
-    //combinationFilter('jdk=="jdk-8" || label=="linux"')
     parameters {
         stringParam('MANDREL_INTEGRATION_TESTS_REPO', 'https://github.com/Karm/mandrel-integration-tests.git', 'Test suite repository.')
-        choiceParam(
-                'MANDREL_INTEGRATION_TESTS_REF_TYPE',
-                ['heads', 'tags'],
-                'Choose "heads" if you want to build from a branch, or "tags" if you want to build from a tag.'
-        )
-        stringParam('MANDREL_INTEGRATION_TESTS_REF', 'master', 'Branch or tag.')
-    }
-    scm {
-        git {
-            remote {
-                url('${MANDREL_INTEGRATION_TESTS_REPO}')
-            }
-            branch('refs/${MANDREL_INTEGRATION_TESTS_REF_TYPE}/${MANDREL_INTEGRATION_TESTS_REF}')
-        }
     }
 
     steps {
         shell('''
             case $MANDREL_VERSION in
-                20.3)    BUILD_JOB='mandrel-20.3-linux-build' && sed -i 's~<quarkus.version>.*~<quarkus.version>1.11.6.Final</quarkus.version>~g' pom.xml;;
-                21.1)    BUILD_JOB='mandrel-21.1-linux-build' && sed -i 's~<quarkus.version>.*~<quarkus.version>2.0.0.Alpha1</quarkus.version>~g' pom.xml;;
-                master)  BUILD_JOB='mandrel-master-linux-build' && sed -i 's~<quarkus.version>.*~<quarkus.version>2.0.0.Alpha1</quarkus.version>~g' pom.xml;;
+                20.3)    BUILD_JOB='mandrel-20.3-linux-build' && \
+                         git clone --single-branch --branch quarkus-1.11.x-mandrel-20.3.y ${MANDREL_INTEGRATION_TESTS_REPO} .;;
+                21.1)    BUILD_JOB='mandrel-21.1-linux-build' && \
+                         git clone --single-branch master ${MANDREL_INTEGRATION_TESTS_REPO} .;;
+                master)  BUILD_JOB='mandrel-master-linux-build' && \
+                         git clone --single-branch master ${MANDREL_INTEGRATION_TESTS_REPO} .;;
                 *)
                     echo "UNKNOWN Mandrel version: $MANDREL_VERSION"
                     exit 1
