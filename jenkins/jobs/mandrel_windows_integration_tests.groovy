@@ -22,14 +22,6 @@ matrixJob('mandrel-windows-integration-tests') {
     parameters {
         stringParam('MANDREL_INTEGRATION_TESTS_REPO', 'https://github.com/Karm/mandrel-integration-tests.git', 'Test suite repository.')
     }
-    scm {
-        git {
-            remote {
-                url('${MANDREL_INTEGRATION_TESTS_REPO}')
-            }
-            branch('refs/${MANDREL_INTEGRATION_TESTS_REF_TYPE}/${MANDREL_INTEGRATION_TESTS_REF}')
-        }
-    }
 
     steps {
         batchFile('''
@@ -40,13 +32,13 @@ IF NOT %ERRORLEVEL% == 0 ( exit 1 )
 set BUILD_JOB=""
 IF "%MANDREL_VERSION%"=="21.1" (
     set BUILD_JOB=mandrel-21.1-windows-build
-    git clone --single-branch master %MANDREL_INTEGRATION_TESTS_REPO% .
+    git clone --single-branch --branch master %MANDREL_INTEGRATION_TESTS_REPO% .
 ) ELSE IF "%MANDREL_VERSION%"=="20.3" (
     set BUILD_JOB=mandrel-20.3-windows-build
     git clone --single-branch --branch quarkus-1.11.x-mandrel-20.3.y %MANDREL_INTEGRATION_TESTS_REPO% .
 ) ELSE IF "%MANDREL_VERSION%"=="master" (
     set BUILD_JOB=mandrel-master-windows-build
-    git clone --single-branch master %MANDREL_INTEGRATION_TESTS_REPO% .
+    git clone --single-branch --branch master %MANDREL_INTEGRATION_TESTS_REPO% .
 ) ELSE (
     echo "UNKNOWN Mandrel version: %MANDREL_VERSION%"
     exit 1
