@@ -10,7 +10,7 @@ matrixJob('mandrel-windows-quarkus-tests') {
                 '2.0.0.Alpha1',
                 'main'
         )
-        labelExpression('LABEL', ['w2k19'])
+        labelExpression('LABEL', ['w2k19&&docker'])
     }
     description('Run Quarkus TS with Mandrel distros. Quarkus versions differ according to particular Mandrel versions.')
     displayName('Windows :: Quarkus TS')
