@@ -781,7 +781,7 @@ class Mx
                     , "--java-home"
                     , javaHome.get().toString()
                     , "--native-images=lib:native-image-agent,lib:native-image-diagnostics-agent"
-                    , "--exclude-components=nju"
+                    , "--exclude-components=nju,svmnfi"
                     , "build"
                 )
                 , buildArgs.args
