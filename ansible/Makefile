@@ -3,7 +3,7 @@
 DOCKER ?= docker
 IMAGE_NAME ?= mandrel-packaging
 BOOT_CONTAINER ?= $(IMAGE_NAME)-boot
-PLAYBOOK ?= ansible/playbook.yml
+PLAYBOOK ?= playbook.yml
 PLAYBOOK_CONF ?= default-openjdk
 DOCKER_RUN_OPTIONS ?=
 AT ?= @
