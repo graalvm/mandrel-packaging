@@ -13,7 +13,7 @@ job('mandrel-linux-quarkus-container-tests') {
     }
     parameters {
         stringParam('CONTAINER_IMAGE', 'quay.io/quarkus/ubi-quarkus-mandrel:20.1-java11', 'Mandrel builder image.')
-        stringParam('CONTAINER_RUNTIME', 'docker', 'Command used, either "docker" or "podman". Note that podman is not installed on all executors...')
+        stringParam('CONTAINER_RUNTIME', 'podman', 'Command used, either "docker" or "podman". Note that podman is not installed on all executors...')
         stringParam('QUARKUS_REPO', 'https://github.com/quarkusio/quarkus.git', 'Quarkus repository.')
         stringParam('QUARKUS_VERSION', '1.11.6.Final', 'Quarkus version branch or tag.')
         choiceParam(
@@ -40,11 +40,11 @@ job('mandrel-linux-quarkus-container-tests') {
             export JAVA_HOME=/usr/java/${OPENJDK}
             export PATH=${JAVA_HOME}/bin:${PATH}
             set +e
-            docker stop $(docker ps -a -q)
-            docker rm $(docker ps -a -q)
-            docker volume prune
+            ${CONTAINER_RUNTIME} stop $(${CONTAINER_RUNTIME} ps -a -q)
+            ${CONTAINER_RUNTIME} rm $(${CONTAINER_RUNTIME} ps -a -q)
+            yes | ${CONTAINER_RUNTIME} volume prune
             set -e
-            docker pull ${CONTAINER_IMAGE}
+            ${CONTAINER_RUNTIME} pull ${CONTAINER_IMAGE}
             if [ "$?" -ne 0 ]; then
                 echo There was a problem pulling the image ${CONTAINER_IMAGE}. We cannot proceed.
                 exit 1

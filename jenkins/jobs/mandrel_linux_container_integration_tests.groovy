@@ -43,10 +43,10 @@ matrixJob('mandrel-linux-container-integration-tests') {
         shell('echo DESCRIPTION_STRING=${BUILDER_IMAGE}')
         buildDescription(/DESCRIPTION_STRING=([^\s]*)/, '\\1')
         shell('''
-            docker volume prune
+            yes | podman volume prune
             export JAVA_HOME="/usr/java/openjdk-11"
             export PATH="${JAVA_HOME}/bin:${PATH}"
-            mvn clean verify -Ptestsuite-builder-image -Dquarkus.native.builder-image=${BUILDER_IMAGE}
+            mvn clean verify -Ptestsuite-builder-image -Dquarkus.native.container-runtime=podman -Dquarkus.native.builder-image=${BUILDER_IMAGE}
         ''')
     }
     publishers {
