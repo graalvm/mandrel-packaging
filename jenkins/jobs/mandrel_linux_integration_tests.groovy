@@ -5,6 +5,10 @@ matrixJob('mandrel-linux-integration-tests') {
                 '21.1',
                 'master'
         )
+        text('QUARKUS_VERSION',
+                '1.11.6.Final',
+                '2.0.0.CR2',
+        )
         labelExpression('LABEL', ['el8'])
     }
     description('Run Mandrel integration tests')
@@ -19,6 +23,10 @@ matrixJob('mandrel-linux-integration-tests') {
             absolute(120)
         }
     }
+    combinationFilter(
+            ' (MANDREL_VERSION=="20.3" && QUARKUS_VERSION=="1.11.6.Final") ||' +
+            ' (MANDREL_VERSION=="20.3" && QUARKUS_VERSION=="2.0.0.CR2") ||' +
+            ' ((MANDREL_VERSION=="21.1" || MANDREL_VERSION=="master") && QUARKUS_VERSION=="2.0.0.CR2")')
     parameters {
         stringParam('MANDREL_INTEGRATION_TESTS_REPO', 'https://github.com/Karm/mandrel-integration-tests.git', 'Test suite repository.')
     }
@@ -42,6 +50,7 @@ matrixJob('mandrel-linux-integration-tests') {
             pushd archive
             MANDREL_TAR=`ls -1 *.tar.gz`
             tar -xvf "${MANDREL_TAR}"
+            source /etc/profile.d/jdks.sh
             export JAVA_HOME="$( pwd )/$( echo mandrel-java11*-*/ )"
             export GRAALVM_HOME="${JAVA_HOME}"
             export PATH="${JAVA_HOME}/bin:${PATH}"
@@ -50,7 +59,7 @@ matrixJob('mandrel-linux-integration-tests') {
                 exit 1
             fi
             popd
-            mvn clean verify -Ptestsuite
+            mvn clean verify -Ptestsuite -Dquarkus.version=${QUARKUS_VERSION}
         ''')
     }
     publishers {

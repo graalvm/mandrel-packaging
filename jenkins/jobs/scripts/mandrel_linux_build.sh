@@ -15,7 +15,8 @@ popd
 ${JAVA_HOME}/bin/java -ea build.java --maven-local-repository ${MAVEN_REPO} \
 --mandrel-repo ${MANDREL_REPO} --mx-home ${MX_HOME} \
 --mandrel-version ${MANDREL_VERSION} --mandrel-home ${MANDREL_HOME} \
---archive-suffix tar.gz
+--archive-suffix tar.gz \
+--verbose
 TAR_NAME="$( ls mandrel-*.tar.gz )"
 sha1sum ${TAR_NAME}>${TAR_NAME}.sha1
 sha256sum ${TAR_NAME}>${TAR_NAME}.sha256
