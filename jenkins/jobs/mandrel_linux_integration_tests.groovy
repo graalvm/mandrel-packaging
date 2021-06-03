@@ -35,7 +35,7 @@ matrixJob('mandrel-linux-integration-tests') {
         shell('''
             case $MANDREL_VERSION in
                 20.3)    BUILD_JOB='mandrel-20.3-linux-build' && \
-                         git clone --single-branch --branch quarkus-1.11.x-mandrel-20.3.y ${MANDREL_INTEGRATION_TESTS_REPO} .;;
+                         git clone --single-branch --branch ${MANDREL_INTEGRATION_TESTS_REPO} ${MANDREL_INTEGRATION_TESTS_REPO} .;;
                 21.1)    BUILD_JOB='mandrel-21.1-linux-build' && \
                          git clone --single-branch --branch master ${MANDREL_INTEGRATION_TESTS_REPO} .;;
                 master)  BUILD_JOB='mandrel-master-linux-build' && \
