@@ -244,7 +244,7 @@ public class build
         final List<String> lines = Files.readAllLines(nativeImage);
         // This is jamming two sets of parameters in between three sections of command line.
         // It is fragile at best. We should probably just generate the line fresh.
-        final Pattern launcherPattern = Pattern.compile("(.*EnableJVMCI)(.*NativeImage.?)(.*)");
+        final Pattern launcherPattern = Pattern.compile("(.*EnableJVMCI)(.*)");
         final Pattern relativeCp = Pattern.compile("(IFS=: read -ra relative_cp <<< \".*)(\")");
         logger.debugf("mandrelVersion: %s", mandrelVersion);
         for (int i = 0; i < lines.size(); i++)
@@ -256,7 +256,6 @@ public class build
                 logger.debugf("Launcher line BEFORE: %s", lines.get(i));
                 logger.debugf("launcherMatcher.group(1): %s", launcherMatcher.group(1));
                 logger.debugf("launcherMatcher.group(2): %s", launcherMatcher.group(2));
-                logger.debugf("launcherMatcher.group(3): %s", launcherMatcher.group(3));
                 StringBuilder launcherLine = new StringBuilder(lines.get(i).length() * 2);
                 launcherLine.append(launcherMatcher.group(1));
                 launcherLine.append(" -Dorg.graalvm.version=\"" + mandrelVersion + "\"");
@@ -270,8 +269,6 @@ public class build
                     launcherLine.append(" --upgrade-module-path ${location}/../../jvmci/graal.jar");
                 }
                 launcherLine.append(launcherMatcher.group(2));
-                launcherLine.append(" -J--add-exports=jdk.internal.vm.ci/jdk.vm.ci.code=jdk.internal.vm.compiler ");
-                launcherLine.append(launcherMatcher.group(3));
                 lines.set(i, launcherLine.toString());
                 logger.debugf("Launcher line AFTER: %s", lines.get(i));
                 break;
