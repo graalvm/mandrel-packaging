@@ -40,11 +40,11 @@ job('mandrel-linux-quarkus-container-tests') {
             export JAVA_HOME=/usr/java/${OPENJDK}
             export PATH=${JAVA_HOME}/bin:${PATH}
             set +e
-            ${CONTAINER_RUNTIME} stop $(${CONTAINER_RUNTIME} ps -a -q)
-            ${CONTAINER_RUNTIME} rm $(${CONTAINER_RUNTIME} ps -a -q)
-            yes | ${CONTAINER_RUNTIME} volume prune
+            sudo ${CONTAINER_RUNTIME} stop $(sudo ${CONTAINER_RUNTIME} ps -a -q)
+            sudo ${CONTAINER_RUNTIME} rm $(sudo ${CONTAINER_RUNTIME} ps -a -q)
+            yes | sudo ${CONTAINER_RUNTIME} volume prune
             set -e
-            ${CONTAINER_RUNTIME} pull ${CONTAINER_IMAGE}
+            sudo ${CONTAINER_RUNTIME} pull ${CONTAINER_IMAGE}
             if [ "$?" -ne 0 ]; then
                 echo There was a problem pulling the image ${CONTAINER_IMAGE}. We cannot proceed.
                 exit 1

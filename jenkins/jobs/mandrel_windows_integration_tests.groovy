@@ -43,7 +43,7 @@ IF "%MANDREL_VERSION%"=="21.1" (
     git clone --single-branch --branch master %MANDREL_INTEGRATION_TESTS_REPO% .
 ) ELSE IF "%MANDREL_VERSION%"=="20.3" (
     set BUILD_JOB=mandrel-20.3-windows-build
-    git clone --single-branch --branch %MANDREL_INTEGRATION_TESTS_REPO% %MANDREL_INTEGRATION_TESTS_REPO% .
+    git clone --single-branch --branch master %MANDREL_INTEGRATION_TESTS_REPO% .
 ) ELSE IF "%MANDREL_VERSION%"=="master" (
     set BUILD_JOB=mandrel-master-windows-build
     git clone --single-branch --branch master %MANDREL_INTEGRATION_TESTS_REPO% .
