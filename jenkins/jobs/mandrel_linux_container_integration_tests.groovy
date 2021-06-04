@@ -51,7 +51,9 @@ matrixJob('mandrel-linux-container-integration-tests') {
         buildDescription(/DESCRIPTION_STRING=([^\s]*)/, '\\1')
         shell('''
             source /etc/profile.d/jdks.sh
-            yes | podman volume prune
+            set +e
+            yes | sudo podman volume prune
+            set -e
             export JAVA_HOME="/usr/java/openjdk-11"
             export PATH="${JAVA_HOME}/bin:${PATH}"
             mvn clean verify -Ptestsuite-builder-image -Dquarkus.version=${QUARKUS_VERSION} -Dquarkus.native.container-runtime=podman -Dquarkus.native.builder-image=${BUILDER_IMAGE}
