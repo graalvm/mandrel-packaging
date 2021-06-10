@@ -20,7 +20,7 @@ env:
 
 jobs:
   build-and-test:
-    name: Build and test ${{ matrix.mandrel-ref }} branch/tag
+    name: Linux Build and test ${{ matrix.mandrel-ref }} branch/tag
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -40,13 +40,13 @@ jobs:
         fetch-depth: 1
         ref: master
         path: ${{ github.workspace }}/mx
-    - uses: actions/cache@v1
+    - uses: actions/cache@v2.1.5
       with:
         path: ~/.mx
         key: ${{ runner.os }}-mx-${{ hashFiles('**/suite.py') }}
         restore-keys: |
           ${{ runner.os }}-mx-
-    - uses: actions/cache@v1
+    - uses: actions/cache@v2.1.5
       with:
         path: ~/.m2/repository
         key: ${{ runner.os }}-mx-${{ hashFiles('**/suite.py') }}
@@ -107,3 +107,113 @@ jobs:
       with:
         name: mandrel-java11-linux-amd64-test-build-tarxz
         path: mandrel-java11-linux-amd64.tarxz
+
+  build-and-test-on-windows:
+    name: Windows Build and test ${{ matrix.mandrel-ref }} branch/tag
+    runs-on: windows-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        mandrel-ref: [graal/master]
+    steps:
+    - uses: actions/checkout@v2
+    - uses: actions/checkout@v2
+      with:
+        repository: graalvm/mandrel.git
+        fetch-depth: 1
+        ref: ${{ matrix.mandrel-ref }}
+        path: ${{ github.workspace }}/mandrel
+    - uses: actions/checkout@v2
+      with:
+        repository: graalvm/mx.git
+        fetch-depth: 1
+        ref: master
+        path: ${{ github.workspace }}/mx
+    - uses: actions/cache@v2.1.5
+      with:
+        path: ~/.mx
+        key: ${{ runner.os }}-mx-${{ hashFiles('**/suite.py') }}
+        restore-keys: |
+          ${{ runner.os }}-mx-
+    - uses: actions/cache@v2.1.5
+      with:
+        path: ~/.m2/repository
+        key: ${{ runner.os }}-mx-${{ hashFiles('**/suite.py') }}
+        restore-keys: |
+          ${{ runner.os }}-${{ matrix.quarkus-name }}-maven-
+    - name: Get latest openJDK11 with static libs
+      run: |
+        $files = @{
+            "https://api.adoptopenjdk.net/v3/binary/latest/11/ga/windows/x64/jdk/hotspot/normal/openjdk" = "jdk.zip"
+            "https://api.adoptopenjdk.net/v3/binary/latest/11/ga/windows/x64/staticlibs/hotspot/normal/openjdk" = "jdk-static-libs.zip"
+        }
+        $wc = New-Object System.Net.WebClient
+        foreach ($h in $files.GetEnumerator()) {
+            Write-Host "Processing $($h.Name) -> $($h.Value)"
+            $wc.DownloadFile($($h.Name), "$Env:temp\$($h.Value)")
+            Expand-Archive "$Env:temp\$($h.Value)" -DestinationPath "$Env:temp"
+        }
+        Move-Item -Path "$Env:temp\openjdk*" -Destination $Env:JAVA_HOME
+        & $Env:JAVA_HOME\bin\java -version
+    - name: Build Mandrel
+      run: |
+        cmd.exe /c "call `"C:\Program Files (x86)\Microsoft Visual Studio\2019\Enterprise\VC\Auxiliary\Build\vcvars64.bat`" && set > %temp%\vcvars64.txt"
+        Get-Content "$Env:temp\vcvars64.txt" | Foreach-Object {
+          if ($_ -match "^(.*?)=(.*)$") {
+            Set-Content "Env:\$($matches[1])" $matches[2]
+          }
+        }
+        & $Env:JAVA_HOME\bin\java -ea build.java `
+          --verbose `
+          --mx-home $Env:MX_HOME `
+          --mandrel-version $Env:MANDREL_VERSION `
+          --mandrel-repo $Env:MANDREL_REPO `
+          --archive-suffix zip
+    - name: Smoke tests
+      run: |
+        cmd.exe /c "call `"C:\Program Files (x86)\Microsoft Visual Studio\2019\Enterprise\VC\Auxiliary\Build\vcvars64.bat`" && set > %temp%\vcvars64.txt"
+        Get-Content "$Env:temp\vcvars64.txt" | Foreach-Object {
+          if ($_ -match "^(.*?)=(.*)$") {
+            Set-Content "Env:\$($matches[1])" $matches[2]
+          }
+        }
+        $MANDREL_VERSION_UNTIL_SPACE=$Env:MANDREL_VERSION -replace "^(.*?) .*$","`$1"
+        $MANDREL_HOME=".\mandrel-java11-$MANDREL_VERSION_UNTIL_SPACE"
+        $VERSION=(& $MANDREL_HOME\bin\native-image.cmd --version)
+        Write-Host $VERSION
+        if ("$VERSION" -NotMatch "$Env:MANDREL_VERSION") {
+          exit 1
+        }
+        Set-Content -Path 'HelloStrict.java' -Value "
+        public class HelloStrict {
+            public static void main(String[] args) {
+                System.out.printf(
+                    `"Hello %1$,.12f %2$,.12f %3$,.12f %n`"
+                    , StrictMath.cos(0.0)
+                    , StrictMath.IEEEremainder(3.0, 5.0)
+                    , StrictMath.IEEEremainder(-16.3, 4.1)
+                );
+            }
+        }
+        "
+        & $MANDREL_HOME\bin\javac HelloStrict.java
+        & $MANDREL_HOME\bin\java HelloStrict | Set-Content java.txt
+        & $MANDREL_HOME\bin\native-image.cmd HelloStrict
+        & ./hellostrict | Set-Content native.txt
+        $DIFF=(Compare-Object -CaseSensitive (Get-Content java.txt) (Get-Content native.txt))
+        if ($DIFF -ne $null) {
+          Write-Host $DIFF
+          exit 1
+        }
+        # $PREFIX && ${MANDREL_HOME}/bin/native-image.cmd --macro:native-image-launcher
+    - name: Rename mandrel archive
+      shell: bash
+      run: |
+        export MANDREL_VERSION_UNTIL_SPACE="$( echo ${MANDREL_VERSION} | sed -e 's/\([^ ]*\).*/\1/;t' )"
+        export ARCHIVE_NAME="mandrel-java11-windows-amd64-${MANDREL_VERSION_UNTIL_SPACE}.zip"
+        mv ${ARCHIVE_NAME} mandrel-java11-windows-amd64.zip
+    - name: Upload Mandrel build
+      uses: actions/upload-artifact@v1
+      with:
+        name: mandrel-java11-windows-amd64-test-build
+        path: mandrel-java11-windows-amd64.zip
