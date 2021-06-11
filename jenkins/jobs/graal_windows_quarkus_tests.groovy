@@ -4,7 +4,7 @@ matrixJob('graal-windows-quarkus-tests') {
                 '20.3.2',
         )
         text('QUARKUS_VERSION',
-                '1.11.6.Final',
+                '1.11.7.Final',
                 'main'
         )
         labelExpression('LABEL', ['w2k19'])

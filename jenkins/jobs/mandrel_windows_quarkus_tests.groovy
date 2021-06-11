@@ -6,8 +6,8 @@ matrixJob('mandrel-windows-quarkus-tests') {
                 'master'
         )
         text('QUARKUS_VERSION',
-                '1.11.6.Final',
-                '2.0.0.CR2',
+                '1.11.7.Final',
+                '2.0.0.CR3',
                 'main'
         )
         labelExpression('LABEL', ['w2k19&&docker'])
@@ -25,9 +25,9 @@ matrixJob('mandrel-windows-quarkus-tests') {
         }
     }
     combinationFilter(
-            ' (MANDREL_VERSION=="20.3" && QUARKUS_VERSION=="1.11.6.Final") ||' +
-            ' (MANDREL_VERSION=="20.3" && QUARKUS_VERSION=="2.0.0.CR2") ||' +
-            ' ((MANDREL_VERSION=="21.1" || MANDREL_VERSION=="master") && (QUARKUS_VERSION=="main" || QUARKUS_VERSION=="2.0.0.CR2"))')
+            ' (MANDREL_VERSION=="20.3" && QUARKUS_VERSION=="1.11.7.Final") ||' +
+            ' (MANDREL_VERSION=="20.3" && QUARKUS_VERSION=="2.0.0.CR3") ||' +
+            ' ((MANDREL_VERSION=="21.1" || MANDREL_VERSION=="master") && (QUARKUS_VERSION=="main" || QUARKUS_VERSION=="2.0.0.CR3"))')
     parameters {
         stringParam('QUARKUS_REPO', 'https://github.com/quarkusio/quarkus.git', 'Quarkus repository.')
     }

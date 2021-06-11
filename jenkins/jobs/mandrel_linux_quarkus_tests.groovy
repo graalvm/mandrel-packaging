@@ -6,8 +6,8 @@ matrixJob('mandrel-linux-quarkus-tests') {
                 'master'
         )
         text('QUARKUS_VERSION',
-                '1.11.6.Final',
-                '2.0.0.CR2',
+                '1.11.7.Final',
+                '2.0.0.CR3',
                 'main'
         )
         labelExpression('LABEL', ['el8'])
@@ -25,9 +25,9 @@ matrixJob('mandrel-linux-quarkus-tests') {
         }
     }
     combinationFilter(
-            ' (MANDREL_VERSION=="20.3" && QUARKUS_VERSION=="1.11.6.Final") ||' +
-            ' (MANDREL_VERSION=="20.3" && QUARKUS_VERSION=="2.0.0.CR2") ||' +
-            ' ((MANDREL_VERSION=="21.1" || MANDREL_VERSION=="master") && (QUARKUS_VERSION=="main" || QUARKUS_VERSION=="2.0.0.CR2"))')
+            ' (MANDREL_VERSION=="20.3" && QUARKUS_VERSION=="1.11.7.Final") ||' +
+            ' (MANDREL_VERSION=="20.3" && QUARKUS_VERSION=="2.0.0.CR3") ||' +
+            ' ((MANDREL_VERSION=="21.1" || MANDREL_VERSION=="master") && (QUARKUS_VERSION=="main" || QUARKUS_VERSION=="2.0.0.CR3"))')
     parameters {
         stringParam('QUARKUS_REPO', 'https://github.com/quarkusio/quarkus.git', 'Quarkus repository.')
     }
@@ -42,7 +42,7 @@ matrixJob('mandrel-linux-quarkus-tests') {
                     echo "UNKNOWN Mandrel version: $MANDREL_VERSION"
                     exit 1
             esac
-            wget "https://ci.modcluster.io/view/Mandrel/job/${BUILD_JOB}/lastSuccessfulBuild/artifact/*zip*/archive.zip" --no-check-certificate 
+            wget "https://ci.modcluster.io/view/Mandrel/job/${BUILD_JOB}/lastSuccessfulBuild/artifact/*zip*/archive.zip" 
             unzip archive.zip
             pushd archive
             MANDREL_TAR=`ls -1 *.tar.gz`
