@@ -6,8 +6,8 @@ matrixJob('mandrel-windows-integration-tests') {
                 'master'
         )
         text('QUARKUS_VERSION',
-                '1.11.6.Final',
-                '2.0.0.CR2',
+                '1.11.7.Final',
+                '2.0.0.CR3',
         )
         labelExpression('LABEL', ['w2k19'])
     }
@@ -24,33 +24,33 @@ matrixJob('mandrel-windows-integration-tests') {
         }
     }
     combinationFilter(
-            ' (MANDREL_VERSION=="20.3" && QUARKUS_VERSION=="1.11.6.Final") ||' +
-            ' (MANDREL_VERSION=="20.3" && QUARKUS_VERSION=="2.0.0.CR2") ||' +
-            ' ((MANDREL_VERSION=="21.1" || MANDREL_VERSION=="master") && QUARKUS_VERSION=="2.0.0.CR2")')
+            ' (MANDREL_VERSION=="20.3" && QUARKUS_VERSION=="1.11.7.Final") ||' +
+            ' (MANDREL_VERSION=="20.3" && QUARKUS_VERSION=="2.0.0.CR3") ||' +
+            ' ((MANDREL_VERSION=="21.1" || MANDREL_VERSION=="master") && QUARKUS_VERSION=="2.0.0.CR3")')
     parameters {
         stringParam('MANDREL_INTEGRATION_TESTS_REPO', 'https://github.com/Karm/mandrel-integration-tests.git', 'Test suite repository.')
+        choiceParam(
+                'MANDREL_INTEGRATION_TESTS_REF_TYPE',
+                ['heads', 'tags'],
+                'Choose "heads" if you want to build from a branch, or "tags" if you want to build from a tag.'
+        )
+        stringParam('MANDREL_INTEGRATION_TESTS_REF', 'master', 'Branch or tag.')
     }
-
+    scm {
+        git {
+            remote {
+                url('${MANDREL_INTEGRATION_TESTS_REPO}')
+            }
+            branch('refs/${MANDREL_INTEGRATION_TESTS_REF_TYPE}/${MANDREL_INTEGRATION_TESTS_REF}')
+        }
+    }
     steps {
+        batchFile('echo DESCRIPTION_STRING=Q:%QUARKUS_VERSION%,M:%MANDREL_VERSION%')
+        buildDescription(/DESCRIPTION_STRING=([^\s]*)/, '\\1')
         batchFile('''
 @echo off
 call vcvars64
 IF NOT %ERRORLEVEL% == 0 ( exit 1 )
-
-set BUILD_JOB=""
-IF "%MANDREL_VERSION%"=="21.1" (
-    set BUILD_JOB=mandrel-21.1-windows-build
-    git clone --single-branch --branch master %MANDREL_INTEGRATION_TESTS_REPO% .
-) ELSE IF "%MANDREL_VERSION%"=="20.3" (
-    set BUILD_JOB=mandrel-20.3-windows-build
-    git clone --single-branch --branch master %MANDREL_INTEGRATION_TESTS_REPO% .
-) ELSE IF "%MANDREL_VERSION%"=="master" (
-    set BUILD_JOB=mandrel-master-windows-build
-    git clone --single-branch --branch master %MANDREL_INTEGRATION_TESTS_REPO% .
-) ELSE (
-    echo "UNKNOWN Mandrel version: %MANDREL_VERSION%"
-    exit 1
-)
 
 set downloadCommand= ^
 $c = New-Object System.Net.WebClient; ^

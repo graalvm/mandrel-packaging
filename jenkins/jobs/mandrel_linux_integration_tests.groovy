@@ -6,8 +6,8 @@ matrixJob('mandrel-linux-integration-tests') {
                 'master'
         )
         text('QUARKUS_VERSION',
-                '1.11.6.Final',
-                '2.0.0.CR2',
+                '1.11.7.Final',
+                '2.0.0.CR3',
         )
         labelExpression('LABEL', ['el8'])
     }
@@ -24,28 +24,31 @@ matrixJob('mandrel-linux-integration-tests') {
         }
     }
     combinationFilter(
-            ' (MANDREL_VERSION=="20.3" && QUARKUS_VERSION=="1.11.6.Final") ||' +
-            ' (MANDREL_VERSION=="20.3" && QUARKUS_VERSION=="2.0.0.CR2") ||' +
-            ' ((MANDREL_VERSION=="21.1" || MANDREL_VERSION=="master") && QUARKUS_VERSION=="2.0.0.CR2")')
+            ' (MANDREL_VERSION=="20.3" && QUARKUS_VERSION=="1.11.7.Final") ||' +
+            ' (MANDREL_VERSION=="20.3" && QUARKUS_VERSION=="2.0.0.CR3") ||' +
+            ' ((MANDREL_VERSION=="21.1" || MANDREL_VERSION=="master") && QUARKUS_VERSION=="2.0.0.CR3")')
     parameters {
         stringParam('MANDREL_INTEGRATION_TESTS_REPO', 'https://github.com/Karm/mandrel-integration-tests.git', 'Test suite repository.')
+        choiceParam(
+                'MANDREL_INTEGRATION_TESTS_REF_TYPE',
+                ['heads', 'tags'],
+                'Choose "heads" if you want to build from a branch, or "tags" if you want to build from a tag.'
+        )
+        stringParam('MANDREL_INTEGRATION_TESTS_REF', 'master', 'Branch or tag.')
     }
-
+    scm {
+        git {
+            remote {
+                url('${MANDREL_INTEGRATION_TESTS_REPO}')
+            }
+            branch('refs/${MANDREL_INTEGRATION_TESTS_REF_TYPE}/${MANDREL_INTEGRATION_TESTS_REF}')
+        }
+    }
     steps {
+        shell('echo DESCRIPTION_STRING=Q:${QUARKUS_VERSION},M:${MANDREL_VERSION}')
+        buildDescription(/DESCRIPTION_STRING=([^\s]*)/, '\\1')
         shell('''
-            case $MANDREL_VERSION in
-                20.3)    BUILD_JOB='mandrel-20.3-linux-build' && \
-                         git clone --single-branch --branch master ${MANDREL_INTEGRATION_TESTS_REPO} .;;
-                21.1)    BUILD_JOB='mandrel-21.1-linux-build' && \
-                         git clone --single-branch --branch master ${MANDREL_INTEGRATION_TESTS_REPO} .;;
-                master)  BUILD_JOB='mandrel-master-linux-build' && \
-                         git clone --single-branch --branch master ${MANDREL_INTEGRATION_TESTS_REPO} .;;
-                *)
-                    echo "UNKNOWN Mandrel version: $MANDREL_VERSION"
-                    exit 1
-            esac
-            
-            wget "https://ci.modcluster.io/view/Mandrel/job/${BUILD_JOB}/lastSuccessfulBuild/artifact/*zip*/archive.zip" --no-check-certificate 
+            wget "https://ci.modcluster.io/view/Mandrel/job/${BUILD_JOB}/lastSuccessfulBuild/artifact/*zip*/archive.zip" 
             unzip archive.zip
             pushd archive
             MANDREL_TAR=`ls -1 *.tar.gz`
