@@ -48,6 +48,15 @@ matrixJob('mandrel-linux-integration-tests') {
         shell('echo DESCRIPTION_STRING=Q:${QUARKUS_VERSION},M:${MANDREL_VERSION}')
         buildDescription(/DESCRIPTION_STRING=([^\s]*)/, '\\1')
         shell('''
+            # Prepare Mandrel
+            case $MANDREL_VERSION in
+                20.3)    BUILD_JOB='mandrel-20.3-linux-build';;
+                21.1)    BUILD_JOB='mandrel-21.1-linux-build';;
+                master)  BUILD_JOB='mandrel-master-linux-build';;
+                *)
+                    echo "UNKNOWN Mandrel version: $MANDREL_VERSION"
+                    exit 1
+            esac
             wget "https://ci.modcluster.io/view/Mandrel/job/${BUILD_JOB}/lastSuccessfulBuild/artifact/*zip*/archive.zip" 
             unzip archive.zip
             pushd archive

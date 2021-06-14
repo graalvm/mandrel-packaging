@@ -52,6 +52,18 @@ matrixJob('mandrel-windows-integration-tests') {
 call vcvars64
 IF NOT %ERRORLEVEL% == 0 ( exit 1 )
 
+set BUILD_JOB=""
+IF "%MANDREL_VERSION%"=="20.3" (
+    set BUILD_JOB=mandrel-20.3-windows-build
+) ELSE IF "%MANDREL_VERSION%"=="21.1" (
+    set BUILD_JOB=mandrel-21.1-windows-build
+) ELSE IF "%MANDREL_VERSION%"=="master" (
+    set BUILD_JOB=mandrel-master-windows-build
+) ELSE (
+    echo "UNKNOWN Mandrel version: %MANDREL_VERSION%"
+    exit 1
+)
+
 set downloadCommand= ^
 $c = New-Object System.Net.WebClient; ^
 $url = 'https://ci.modcluster.io/view/Mandrel/job/%BUILD_JOB%/lastSuccessfulBuild/artifact/*zip*/archive.zip'; $file = 'archive.zip'; ^
