@@ -23,7 +23,6 @@ Linux build for 21.1 branch.
                 [
                         'heads',
                         'tags',
-
                 ],
                 'To be used with the repository, e.g. to use a certain head or a tag.'
         )
@@ -39,7 +38,6 @@ Linux build for 21.1 branch.
                         'openjdk-11.0.11_9',
                         'openjdk-11-ea',
                         'openjdk-11'
-
                 ],
                 'OpenJDK including Static libs'
         )
@@ -57,7 +55,6 @@ Linux build for 21.1 branch.
                 [
                         'heads',
                         'tags',
-
                 ],
                 'To be used with the repository, e.g. to use a certain head or a tag.'
         )
@@ -69,9 +66,7 @@ Linux build for 21.1 branch.
         stringParam(
                 'MANDREL_VERSION_SUBSTRING',
                 '21.1-SNAPSHOT',
-                '''Used as a part of Mandrel version, i.e. <pre>export MANDREL_VERSION="${MANDREL_VERSION_SUBSTRING} 
-git rev.: $( git log --pretty=format:%h -n1 ) </pre> it defaults to <pre>${BRANCH_OR_TAG}</pre>. 
-Could be e.g. 20.1.0.0.Alpha1. It must not contain spaces as it is used in tarball name too.'''
+                'It must not contain spaces as it is used in tarball name too.'
         )
     }
     multiscm {

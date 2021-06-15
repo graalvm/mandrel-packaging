@@ -70,6 +70,7 @@ matrixJob('mandrel-linux-integration-tests') {
                 echo "Cannot find native-image tool. Quitting..."
                 exit 1
             fi
+            native-image --version
             popd
             mvn clean verify -Ptestsuite -Dquarkus.version=${QUARKUS_VERSION}
         ''')

@@ -23,7 +23,6 @@ job('mandrel-linux-quarkus-container-tests') {
                         'openjdk-11.0.11_9',
                         'openjdk-11-ea',
                         'openjdk-11'
-
                 ],
                 'OpenJDK installation.'
         )

@@ -93,6 +93,8 @@ if not exist "%GRAALVM_HOME%\\bin\\native-image.cmd" (
   cmd /C native-image --version
 )
 
+native-image --version
+
 popd
 
 mvn clean verify -Ptestsuite -Dquarkus.version=%QUARKUS_VERSION%

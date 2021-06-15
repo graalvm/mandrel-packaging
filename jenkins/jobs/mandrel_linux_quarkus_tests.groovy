@@ -55,7 +55,7 @@ matrixJob('mandrel-linux-quarkus-tests') {
                 echo "Cannot find native-image tool. Quitting..."
                 exit 1
             fi
-            
+            native-image --version
             # Prepare Quarkus
             git clone --depth 1 --branch ${QUARKUS_VERSION} ${QUARKUS_REPO}
             cd quarkus
