@@ -78,9 +78,6 @@ if not exist "%GRAALVM_HOME%\\bin\\native-image.cmd" (
   echo "native-image.cmd is present, good."
   cmd /C native-image --version
 )
-
-native-image --version
-
 popd
 
 REM Prepare Quarkus

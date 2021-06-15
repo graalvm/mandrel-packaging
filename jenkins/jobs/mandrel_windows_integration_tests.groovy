@@ -92,9 +92,6 @@ if not exist "%GRAALVM_HOME%\\bin\\native-image.cmd" (
   echo "native-image.cmd is present, good."
   cmd /C native-image --version
 )
-
-native-image --version
-
 popd
 
 mvn clean verify -Ptestsuite -Dquarkus.version=%QUARKUS_VERSION%
