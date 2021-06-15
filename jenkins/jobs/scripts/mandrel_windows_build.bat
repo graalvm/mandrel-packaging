@@ -31,7 +31,7 @@ echo XXX JAVA_HOME: %JAVA_HOME%
 call vcvars64
 IF NOT %ERRORLEVEL% == 0 ( exit 1 )
 
-"%JAVA_HOME%\bin\java" -ea build.java --maven-local-repository "%MAVEN_REPO%" --mandrel-repo "%MANDREL_REPO%" --mx-home "%MX_HOME%" --mandrel-version "%MANDREL_VERSION%" --mandrel-home "%MANDREL_HOME%" --archive-suffix zip
+"%JAVA_HOME%\bin\java" -ea build.java --maven-local-repository "%MAVEN_REPO%" --mandrel-repo "%MANDREL_REPO%" --mx-home "%MX_HOME%" --mandrel-home "%MANDREL_HOME%" --archive-suffix zip --verbose
 IF NOT %ERRORLEVEL% == 0 ( exit 1 )
 
 for /f "tokens=5" %%g in ('dir mandrel-*.zip ^| findstr /R mandrel-.*.zip') do set ZIP_NAME=%%g

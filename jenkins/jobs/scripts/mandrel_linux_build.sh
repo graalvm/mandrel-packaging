@@ -14,8 +14,9 @@ export MANDREL_HOME=${WORKSPACE}/mandrel-java11-${MANDREL_VERSION_UNTIL_SPACE}
 popd
 ${JAVA_HOME}/bin/java -ea build.java --maven-local-repository ${MAVEN_REPO} \
 --mandrel-repo ${MANDREL_REPO} --mx-home ${MX_HOME} \
---mandrel-version ${MANDREL_VERSION} --mandrel-home ${MANDREL_HOME} \
---archive-suffix tar.gz
+--mandrel-home ${MANDREL_HOME} \
+--archive-suffix tar.gz \
+--verbose
 TAR_NAME="$( ls mandrel-*.tar.gz )"
 sha1sum ${TAR_NAME}>${TAR_NAME}.sha1
 sha256sum ${TAR_NAME}>${TAR_NAME}.sha256
