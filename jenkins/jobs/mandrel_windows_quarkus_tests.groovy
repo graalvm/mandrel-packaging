@@ -79,6 +79,8 @@ if not exist "%GRAALVM_HOME%\\bin\\native-image.cmd" (
   cmd /C native-image --version
 )
 
+native-image --version
+
 popd
 
 REM Prepare Quarkus

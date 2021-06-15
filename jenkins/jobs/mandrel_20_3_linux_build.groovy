@@ -69,9 +69,7 @@ Linux build for 20.3 branch.
         stringParam(
                 'MANDREL_VERSION_SUBSTRING',
                 '20.3-SNAPSHOT',
-                '''Used as a part of Mandrel version, i.e. <pre>export MANDREL_VERSION="${MANDREL_VERSION_SUBSTRING} 
-git rev.: $( git log --pretty=format:%h -n1 ) </pre> it defaults to <pre>${BRANCH_OR_TAG}</pre>. 
-Could be e.g. 20.1.0.0.Alpha1. It must not contain spaces as it is used in tarball name too.'''
+                'It must not contain spaces as it is used in tarball name too.'
         )
     }
     multiscm {
