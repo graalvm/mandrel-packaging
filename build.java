@@ -1059,6 +1059,7 @@ class Maven
         , "jvmti-agent-base"
         , "svm-agent"
         , "svm-diagnostics-agent"
+        , "svm-configure"
     );
 
     static final String INSTALL_FILE_VERSION = "2.4";
@@ -1086,7 +1087,8 @@ class Maven
         new SimpleEntry<>("svm-driver", "org.graalvm.nativeimage"),
         new SimpleEntry<>("jvmti-agent-base", "org.graalvm.nativeimage"),
         new SimpleEntry<>("svm-agent", "org.graalvm.nativeimage"),
-        new SimpleEntry<>("svm-diagnostics-agent", "org.graalvm.nativeimage")
+        new SimpleEntry<>("svm-diagnostics-agent", "org.graalvm.nativeimage"),
+        new SimpleEntry<>("svm-configure", "org.graalvm.nativeimage")
     );
 
     static final Map<String, Path> DISTS_PATHS = Map.ofEntries(
@@ -1100,7 +1102,8 @@ class Maven
         new SimpleEntry<>("svm-driver", Path.of("substratevm", "mxbuild", "dists", "jdk11", "svm-driver")),
         new SimpleEntry<>("jvmti-agent-base", Path.of("substratevm", "mxbuild", "dists", "jdk11", "jvmti-agent-base")),
         new SimpleEntry<>("svm-agent", Path.of("substratevm", "mxbuild", "dists", "jdk11", "svm-agent")),
-        new SimpleEntry<>("svm-diagnostics-agent", Path.of("substratevm", "mxbuild", "dists", "jdk11", "svm-diagnostics-agent"))
+        new SimpleEntry<>("svm-diagnostics-agent", Path.of("substratevm", "mxbuild", "dists", "jdk11", "svm-diagnostics-agent")),
+        new SimpleEntry<>("svm-configure", Path.of("substratevm", "mxbuild", "dists", "jdk11", "svm-configure"))
     );
 
     static final Map<String, Path> JDK_PATHS = Map.ofEntries(
@@ -1114,7 +1117,8 @@ class Maven
         new SimpleEntry<>("svm-driver", Path.of("lib", "graalvm", "svm-driver")),
         new SimpleEntry<>("jvmti-agent-base", Path.of("lib", "graalvm", "jvmti-agent-base")),
         new SimpleEntry<>("svm-agent", Path.of("lib", "graalvm", "svm-agent")),
-        new SimpleEntry<>("svm-diagnostics-agent", Path.of("lib", "graalvm", "svm-diagnostics-agent"))
+        new SimpleEntry<>("svm-diagnostics-agent", Path.of("lib", "graalvm", "svm-diagnostics-agent")),
+        new SimpleEntry<>("svm-configure", Path.of("lib", "graalvm", "svm-configure"))
     );
 
     final Path mvn;
