@@ -799,6 +799,9 @@ class Mx
         final List<String> dependencies = Arrays.asList(
             "truffle:TRUFFLE_NFI",
             "com.oracle.svm.truffle",
+            "com.oracle.svm.truffle.api                   to org.graalvm.truffle",
+            "com.oracle.truffle.api.TruffleLanguage.Provider",
+            "com.oracle.truffle.api.instrumentation.TruffleInstrument.Provider",
             "com.oracle.svm.polyglot",
             "truffle:TRUFFLE_API",
             "com.oracle.svm.truffle.nfi",
@@ -1095,9 +1098,9 @@ class Maven
         new SimpleEntry<>("compiler", Path.of("compiler", "mxbuild", "dists", "jdk11", "graal")),
         new SimpleEntry<>("objectfile", Path.of("substratevm", "mxbuild", "dists", "jdk11", "objectfile")),
         new SimpleEntry<>("svm-driver", Path.of("substratevm", "mxbuild", "dists", "jdk11", "svm-driver")),
-        new SimpleEntry<>("jvmti-agent-base", Path.of("substratevm", "mxbuild", "dists", "jdk1.8", "jvmti-agent-base")),
+        new SimpleEntry<>("jvmti-agent-base", Path.of("substratevm", "mxbuild", "dists", "jdk11", "jvmti-agent-base")),
         new SimpleEntry<>("svm-agent", Path.of("substratevm", "mxbuild", "dists", "jdk11", "svm-agent")),
-        new SimpleEntry<>("svm-diagnostics-agent", Path.of("substratevm", "mxbuild", "dists", "jdk1.8", "svm-diagnostics-agent"))
+        new SimpleEntry<>("svm-diagnostics-agent", Path.of("substratevm", "mxbuild", "dists", "jdk11", "svm-diagnostics-agent"))
     );
 
     static final Map<String, Path> JDK_PATHS = Map.ofEntries(
