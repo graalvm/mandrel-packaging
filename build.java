@@ -237,7 +237,7 @@ public class build
         }
         return mxVersion;
     }
-    
+
 
     private static void patchNativeImageLauncher(Path nativeImage, String mandrelVersion) throws IOException
     {
@@ -245,12 +245,10 @@ public class build
         // This is jamming two sets of parameters in between three sections of command line.
         // It is fragile at best. We should probably just generate the line fresh.
         final Pattern launcherPattern = Pattern.compile("(.*EnableJVMCI)(.*)");
-        final Pattern relativeCp = Pattern.compile("(IFS=: read -ra relative_cp <<< \".*)(\")");
         logger.debugf("mandrelVersion: %s", mandrelVersion);
         for (int i = 0; i < lines.size(); i++)
         {
             final Matcher launcherMatcher = launcherPattern.matcher(lines.get(i));
-            final Matcher relativeCpMatcher = relativeCp.matcher(lines.get(i));
             if (launcherMatcher.find())
             {
                 logger.debugf("Launcher line BEFORE: %s", lines.get(i));
@@ -260,36 +258,10 @@ public class build
                 launcherLine.append(launcherMatcher.group(1));
                 launcherLine.append(" -Dorg.graalvm.version=\"" + mandrelVersion + "\"");
                 launcherLine.append(" -Dorg.graalvm.config=\"Mandrel Distribution\"");
-                if (IS_WINDOWS)
-                {
-                    launcherLine.append(" --upgrade-module-path \"%location%\\..\\..\\jvmci\\graal.jar\"");
-                }
-                else
-                {
-                    launcherLine.append(" --upgrade-module-path ${location}/../../jvmci/graal.jar");
-                }
                 launcherLine.append(launcherMatcher.group(2));
                 lines.set(i, launcherLine.toString());
                 logger.debugf("Launcher line AFTER: %s", lines.get(i));
                 break;
-            }
-            else if(relativeCpMatcher.find())
-            {
-                logger.debugf("Classpath line BEFORE: %s", lines.get(i));
-                logger.debugf("relativeCpMatcher.group(1): %s", relativeCpMatcher.group(1));
-                logger.debugf("relativeCpMatcher.group(2): %s", relativeCpMatcher.group(2));
-                StringBuilder relativeCpLine = new StringBuilder(lines.get(i).length() * 2);
-                relativeCpLine.append(relativeCpMatcher.group(1));
-                if (IS_WINDOWS) {
-                    relativeCpLine.append(";..\\..\\truffle\\truffle-api.jar;..\\..\\jvmci\\graal-sdk.jar");
-                }
-                else
-                {
-                    relativeCpLine.append(":../../truffle/truffle-api.jar:../../jvmci/graal-sdk.jar");
-                }
-                relativeCpLine.append(relativeCpMatcher.group(2));
-                lines.set(i, relativeCpLine.toString());
-                logger.debugf("Classpath line AFTER: %s", lines.get(i));
             }
         }
         Files.write(nativeImage, lines, StandardCharsets.UTF_8);
@@ -797,7 +769,6 @@ class Mx
         final Path suitePy = Path.of("substratevm", "mx.substratevm", "suite.py");
         final Path path = mandrelRepo.apply(suitePy);
         final List<String> dependencies = Arrays.asList(
-            "truffle:TRUFFLE_NFI",
             "com.oracle.svm.truffle",
             "com.oracle.svm.truffle.api                   to org.graalvm.truffle",
             "com.oracle.truffle.api.TruffleLanguage.Provider",
