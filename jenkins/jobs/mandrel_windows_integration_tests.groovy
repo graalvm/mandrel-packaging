@@ -2,12 +2,12 @@ matrixJob('mandrel-windows-integration-tests') {
     axes {
         text('MANDREL_VERSION',
                 '20.3',
-                '21.1',
+                '21.2',
                 'master'
         )
         text('QUARKUS_VERSION',
                 '1.11.7.Final',
-                '2.0.0.CR3',
+                '2.0.0.Final',
         )
         labelExpression('LABEL', ['w2k19'])
     }
@@ -25,8 +25,8 @@ matrixJob('mandrel-windows-integration-tests') {
     }
     combinationFilter(
             ' (MANDREL_VERSION=="20.3" && QUARKUS_VERSION=="1.11.7.Final") ||' +
-            ' (MANDREL_VERSION=="20.3" && QUARKUS_VERSION=="2.0.0.CR3") ||' +
-            ' ((MANDREL_VERSION=="21.1" || MANDREL_VERSION=="master") && QUARKUS_VERSION=="2.0.0.CR3")')
+            ' (MANDREL_VERSION=="20.3" && QUARKUS_VERSION=="2.0.0.Final") ||' +
+            ' ((MANDREL_VERSION=="21.2" || MANDREL_VERSION=="master") && QUARKUS_VERSION=="2.0.0.Final")')
     parameters {
         stringParam('MANDREL_INTEGRATION_TESTS_REPO', 'https://github.com/Karm/mandrel-integration-tests.git', 'Test suite repository.')
         choiceParam(
@@ -55,8 +55,8 @@ IF NOT %ERRORLEVEL% == 0 ( exit 1 )
 set BUILD_JOB=""
 IF "%MANDREL_VERSION%"=="20.3" (
     set BUILD_JOB=mandrel-20.3-windows-build
-) ELSE IF "%MANDREL_VERSION%"=="21.1" (
-    set BUILD_JOB=mandrel-21.1-windows-build
+) ELSE IF "%MANDREL_VERSION%"=="21.2" (
+    set BUILD_JOB=mandrel-21.2-windows-build
 ) ELSE IF "%MANDREL_VERSION%"=="master" (
     set BUILD_JOB=mandrel-master-windows-build
 ) ELSE (

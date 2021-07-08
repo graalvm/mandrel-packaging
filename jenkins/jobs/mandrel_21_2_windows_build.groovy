@@ -1,8 +1,8 @@
-job('mandrel-21.1-linux-build') {
-    label 'el8'
-    displayName('Linux Build :: 21.1')
+job('mandrel-21.2-windows-build') {
+    label 'w2k19'
+    displayName('Windows Build :: 21.2')
     description('''
-Linux build for 21.1 branch.
+Windows build for 21.2 branch.
     ''')
     logRotator {
         numToKeep(5)
@@ -28,13 +28,13 @@ Linux build for 21.1 branch.
         )
         stringParam(
                 'BRANCH_OR_TAG',
-                'mandrel/21.1',
+                'mandrel/21.2',
                 'e.g. your PR branch or a specific tag.'
         )
         choiceParam(
                 'OPENJDK',
                 [
-                        'openjdk-11.0.12_5',
+                        'openjdk-11.0.12_6',
                         'openjdk-11.0.11_9',
                         'openjdk-11-ea',
                         'openjdk-11'
@@ -60,12 +60,12 @@ Linux build for 21.1 branch.
         )
         stringParam(
                 'PACKAGING_REPOSITORY_BRANCH_OR_TAG',
-                '21.1',
+                '21.2',
                 'e.g. master if you use heads or some tag if you use tags.'
         )
         stringParam(
                 'MANDREL_VERSION_SUBSTRING',
-                '21.1-SNAPSHOT',
+                '21.2-SNAPSHOT',
                 'It must not contain spaces as it is used in tarball name too.'
         )
     }
@@ -93,9 +93,9 @@ Linux build for 21.1 branch.
             remote {
                 url('https://github.com/graalvm/mx.git')
             }
-            branches('refs/tags/5.294.1')
+            branches('refs/tags/5.304.5')
             extensions {
-                localBranch('5.294.1')
+                localBranch('5.304.5')
                 relativeTargetDirectory('mx')
             }
         }
@@ -104,12 +104,12 @@ Linux build for 21.1 branch.
         scm('H H/2 * * *')
     }
     steps {
-        shell('echo MANDREL_VERSION_SUBSTRING=${MANDREL_VERSION_SUBSTRING}')
+        batchFile('echo MANDREL_VERSION_SUBSTRING=%MANDREL_VERSION_SUBSTRING%')
         buildDescription(/MANDREL_VERSION_SUBSTRING=([^\s]*)/, '\\1')
-        shell('./jenkins/jobs/scripts/mandrel_linux_build.sh')
+        batchFile('cmd /C jenkins\\jobs\\scripts\\mandrel_windows_build.bat')
     }
     publishers {
-        archiveArtifacts('*.tar.gz,MANDREL.md,*.sha1,*.sha256')
+        archiveArtifacts('*.zip,MANDREL.md,*.sha1,*.sha256')
         wsCleanup()
         extendedEmail {
             recipientList('karm@redhat.com,fzakkak@redhat.com')
@@ -123,11 +123,11 @@ Linux build for 21.1 branch.
             }
         }
         downstreamParameterized {
-            trigger(['mandrel-linux-quarkus-tests', 'mandrel-linux-integration-tests']) {
+            trigger(['mandrel-windows-quarkus-tests', 'mandrel-windows-integration-tests']) {
                 condition('SUCCESS')
                 parameters {
                     currentBuild()
-                    matrixSubset('(MANDREL_VERSION=="21.1" && LABEL=="el8")')
+                    matrixSubset('(MANDREL_VERSION=="21.2" && LABEL=="w2k19")')
                 }
             }
         }
