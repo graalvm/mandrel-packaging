@@ -2,12 +2,12 @@ matrixJob('mandrel-linux-quarkus-tests') {
     axes {
         text('MANDREL_VERSION',
                 '20.3',
-                '21.1',
+                '21.2',
                 'master'
         )
         text('QUARKUS_VERSION',
                 '1.11.7.Final',
-                '2.0.0.CR3',
+                '2.0.0.Final',
                 'main'
         )
         labelExpression('LABEL', ['el8'])
@@ -26,8 +26,8 @@ matrixJob('mandrel-linux-quarkus-tests') {
     }
     combinationFilter(
             ' (MANDREL_VERSION=="20.3" && QUARKUS_VERSION=="1.11.7.Final") ||' +
-            ' (MANDREL_VERSION=="20.3" && QUARKUS_VERSION=="2.0.0.CR3") ||' +
-            ' ((MANDREL_VERSION=="21.1" || MANDREL_VERSION=="master") && (QUARKUS_VERSION=="main" || QUARKUS_VERSION=="2.0.0.CR3"))')
+            ' (MANDREL_VERSION=="20.3" && QUARKUS_VERSION=="2.0.0.Final") ||' +
+            ' ((MANDREL_VERSION=="21.2" || MANDREL_VERSION=="master") && (QUARKUS_VERSION=="main" || QUARKUS_VERSION=="2.0.0.Final"))')
     parameters {
         stringParam('QUARKUS_REPO', 'https://github.com/quarkusio/quarkus.git', 'Quarkus repository.')
     }
@@ -36,7 +36,7 @@ matrixJob('mandrel-linux-quarkus-tests') {
             # Prepare Mandrel
             case $MANDREL_VERSION in
                 20.3)    BUILD_JOB='mandrel-20.3-linux-build';;
-                21.1)    BUILD_JOB='mandrel-21.1-linux-build';;
+                21.2)    BUILD_JOB='mandrel-21.2-linux-build';;
                 master)  BUILD_JOB='mandrel-master-linux-build';;
                 *)
                     echo "UNKNOWN Mandrel version: $MANDREL_VERSION"
