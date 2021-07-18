@@ -1,9 +1,7 @@
 job('mandrel-graal-vm-20.3-windows-build') {
     label 'w2k19'
     displayName('Windows Build :: graal-vm/20.3')
-    description('''
-Graal Windows build for graal-vm/20.3 branch.
-    ''')
+    description('Graal Windows build for graal-vm/20.3 branch.')
     logRotator {
         numToKeep(5)
     }
@@ -55,7 +53,6 @@ Graal Windows build for graal-vm/20.3 branch.
                 [
                         'heads',
                         'tags',
-
                 ],
                 'To be used with the repository, e.g. to use a certain head or a tag.'
         )
