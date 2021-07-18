@@ -106,10 +106,15 @@ job('mandrel-graal-vm-20.3-linux-build') {
         shell('echo MANDREL_VERSION_SUBSTRING=${MANDREL_VERSION_SUBSTRING}')
         buildDescription(/MANDREL_VERSION_SUBSTRING=([^\s]*)/, '\\1')
         shell('''
+            set +e
             pushd mandrel
             git remote add upstream https://github.com/oracle/graal.git
             git fetch upstream release/graal-vm/20.3
-            git merge upstream/release/graal-vm/20.3 --patience --no-edit
+            git config --global merge.ours.driver true
+            echo -e '\\n**/suite.py merge=ours\\n' >> .gitattributes
+            git add .gitattributes
+            git commit -m x
+            git merge -s recursive -Xdiff-algorithm=patience --no-edit upstream/release/graal-vm/20.3
             popd
         ''')
         shell('./jenkins/jobs/scripts/mandrel_linux_build.sh')

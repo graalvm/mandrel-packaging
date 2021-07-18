@@ -108,7 +108,15 @@ job('mandrel-graal-vm-20.3-windows-build') {
             pushd mandrel
             git remote add upstream https://github.com/oracle/graal.git
             git fetch upstream release/graal-vm/20.3
-            git merge upstream/release/graal-vm/20.3 --no-edit
+            git config --global merge.ours.driver true
+            @echo off
+            echo(>>.gitattributes
+            echo **/suite.py merge=ours>>.gitattributes
+            @echo on
+            type .gitattributes
+            git add .gitattributes
+            git commit -m x
+            git merge -s recursive -Xdiff-algorithm=patience --no-edit upstream/release/graal-vm/20.3
             popd
         ''')
         batchFile('cmd /C jenkins\\jobs\\scripts\\mandrel_windows_build.bat')
