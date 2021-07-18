@@ -111,7 +111,7 @@ Graal Windows build for graal-vm/20.3 branch.
             pushd mandrel
             git remote add upstream https://github.com/oracle/graal.git
             git fetch upstream release/graal-vm/20.3
-            git merge upstream/release/graal-vm/20.3 --patience --no-edit
+            git merge upstream/release/graal-vm/20.3 --no-edit
             popd
         ''')
         batchFile('cmd /C jenkins\\jobs\\scripts\\mandrel_windows_build.bat')
