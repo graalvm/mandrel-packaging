@@ -1,13 +1,14 @@
 matrixJob('mandrel-linux-quarkus-tests') {
     axes {
         text('MANDREL_VERSION',
+                'graal-vm-20.3',
                 '20.3',
                 '21.2',
                 'master'
         )
         text('QUARKUS_VERSION',
                 '1.11.7.Final',
-                '2.0.0.Final',
+                '2.0.2.Final',
                 'main'
         )
         labelExpression('LABEL', ['el8'])
@@ -15,7 +16,7 @@ matrixJob('mandrel-linux-quarkus-tests') {
     description('Run Quarkus TS with Mandrel distros. Quarkus versions differ according to particular Mandrel versions.')
     displayName('Linux :: Quarkus TS')
     logRotator {
-        numToKeep(3)
+        numToKeep(5)
     }
     childCustomWorkspace('${SHORT_COMBINATION}')
     wrappers {
@@ -25,9 +26,9 @@ matrixJob('mandrel-linux-quarkus-tests') {
         }
     }
     combinationFilter(
-            ' (MANDREL_VERSION=="20.3" && QUARKUS_VERSION=="1.11.7.Final") ||' +
-            ' (MANDREL_VERSION=="20.3" && QUARKUS_VERSION=="2.0.0.Final") ||' +
-            ' ((MANDREL_VERSION=="21.2" || MANDREL_VERSION=="master") && (QUARKUS_VERSION=="main" || QUARKUS_VERSION=="2.0.0.Final"))')
+            ' (MANDREL_VERSION.contains("20.3") && QUARKUS_VERSION=="1.11.7.Final") ||' +
+            ' (MANDREL_VERSION.contains("20.3") && QUARKUS_VERSION=="2.0.2.Final") ||' +
+            ' ((MANDREL_VERSION.contains("21.2") || MANDREL_VERSION=="master") && (QUARKUS_VERSION=="main" || QUARKUS_VERSION=="2.0.2.Final"))')
     parameters {
         stringParam('QUARKUS_REPO', 'https://github.com/quarkusio/quarkus.git', 'Quarkus repository.')
     }
@@ -35,9 +36,10 @@ matrixJob('mandrel-linux-quarkus-tests') {
         shell('''
             # Prepare Mandrel
             case $MANDREL_VERSION in
-                20.3)    BUILD_JOB='mandrel-20.3-linux-build';;
-                21.2)    BUILD_JOB='mandrel-21.2-linux-build';;
-                master)  BUILD_JOB='mandrel-master-linux-build';;
+                graal-vm-20.3)  BUILD_JOB='mandrel-graal-vm-20.3-linux-build';;
+                20.3)           BUILD_JOB='mandrel-20.3-linux-build';;
+                21.2)           BUILD_JOB='mandrel-21.2-linux-build';;
+                master)         BUILD_JOB='mandrel-master-linux-build';;
                 *)
                     echo "UNKNOWN Mandrel version: $MANDREL_VERSION"
                     exit 1
