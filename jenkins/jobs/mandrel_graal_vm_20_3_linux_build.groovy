@@ -1,9 +1,7 @@
 job('mandrel-graal-vm-20.3-linux-build') {
     label 'el8'
     displayName('Linux Build :: graal-vm/20.3')
-    description('''
-Graal Linux build for graal-vm/20.3 branch.
-    ''')
+    description('Graal Linux build for graal-vm/20.3 branch.')
     logRotator {
         numToKeep(5)
     }
@@ -11,12 +9,12 @@ Graal Linux build for graal-vm/20.3 branch.
         choiceParam(
                 'REPOSITORY',
                 [
-                        'https://github.com/oracle/graal.git',
+                        'https://github.com/graalvm/mandrel.git',
                         'https://github.com/jerboaa/graal.git',
                         'https://github.com/Karm/graal.git',
                         'https://github.com/zakkak/mandrel.git',
                 ],
-                'Graal repo'
+                'Mandrel repo'
         )
         choiceParam(
                 'HEADS_OR_TAGS',
@@ -39,7 +37,6 @@ Graal Linux build for graal-vm/20.3 branch.
                         'openjdk-11.0.11_9',
                         'openjdk-11-ea',
                         'openjdk-11'
-
                 ],
                 'OpenJDK including Static libs'
         )
@@ -57,7 +54,6 @@ Graal Linux build for graal-vm/20.3 branch.
                 [
                         'heads',
                         'tags',
-
                 ],
                 'To be used with the repository, e.g. to use a certain head or a tag.'
         )
