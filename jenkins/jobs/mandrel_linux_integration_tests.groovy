@@ -9,6 +9,8 @@ matrixJob('mandrel-linux-integration-tests') {
         text('QUARKUS_VERSION',
                 '1.11.7.Final',
                 '2.0.2.Final',
+                '2.0.0.Final',
+                '2.1.0.CR1'
         )
         labelExpression('LABEL', ['el8'])
     }
@@ -25,9 +27,9 @@ matrixJob('mandrel-linux-integration-tests') {
         }
     }
     combinationFilter(
-            ' (MANDREL_VERSION.contains("20.3") && QUARKUS_VERSION=="1.11.7.Final") ||' +
-            ' (MANDREL_VERSION.contains("20.3") && QUARKUS_VERSION=="2.0.2.Final") ||' +
-            ' ((MANDREL_VERSION.contains("21.2") || MANDREL_VERSION=="master") && QUARKUS_VERSION=="2.0.2.Final")')
+            ' (MANDREL_VERSION.contains("20.3") && QUARKUS_VERSION.startsWith("1.")) ||' +
+            ' (MANDREL_VERSION.contains("20.3") && QUARKUS_VERSION.startsWith("2.")) ||' +
+            ' ((MANDREL_VERSION.contains("21.2") || MANDREL_VERSION=="master") && QUARKUS_VERSION.startsWith("2."))')
     parameters {
         stringParam('MANDREL_INTEGRATION_TESTS_REPO', 'https://github.com/Karm/mandrel-integration-tests.git', 'Test suite repository.')
         choiceParam(
