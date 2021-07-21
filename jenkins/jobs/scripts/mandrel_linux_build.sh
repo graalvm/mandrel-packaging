@@ -7,28 +7,26 @@ export JAVA_HOME=/usr/java/${OPENJDK}
 export MX_HOME=${WORKSPACE}/mx
 export PATH=${JAVA_HOME}/bin:${MX_HOME}:${PATH}
 pushd mandrel
-export MANDREL_VERSION="${MANDREL_VERSION_SUBSTRING} $( git log --pretty=format:%h -n1)"
-export MANDREL_VERSION_UNTIL_SPACE="$( echo ${MANDREL_VERSION} | sed -e 's/\([^ ]*\).*/\1/;t' )"
 export JAVA_VERSION="$(java --version | sed -e 's/.*build \([^) ]*\)).*/\1/;t;d' )"
-export MANDREL_HOME=${WORKSPACE}/mandrel-java11-${MANDREL_VERSION_UNTIL_SPACE}
 popd
 ${JAVA_HOME}/bin/java -ea build.java --maven-local-repository ${MAVEN_REPO} \
 --mandrel-repo ${MANDREL_REPO} --mx-home ${MX_HOME} \
---mandrel-home ${MANDREL_HOME} \
 --archive-suffix tar.gz \
 --verbose
 TAR_NAME="$( ls mandrel-*.tar.gz )"
 sha1sum ${TAR_NAME}>${TAR_NAME}.sha1
 sha256sum ${TAR_NAME}>${TAR_NAME}.sha256
+export MANDREL_HOME="$( find -name 'mandrel-*' -type d )"
+if [[ ! -e "${MANDREL_HOME}/bin/native-image" ]]; then
+  echo "Cannot find native-image tool. Quitting..."
+  exit 1
+fi
+export MANDREL_VERSION="$( ${MANDREL_HOME}/bin/native-image --version | cut -d ' ' -f 3 )"
 cat >./MANDREL.md <<EOL
 This is a dev build of Mandrel from https://github.com/graalvm/mandrel.
 Mandrel ${MANDREL_VERSION}
 OpenJDK used: ${JAVA_VERSION}
 EOL
-if [[ ! -e "${MANDREL_HOME}/bin/native-image" ]]; then
-  echo "Cannot find native-image tool. Quitting..."
-  exit 1
-fi
 cat >./Hello.java <<EOL
 public class Hello {
 public static void main(String[] args) {

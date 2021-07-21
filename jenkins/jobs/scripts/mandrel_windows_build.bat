@@ -11,18 +11,11 @@ set "MX_HOME=%WORKSPACE%\mx"
 
 pushd mandrel
 for /F "tokens=*" %%i in ('"git log --pretty=format:%%h -n1"') do set VER=%%i
-set "MANDREL_VERSION=%MANDREL_VERSION_SUBSTRING% %VER%"
-for /f "tokens=1 delims= " %%a IN ("%MANDREL_VERSION%") do set MANDREL_VERSION_UNTIL_SPACE=%%a
 for /f "tokens=6" %%g in ('java --version 2^>^&1 ^| findstr /R "Runtime.*build "') do set JAVA_VERSION=%%g
 set JAVA_VERSION=%JAVA_VERSION:~0,-1%
-set MANDREL_HOME=%WORKSPACE%\mandrel-java11-%MANDREL_VERSION_UNTIL_SPACE%
 popd
 
-echo XXX MANDREL_VERSION_SUBSTRING: %MANDREL_VERSION_SUBSTRING%
-echo XXX MANDREL_VERSION: %MANDREL_VERSION%
-echo XXX MANDREL_VERSION_UNTIL_SPACE: %MANDREL_VERSION_UNTIL_SPACE%
 echo XXX JAVA_VERSION: %JAVA_VERSION%
-echo XXX MANDREL_HOME: %MANDREL_HOME%
 echo XXX MX_HOME: %MX_HOME%
 echo XXX MAVEN_REPO: %MAVEN_REPO%
 echo XXX MANDREL_REPO: %MANDREL_REPO%
@@ -31,7 +24,7 @@ echo XXX JAVA_HOME: %JAVA_HOME%
 call vcvars64
 IF NOT %ERRORLEVEL% == 0 ( exit 1 )
 
-"%JAVA_HOME%\bin\java" -ea build.java --maven-local-repository "%MAVEN_REPO%" --mandrel-repo "%MANDREL_REPO%" --mx-home "%MX_HOME%" --mandrel-home "%MANDREL_HOME%" --archive-suffix zip --verbose
+"%JAVA_HOME%\bin\java" -ea build.java --maven-local-repository "%MAVEN_REPO%" --mandrel-repo "%MANDREL_REPO%" --mx-home "%MX_HOME%" --archive-suffix zip --verbose
 IF NOT %ERRORLEVEL% == 0 ( exit 1 )
 
 for /f "tokens=5" %%g in ('dir mandrel-*.zip ^| findstr /R mandrel-.*.zip') do set ZIP_NAME=%%g
@@ -41,18 +34,22 @@ IF NOT %ERRORLEVEL% == 0 ( exit 1 )
 powershell -c "$hash=(Get-FileHash %ZIP_NAME% -Algorithm SHA256).Hash;echo \"$hash %ZIP_NAME%\"">%ZIP_NAME%.sha256
 IF NOT %ERRORLEVEL% == 0 ( exit 1 )
 
-(
-echo This is a dev build of Mandrel from https://github.com/graalvm/mandrel.
-echo Mandrel %MANDREL_VERSION%
-echo OpenJDK used: %JAVA_VERSION%
-) >MANDREL.md
-
+set "MANDREL_HOME"="( dir /b /a:d mandrel-* )"
+echo XXX MANDREL_HOME: %MANDREL_HOME%
 if not exist "%MANDREL_HOME%\bin\native-image.cmd" (
   echo "Cannot find native-image tool. Quitting..."
   exit 1
 ) else (
   echo "native-image.cmd is present, good."
 )
+
+for /f "tokens=3 delims= " %%a IN ( ${MANDREL_HOME}\bin\native-image --version ) do set MANDREL_VERSION=%%a
+echo XXX MANDREL_VERSION: %MANDREL_VERSION%
+(
+echo This is a dev build of Mandrel from https://github.com/graalvm/mandrel.
+echo Mandrel %MANDREL_VERSION%
+echo OpenJDK used: %JAVA_VERSION%
+) >MANDREL.md
 
 (
 echo|set /p=" public class Hello {"
