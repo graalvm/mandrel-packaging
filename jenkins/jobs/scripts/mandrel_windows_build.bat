@@ -34,7 +34,7 @@ IF NOT %ERRORLEVEL% == 0 ( exit 1 )
 powershell -c "$hash=(Get-FileHash %ZIP_NAME% -Algorithm SHA256).Hash;echo \"$hash %ZIP_NAME%\"">%ZIP_NAME%.sha256
 IF NOT %ERRORLEVEL% == 0 ( exit 1 )
 
-set "MANDREL_HOME"="( dir /b /a:d mandrel-* )"
+for /f "delims=" %%a in ('dir /b /a:d mandrel-*') do @set MANDREL_HOME=%%a
 echo XXX MANDREL_HOME: %MANDREL_HOME%
 if not exist "%MANDREL_HOME%\bin\native-image.cmd" (
   echo "Cannot find native-image tool. Quitting..."
@@ -43,7 +43,7 @@ if not exist "%MANDREL_HOME%\bin\native-image.cmd" (
   echo "native-image.cmd is present, good."
 )
 
-for /f "tokens=3 delims= " %%a IN ( ${MANDREL_HOME}\bin\native-image --version ) do set MANDREL_VERSION=%%a
+for /f "tokens=3 delims= " %%a IN ( '%MANDREL_HOME%\bin\native-image --version' ) do set MANDREL_VERSION=%%a
 echo XXX MANDREL_VERSION: %MANDREL_VERSION%
 (
 echo This is a dev build of Mandrel from https://github.com/graalvm/mandrel.
