@@ -33,7 +33,7 @@ job('mandrel-graal-vm-20.3-linux-build') {
         choiceParam(
                 'OPENJDK',
                 [
-                        'openjdk-11.0.12_6',
+                        'openjdk-11.0.12_7',
                         'openjdk-11.0.11_9',
                         'openjdk-11-ea',
                         'openjdk-11'
