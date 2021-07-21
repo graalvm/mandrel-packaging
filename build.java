@@ -231,6 +231,8 @@ public class build
             {
                 mxVersion += output.get(0);
             }
+        } else {
+            mxVersion += "-Final";
         }
         return mxVersion;
     }
