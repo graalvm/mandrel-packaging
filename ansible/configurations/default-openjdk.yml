@@ -1,5 +1,5 @@
 mx_version: "master"
-mandrel_version: "graal/master"
+mandrel_version: "mandrel/21.2"
 jdk_urls:
   - https://api.adoptopenjdk.net/v3/binary/latest/11/ga/linux/x64/jdk/hotspot/normal/openjdk
   - https://api.adoptopenjdk.net/v3/binary/latest/11/ga/linux/x64/staticlibs/hotspot/normal/openjdk
