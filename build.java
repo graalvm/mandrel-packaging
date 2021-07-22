@@ -156,7 +156,7 @@ public class build
                     mandrelHome.resolve(Path.of("lib", "svm", "macros", "native-image-diagnostics-agent-library")));
 
             logger.debugf("Patch native image...");
-            patchNativeImageLauncher(nativeImage, options.mandrelVersion);
+            patchNativeImageLauncher(nativeImage, options);
 
             if (!options.skipNativeAgents)
             {
@@ -241,27 +241,84 @@ public class build
     }
     
 
-    private static void patchNativeImageLauncher(Path nativeImage, String mandrelVersion) throws IOException
+    private static void patchNativeImageLauncher(Path nativeImage, Options options) throws IOException
     {
         final List<String> lines = Files.readAllLines(nativeImage);
         // This is jamming two sets of parameters in between three sections of command line.
         // It is fragile at best. We should probably just generate the line fresh.
         final Pattern launcherPattern = Pattern.compile("(.*EnableJVMCI)(.*)");
         final Pattern relativeCp = Pattern.compile("(IFS=: read -ra relative_cp <<< \".*)(\")");
-        logger.debugf("mandrelVersion: %s", mandrelVersion);
+        logger.debugf("mandrelVersion: %s", options.mandrelVersion);
         for (int i = 0; i < lines.size(); i++)
         {
-            final Matcher launcherMatcher = launcherPattern.matcher(lines.get(i));
-            final Matcher relativeCpMatcher = relativeCp.matcher(lines.get(i));
+            String line = lines.get(i);
+            final Matcher launcherMatcher = launcherPattern.matcher(line);
+            final Matcher relativeCpMatcher = relativeCp.matcher(line);
             if (launcherMatcher.find())
             {
-                logger.debugf("Launcher line BEFORE: %s", lines.get(i));
+                logger.debugf("Launcher line BEFORE: %s", line);
                 logger.debugf("launcherMatcher.group(1): %s", launcherMatcher.group(1));
                 logger.debugf("launcherMatcher.group(2): %s", launcherMatcher.group(2));
-                StringBuilder launcherLine = new StringBuilder(lines.get(i).length() * 2);
+                StringBuilder launcherLine = new StringBuilder(line.length() * 2);
                 launcherLine.append(launcherMatcher.group(1));
-                launcherLine.append(" -Dorg.graalvm.version=\"" + mandrelVersion + "\"");
+                launcherLine.append(" -Dorg.graalvm.version=\"").append(options.mandrelVersion).append("\"");
                 launcherLine.append(" -Dorg.graalvm.config=\"Mandrel Distribution\"");
+                if (options.skipJava) {
+                    /* When building the native part we employ the "mx build --only..." option which only builds
+                       the given project without trying to build its dependencies as well. Unfortunately though,
+                       as of 21.2 this appears to cause the following issue:
+
+                       With the new "Module support" mx automatically detects and adds the "-add-exports" that
+                       we need, but when using "mx build --only" mx ignores any dependencies and thus it doesn't
+                       add any "-add-exports"... As a result we explicitly export any modules we need.
+                     */
+                    launcherLine.append(" --add-exports=java.base/com.sun.crypto.provider=org.graalvm.nativeimage.builder");
+                    launcherLine.append(" --add-exports=java.base/jdk.internal.event=org.graalvm.nativeimage.builder");
+                    launcherLine.append(" --add-exports=java.base/jdk.internal.loader=org.graalvm.nativeimage.builder");
+                    launcherLine.append(" --add-exports=java.base/jdk.internal.logger=org.graalvm.nativeimage.builder");
+                    launcherLine.append(" --add-exports=java.base/jdk.internal.misc=org.graalvm.nativeimage.builder");
+                    launcherLine.append(" --add-exports=java.base/jdk.internal.module=org.graalvm.nativeimage.builder,org.graalvm.nativeimage.objectfile,org.graalvm.nativeimage.pointsto");
+                    launcherLine.append(" --add-exports=java.base/jdk.internal.org.objectweb.asm=org.graalvm.nativeimage.builder");
+                    launcherLine.append(" --add-exports=java.base/jdk.internal.org.xml.sax.helpers=org.graalvm.nativeimage.builder");
+                    launcherLine.append(" --add-exports=java.base/jdk.internal.perf=org.graalvm.nativeimage.builder");
+                    launcherLine.append(" --add-exports=java.base/jdk.internal.ref=org.graalvm.nativeimage.objectfile");
+                    launcherLine.append(" --add-exports=java.base/jdk.internal.util.xml.impl=org.graalvm.nativeimage.builder");
+                    launcherLine.append(" --add-exports=java.base/jdk.internal.util.xml=org.graalvm.nativeimage.builder");
+                    launcherLine.append(" --add-exports=java.base/sun.invoke.util=org.graalvm.nativeimage.builder");
+                    launcherLine.append(" --add-exports=java.base/sun.nio.ch=org.graalvm.nativeimage.objectfile");
+                    launcherLine.append(" --add-exports=java.base/sun.reflect.annotation=org.graalvm.nativeimage.builder");
+                    launcherLine.append(" --add-exports=java.base/sun.reflect.generics.reflectiveObjects=org.graalvm.nativeimage.builder");
+                    launcherLine.append(" --add-exports=java.base/sun.reflect.generics.repository=org.graalvm.nativeimage.builder");
+                    launcherLine.append(" --add-exports=java.base/sun.reflect.generics.tree=org.graalvm.nativeimage.builder");
+                    launcherLine.append(" --add-exports=java.base/sun.security.jca=org.graalvm.nativeimage.builder");
+                    launcherLine.append(" --add-exports=java.base/sun.security.provider=org.graalvm.nativeimage.builder");
+                    launcherLine.append(" --add-exports=java.base/sun.security.util=org.graalvm.nativeimage.builder");
+                    launcherLine.append(" --add-exports=java.base/sun.text.spi=org.graalvm.nativeimage.builder");
+                    launcherLine.append(" --add-exports=java.base/sun.util.calendar=org.graalvm.nativeimage.builder");
+                    launcherLine.append(" --add-exports=java.base/sun.util.locale.provider=org.graalvm.nativeimage.builder");
+                    launcherLine.append(" --add-exports=java.base/sun.util.resources=org.graalvm.nativeimage.builder");
+                    launcherLine.append(" --add-exports=java.xml.crypto/org.jcp.xml.dsig.internal.dom=org.graalvm.nativeimage.builder");
+                    launcherLine.append(" --add-exports=jdk.internal.vm.ci/jdk.vm.ci.aarch64=jdk.internal.vm.compiler,org.graalvm.nativeimage.builder");
+                    launcherLine.append(" --add-exports=jdk.internal.vm.ci/jdk.vm.ci.amd64=jdk.internal.vm.compiler,org.graalvm.nativeimage.builder");
+                    launcherLine.append(" --add-exports=jdk.internal.vm.ci/jdk.vm.ci.code.site=jdk.internal.vm.compiler,org.graalvm.nativeimage.builder");
+                    launcherLine.append(" --add-exports=jdk.internal.vm.ci/jdk.vm.ci.code.stack=jdk.internal.vm.compiler,org.graalvm.nativeimage.builder");
+                    launcherLine.append(" --add-exports=jdk.internal.vm.ci/jdk.vm.ci.code=jdk.internal.vm.compiler,org.graalvm.nativeimage.builder,org.graalvm.nativeimage.pointsto");
+                    launcherLine.append(" --add-exports=jdk.internal.vm.ci/jdk.vm.ci.common=jdk.internal.vm.compiler,org.graalvm.nativeimage.builder,org.graalvm.nativeimage.pointsto");
+                    launcherLine.append(" --add-exports=jdk.internal.vm.ci/jdk.vm.ci.hotspot.aarch64=jdk.internal.vm.compiler");
+                    launcherLine.append(" --add-exports=jdk.internal.vm.ci/jdk.vm.ci.hotspot.amd64=jdk.internal.vm.compiler");
+                    launcherLine.append(" --add-exports=jdk.internal.vm.ci/jdk.vm.ci.hotspot.sparc=jdk.internal.vm.compiler");
+                    launcherLine.append(" --add-exports=jdk.internal.vm.ci/jdk.vm.ci.hotspot=jdk.internal.vm.compiler,org.graalvm.nativeimage.builder");
+                    launcherLine.append(" --add-exports=jdk.internal.vm.ci/jdk.vm.ci.meta=jdk.internal.vm.compiler,org.graalvm.nativeimage.builder,org.graalvm.nativeimage.librarysupport,org.graalvm.nativeimage.pointsto");
+                    launcherLine.append(" --add-exports=jdk.internal.vm.ci/jdk.vm.ci.runtime=jdk.internal.vm.compiler,org.graalvm.nativeimage.builder,org.graalvm.nativeimage.pointsto");
+                    launcherLine.append(" --add-exports=jdk.internal.vm.ci/jdk.vm.ci.services.internal=jdk.internal.vm.compiler");
+                    launcherLine.append(" --add-exports=jdk.internal.vm.ci/jdk.vm.ci.services=jdk.internal.vm.compiler,org.graalvm.nativeimage.builder");
+                    launcherLine.append(" --add-exports=jdk.internal.vm.ci/jdk.vm.ci.sparc=jdk.internal.vm.compiler");
+                    launcherLine.append(" --add-exports=jdk.jfr/jdk.jfr.events=org.graalvm.nativeimage.builder");
+                    launcherLine.append(" --add-exports=jdk.jfr/jdk.jfr.internal.consumer=org.graalvm.nativeimage.builder");
+                    launcherLine.append(" --add-exports=jdk.jfr/jdk.jfr.internal.handlers=org.graalvm.nativeimage.builder");
+                    launcherLine.append(" --add-exports=jdk.jfr/jdk.jfr.internal.jfc=org.graalvm.nativeimage.builder");
+                    launcherLine.append(" --add-exports=jdk.jfr/jdk.jfr.internal=org.graalvm.nativeimage.builder");
+                }
                 if (IS_WINDOWS)
                 {
                     launcherLine.append(" --upgrade-module-path \"%location%\\..\\..\\jvmci\\graal.jar\"");
@@ -277,10 +334,10 @@ public class build
             }
             else if(relativeCpMatcher.find())
             {
-                logger.debugf("Classpath line BEFORE: %s", lines.get(i));
+                logger.debugf("Classpath line BEFORE: %s", line);
                 logger.debugf("relativeCpMatcher.group(1): %s", relativeCpMatcher.group(1));
                 logger.debugf("relativeCpMatcher.group(2): %s", relativeCpMatcher.group(2));
-                StringBuilder relativeCpLine = new StringBuilder(lines.get(i).length() * 2);
+                StringBuilder relativeCpLine = new StringBuilder(line.length() * 2);
                 relativeCpLine.append(relativeCpMatcher.group(1));
                 if (IS_WINDOWS) {
                     relativeCpLine.append(";..\\..\\truffle\\truffle-api.jar;..\\..\\jvmci\\graal-sdk.jar");
