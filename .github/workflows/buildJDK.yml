@@ -230,3 +230,86 @@ jobs:
       with:
         name: mandrel-java11-windows-amd64-test-build
         path: mandrel-java11-windows-amd64.zip
+
+  build-and-test-2-step:
+    name: 2-step Linux Build and test ${{ matrix.mandrel-ref }} branch/tag
+    runs-on: ubuntu-latest
+    # don't fail the workflow till we fix the build issue like we did for 21.2 in #168
+    continue-on-error: true
+    strategy:
+      fail-fast: false
+      matrix:
+        mandrel-ref: [graal/master]
+    steps:
+    - uses: actions/checkout@v2
+    - uses: actions/checkout@v2
+      with:
+        repository: graalvm/mandrel.git
+        fetch-depth: 1
+        ref: ${{ matrix.mandrel-ref }}
+        path: ${{ github.workspace }}/mandrel
+    - uses: actions/checkout@v2
+      with:
+        repository: graalvm/mx.git
+        fetch-depth: 1
+        ref: master
+        path: ${{ github.workspace }}/mx
+    - uses: actions/cache@v2.1.5
+      with:
+        path: ~/.mx
+        key: ${{ runner.os }}-mx-${{ hashFiles('**/suite.py') }}
+        restore-keys: |
+          ${{ runner.os }}-mx-
+    - uses: actions/cache@v2.1.5
+      with:
+        path: ~/.m2/repository
+        key: ${{ runner.os }}-mx-${{ hashFiles('**/suite.py') }}
+        restore-keys: |
+          ${{ runner.os }}-${{ matrix.quarkus-name }}-maven-
+    - name: Get latest openJDK11 with static libs
+      run: |
+        curl -sL https://api.adoptopenjdk.net/v3/binary/latest/11/ga/linux/x64/jdk/hotspot/normal/openjdk -o jdk.tar.gz
+        curl -sL https://api.adoptopenjdk.net/v3/binary/latest/11/ga/linux/x64/staticlibs/hotspot/normal/openjdk -o jdk-static-libs.tar.gz
+        mkdir -p ${JAVA_HOME}
+        tar xf jdk.tar.gz -C ${JAVA_HOME} --strip-components=1
+        tar xf jdk-static-libs.tar.gz -C ${JAVA_HOME} --strip-components=1
+        echo ${JAVA_HOME}
+        ${JAVA_HOME}/bin/java --version
+    - name: Build Mandrel JDK
+      run: |
+        # Build the Java bits
+        ${JAVA_HOME}/bin/java -ea build.java --verbose --mx-home ${MX_HOME} --mandrel-repo ${MANDREL_REPO} --mandrel-version "${MANDREL_VERSION}" --skip-native --mandrel-home temp-build
+        # Build the native bits
+        ./temp-build/bin/java -ea build.java --verbose --mx-home ${MX_HOME} --mandrel-repo ${MANDREL_REPO} --mandrel-version "${MANDREL_VERSION}" --skip-java --archive-suffix tar.gz
+        export MANDREL_VERSION_UNTIL_SPACE="$( echo ${MANDREL_VERSION} | sed -e 's/\([^ ]*\).*/\1/;t' )"
+        export ARCHIVE_NAME="mandrel-java11-linux-amd64-${MANDREL_VERSION_UNTIL_SPACE}.tar.gz"
+        mv ${ARCHIVE_NAME} mandrel-java11-linux-amd64.tar.gz
+    - name: Smoke tests
+      run: |
+        export MANDREL_VERSION_UNTIL_SPACE="$( echo ${MANDREL_VERSION} | sed -e 's/\([^ ]*\).*/\1/;t' )"
+        export MANDREL_HOME=${PWD}/mandrel-java11-${MANDREL_VERSION_UNTIL_SPACE}
+        ${MANDREL_HOME}/bin/native-image --version
+        ${MANDREL_HOME}/bin/native-image --version | grep "${MANDREL_VERSION}"
+        echo "
+        public class HelloStrict {
+            public static void main(String[] args) {
+                System.out.printf(
+                    \"Hello %1$,.12f %2$,.12f %3$,.12f %n\"
+                    , StrictMath.cos(0.0)
+                    , StrictMath.IEEEremainder(3.0, 5.0)
+                    , StrictMath.IEEEremainder(-16.3, 4.1)
+                );
+            }
+        }
+        " > HelloStrict.java
+        ${MANDREL_HOME}/bin/javac HelloStrict.java
+        ${MANDREL_HOME}/bin/java HelloStrict | tee java.txt
+        ${MANDREL_HOME}/bin/native-image HelloStrict
+        ./hellostrict | tee native.txt
+        diff java.txt native.txt
+        ${MANDREL_HOME}/bin/native-image --macro:native-image-launcher
+    - name: Upload Mandrel build
+      uses: actions/upload-artifact@v1
+      with:
+        name: mandrel-java11-linux-amd64-2step-test-build
+        path: mandrel-java11-linux-amd64.tar.gz
