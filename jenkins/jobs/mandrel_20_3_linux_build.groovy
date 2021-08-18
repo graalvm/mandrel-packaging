@@ -35,8 +35,8 @@ Linux build for 20.3 branch.
         choiceParam(
                 'OPENJDK',
                 [
+                        'openjdk-11.0.13_2',
                         'openjdk-11.0.12_7',
-                        'openjdk-11.0.11_9',
                         'openjdk-11-ea',
                         'openjdk-11'
 
