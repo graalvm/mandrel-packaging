@@ -1,4 +1,4 @@
-//usr/bin/env jbang "$0" "$@" ; exit $?
+//usr/bin/env jbang --ea "$0" "$@" ; exit $?
 //JAVA 11+
 //DEPS org.eclipse.jgit:org.eclipse.jgit:5.9.0.202009080501-r
 //DEPS org.eclipse.jgit:org.eclipse.jgit.pgm:5.9.0.202009080501-r
@@ -670,15 +670,23 @@ class MandrelRelease implements Callable<Integer> {
                     .map(x -> new MandrelVersion(x.getName().substring(tagPrefix.length())))
                     .sorted(Comparator.reverseOrder())
                     .collect(Collectors.toList());
-            if (finalVersions.isEmpty()) {
-                // There is no Mandrel release for this major.minor.micro, return upstream graal tag instead
+            for (MandrelVersion mandrelVersion : finalVersions) {
+                System.out.println(mandrelVersion);
+            }
+            assert !finalVersions.isEmpty() : 
+                "Tag for " + toString() + " is missing, please make sure the tag has been pushed before releasing.";
+            assert compareTo(finalVersions.get(0)) == 0 : 
+                "Latest tag (" + finalVersions.get(0) + ") does not match the version of the current branch (" + toString() + "). " +
+                "Please make sure you are on the correct branch and that you have created a tag for the release.";
+            if (finalVersions.size() == 1) {
+                // There is no Mandrel release before that major.minor.micro, return upstream graal tag instead
                 final String upstreamTag = "vm-" + majorMinorMicro();
                 if (tags.stream().noneMatch(x -> x.getName().equals(upstreamTag))) {
                     error("Upstream tag " + upstreamTag + " not found in " + REPOSITORY_NAME + " please push it and try again.");
                 }
                 return upstreamTag;
             }
-            return tagPrefix + finalVersions.get(0).toString();
+            return tagPrefix + finalVersions.get(1).toString();
         }
 
         private String majorMinor() {
