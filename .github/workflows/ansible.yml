@@ -22,7 +22,7 @@ on:
       - '.github/workflows/ansible.yml'
   pull_request:
     types: [opened, synchronize, reopened, ready_for_review]
-    paths-ignore:
+    paths:
       - 'build.java'
       - 'resources/**'
       - 'ansible/**'
