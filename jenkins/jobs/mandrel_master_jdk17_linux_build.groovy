@@ -2,9 +2,9 @@ package jenkins.jobs
 
 job('mandrel-master-jdk17-linux-build') {
     label 'el8'
-    displayName('Linux Build :: master')
+    displayName('Linux Build :: master :: JDK 17')
     description('''
-Linux build for master branch.
+Linux build for master branch with JDK17.
     ''')
     logRotator {
         numToKeep(5)
