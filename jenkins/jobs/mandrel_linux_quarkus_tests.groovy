@@ -51,7 +51,7 @@ matrixJob('mandrel-linux-quarkus-tests') {
             pushd archive
             MANDREL_TAR=`ls -1 *.tar.gz`
             tar -xvf "${MANDREL_TAR}"
-            export JAVA_HOME="$( pwd )/$( echo mandrel-java11*-*/ )"
+            export JAVA_HOME="$( pwd )/$( echo mandrel-java1*-*/ )"
             export GRAALVM_HOME="${JAVA_HOME}"
             export PATH="${JAVA_HOME}/bin:${PATH}"
             popd
