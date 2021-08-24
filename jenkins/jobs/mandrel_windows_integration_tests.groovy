@@ -8,8 +8,8 @@ matrixJob('mandrel-windows-integration-tests') {
         )
         text('QUARKUS_VERSION',
                 '1.11.7.Final',
-                '2.1.2.Final',
-                '2.1.0.CR1'
+                '2.1.3.Final',
+                '2.2.0.CR1'
         )
         labelExpression('LABEL', ['w2k19'])
     }
