@@ -4,7 +4,8 @@ matrixJob('mandrel-windows-quarkus-tests') {
                 'graal-vm-20.3',
                 '20.3',
                 '21.2',
-                'master'
+                'master',
+                'master-jdk17'
         )
         text('QUARKUS_VERSION',
                 '1.11.7.Final',
@@ -28,7 +29,7 @@ matrixJob('mandrel-windows-quarkus-tests') {
     combinationFilter(
             ' (MANDREL_VERSION.contains("20.3") && QUARKUS_VERSION.startsWith("1.")) ||' +
             ' (MANDREL_VERSION.contains("20.3") && QUARKUS_VERSION.startsWith("2.")) ||' +
-            ' ((MANDREL_VERSION.contains("21.2") || MANDREL_VERSION=="master") && (QUARKUS_VERSION=="main" || QUARKUS_VERSION.startsWith("2.")))')
+            ' ((MANDREL_VERSION.contains("21.2") || MANDREL_VERSION.contains("master")) && (QUARKUS_VERSION=="main" || QUARKUS_VERSION.startsWith("2.")))')
     parameters {
         stringParam('QUARKUS_REPO', 'https://github.com/quarkusio/quarkus.git', 'Quarkus repository.')
     }
@@ -48,6 +49,8 @@ IF "%MANDREL_VERSION%"=="20.3" (
     set BUILD_JOB=mandrel-21.2-windows-build
 ) ELSE IF "%MANDREL_VERSION%"=="master" (
     set BUILD_JOB=mandrel-master-windows-build
+) ELSE IF "%MANDREL_VERSION%"=="master-jdk17" (
+    set BUILD_JOB=mandrel-master-jdk17-windows-build
 ) ELSE (
     echo "UNKNOWN Mandrel version: %MANDREL_VERSION%"
     exit 1
