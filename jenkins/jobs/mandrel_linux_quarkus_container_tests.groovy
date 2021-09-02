@@ -19,7 +19,7 @@ job('mandrel-linux-quarkus-container-tests') {
         choiceParam(
                 'OPENJDK',
                 [
-                        'openjdk-11.0.13_3',
+                        'openjdk-11.0.13_5',
                         'openjdk-11.0.12_7',
                         'openjdk-11-ea',
                         'openjdk-11'
