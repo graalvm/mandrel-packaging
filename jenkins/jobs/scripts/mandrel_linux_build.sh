@@ -14,6 +14,10 @@ ${JAVA_HOME}/bin/java -ea build.java --maven-local-repository ${MAVEN_REPO} \
 --archive-suffix tar.gz \
 --verbose
 TAR_NAME="$( ls mandrel-*.tar.gz )"
+if [ ! -f "${TAR_NAME}" ]; then
+    echo "Tar archive not created."
+    exit 1
+fi
 sha1sum ${TAR_NAME}>${TAR_NAME}.sha1
 sha256sum ${TAR_NAME}>${TAR_NAME}.sha256
 export MANDREL_HOME="$( find -name 'mandrel-*' -type d )"
