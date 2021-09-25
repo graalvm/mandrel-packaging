@@ -5,6 +5,7 @@ matrixJob('mandrel-linux-quarkus-tests') {
                 '20.3',
                 '21.2',
                 '21.3',
+                '21.3-jdk17',
                 'master',
                 'master-jdk17'
         )
@@ -42,6 +43,7 @@ matrixJob('mandrel-linux-quarkus-tests') {
                 20.3)           BUILD_JOB='mandrel-20.3-linux-build';;
                 21.2)           BUILD_JOB='mandrel-21.2-linux-build';;
                 21.3)           BUILD_JOB='mandrel-21.3-linux-build';;
+                21.3-jdk17)     BUILD_JOB='mandrel-21.3-jdk17-linux-build';;
                 master)         BUILD_JOB='mandrel-master-linux-build';;
                 master-jdk17)   BUILD_JOB='mandrel-master-jdk17-linux-build';;
                 *)
