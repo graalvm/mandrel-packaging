@@ -12,7 +12,7 @@ matrixJob('graal-windows-quarkus-tests') {
     description('Run Quarkus TS with GraalVM distros.')
     displayName('Windows (Graal) :: Quarkus TS')
     logRotator {
-        numToKeep(3)
+        numToKeep(5)
     }
     childCustomWorkspace('${SHORT_COMBINATION}')
     wrappers {
