@@ -5,6 +5,7 @@ matrixJob('mandrel-windows-quarkus-tests') {
                 '20.3',
                 '21.2',
                 '21.3',
+                '21.3-jdk17',
                 'master',
                 'master-jdk17'
         )
@@ -50,6 +51,8 @@ IF "%MANDREL_VERSION%"=="20.3" (
     set BUILD_JOB=mandrel-21.2-windows-build
 ) ELSE IF "%MANDREL_VERSION%"=="21.3" (
     set BUILD_JOB=mandrel-21.3-windows-build
+) ELSE IF "%MANDREL_VERSION%"=="21.3-jdk17" (
+    set BUILD_JOB=mandrel-21.3-jdk17-windows-build
 ) ELSE IF "%MANDREL_VERSION%"=="master" (
     set BUILD_JOB=mandrel-master-windows-build
 ) ELSE IF "%MANDREL_VERSION%"=="master-jdk17" (
