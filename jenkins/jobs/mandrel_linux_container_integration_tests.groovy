@@ -3,19 +3,19 @@ matrixJob('mandrel-linux-container-integration-tests') {
         text('BUILDER_IMAGE',
                 'quay.io/quarkus/ubi-quarkus-mandrel:20.3-java11',
                 'quay.io/quarkus/ubi-quarkus-mandrel:21.2-java11',
-                'registry.access.redhat.com/quarkus/mandrel-20-rhel8',
+                'registry-proxy.engineering.redhat.com/rh-osbs/quarkus-mandrel-21-rhel8',
                 'registry-proxy.engineering.redhat.com/rh-osbs/quarkus-quarkus-mandrel-20-rhel8'
         )
         text('QUARKUS_VERSION',
                 '1.11.7.Final',
-                '2.2.2.Final',
+                '2.2.3.Final',
         )
         labelExpression('label', ['el8'])
     }
     description('Run Mandrel container integration tests')
     displayName('Linux :: Container Integration tests')
     logRotator {
-        numToKeep(3)
+        numToKeep(5)
     }
     childCustomWorkspace('${SHORT_COMBINATION}')
     wrappers {

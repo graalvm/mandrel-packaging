@@ -1,8 +1,10 @@
-job('mandrel-20.3-windows-build') {
+package jenkins.jobs
+
+job('mandrel-21.3-windows-build') {
     label 'w2k19'
-    displayName('Windows Build :: 20.3')
+    displayName('Windows Build :: 21.3')
     description('''
-Windows build for 20.3 branch.
+Windows build for 21.3 branch.
     ''')
     logRotator {
         numToKeep(5)
@@ -28,7 +30,7 @@ Windows build for 20.3 branch.
         )
         stringParam(
                 'BRANCH_OR_TAG',
-                'mandrel/20.3',
+                'mandrel/21.3',
                 'e.g. your PR branch or a specific tag.'
         )
         choiceParam(
@@ -55,18 +57,17 @@ Windows build for 20.3 branch.
                 [
                         'heads',
                         'tags',
-
                 ],
                 'To be used with the repository, e.g. to use a certain head or a tag.'
         )
         stringParam(
                 'PACKAGING_REPOSITORY_BRANCH_OR_TAG',
-                '20.3',
+                'master',
                 'e.g. master if you use heads or some tag if you use tags.'
         )
         stringParam(
                 'MANDREL_VERSION_SUBSTRING',
-                '20.3-SNAPSHOT',
+                '21.3-SNAPSHOT',
                 'It must not contain spaces as it is used in tarball name too.'
         )
     }
@@ -94,9 +95,9 @@ Windows build for 20.3 branch.
             remote {
                 url('https://github.com/graalvm/mx.git')
             }
-            branches('refs/tags/5.273.0')
+            branches('*/master')
             extensions {
-                localBranch('5.273.0')
+                localBranch('master')
                 relativeTargetDirectory('mx')
             }
         }
@@ -128,7 +129,7 @@ Windows build for 20.3 branch.
                 condition('SUCCESS')
                 parameters {
                     currentBuild()
-                    matrixSubset('(MANDREL_VERSION=="20.3" && LABEL=="w2k19")')
+                    matrixSubset('(MANDREL_VERSION=="21.3" && LABEL=="w2k19")')
                 }
             }
         }
