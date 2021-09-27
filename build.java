@@ -75,6 +75,11 @@ public class build
         FileSystem.deleteRecursively(mandrelHome);
         fs.copyDirectory(os.javaHome(), mandrelHome);
 
+        final String OS = System.getProperty("os.name").toLowerCase().split(" ")[0]; // We want "windows" not e.g. "windows 10"
+        final String ARCH = System.getProperty("os.arch");
+        final String PLATFORM = OS + "-" + ARCH;
+        final Path nativeImage = mandrelHome.resolve(Path.of("lib", "svm", "bin", IS_WINDOWS ? "native-image.cmd" : "native-image"));
+
         if (!options.skipJava)
         {
             logger.debugf("Copy jars...");
@@ -86,11 +91,23 @@ public class build
                 FileSystem.copy(Path.of(source + ".src.zip"), Path.of(destination + ".src.zip"));
                 logger.debugf("Copying .jar and .src.zip for src: %s, dst: %s", source, destination);
             });
-        }
 
-        final String OS = System.getProperty("os.name").toLowerCase().split(" ")[0]; // We want "windows" not e.g. "windows 10"
-        final String ARCH = System.getProperty("os.arch");
-        final String PLATFORM = OS + "-" + ARCH;
+            logger.debugf("Copy macros...");
+            fs.copyDirectory(mandrelRepo.resolve(Path.of("sdk", "mxbuild", "native-image.properties", "native-image-agent-library")),
+                    mandrelHome.resolve(Path.of("lib", "svm", "macros", "native-image-agent-library")));
+            fs.copyDirectory(mandrelRepo.resolve(Path.of("sdk", "mxbuild", "native-image.properties", "native-image-launcher")),
+                    mandrelHome.resolve(Path.of("lib", "svm", "macros", "native-image-launcher")));
+            fs.copyDirectory(mandrelRepo.resolve(Path.of("sdk", "mxbuild", "native-image.properties", "native-image-diagnostics-agent-library")),
+                    mandrelHome.resolve(Path.of("lib", "svm", "macros", "native-image-diagnostics-agent-library")));
+
+            logger.debugf("Copy native-image...");
+            FileSystem.copy(mandrelRepo.resolve(
+                    Path.of("sdk", "mxbuild", PLATFORM, IS_WINDOWS ? "native-image.exe.image-bash" : "native-image.image-bash",
+                            IS_WINDOWS ? "native-image.cmd" : "native-image")), nativeImage);
+
+            logger.debugf("Patch native image...");
+            patchNativeImageLauncher(nativeImage, options.mandrelVersion);
+        }
 
         if (!options.skipNative)
         {
@@ -130,12 +147,6 @@ public class build
                 FileSystem.copy(mandrelRepo.resolve(Path.of("substratevm", "mxbuild", PLATFORM, "src", "com.oracle.svm.native.jvm.posix", ARCH, "libjvm.a")),
                     mandrelHome.resolve(Path.of("lib", "svm", "clibraries", PLATFORM, "libjvm.a")));
             }
-            final Path nativeImage = mandrelHome.resolve(Path.of("lib", "svm", "bin", IS_WINDOWS ? "native-image.cmd" : "native-image"));
-
-            logger.debugf("Copy native-image...");
-            FileSystem.copy(mandrelRepo.resolve(
-                Path.of("sdk", "mxbuild", PLATFORM, IS_WINDOWS ? "native-image.exe.image-bash" : "native-image.image-bash",
-                    IS_WINDOWS ? "native-image.cmd" : "native-image")), nativeImage);
             // We don't create symlink on Windows, See https://github.com/graalvm/mandrel-packaging/pull/71#discussion_r517268470
             if (IS_WINDOWS)
             {
@@ -152,17 +163,6 @@ public class build
                 Files.createSymbolicLink(mandrelHome.resolve(
                     Path.of("bin", "native-image")), Path.of("..", "lib", "svm", "bin", "native-image"));
             }
-
-            logger.debugf("Copy macros...");
-            fs.copyDirectory(mandrelRepo.resolve(Path.of("sdk", "mxbuild", "native-image.properties", "native-image-agent-library")),
-                mandrelHome.resolve(Path.of("lib", "svm", "macros", "native-image-agent-library")));
-            fs.copyDirectory(mandrelRepo.resolve(Path.of("sdk", "mxbuild", "native-image.properties", "native-image-launcher")),
-                mandrelHome.resolve(Path.of("lib", "svm", "macros", "native-image-launcher")));
-            fs.copyDirectory(mandrelRepo.resolve(Path.of("sdk", "mxbuild", "native-image.properties", "native-image-diagnostics-agent-library")),
-                mandrelHome.resolve(Path.of("lib", "svm", "macros", "native-image-diagnostics-agent-library")));
-
-            logger.debugf("Patch native image...");
-            patchNativeImageLauncher(nativeImage, options.mandrelVersion);
 
             if (!options.skipNativeAgents)
             {
@@ -654,6 +654,17 @@ class Mx
 
     static final List<BuildArgs> BUILD_JAVA_STEPS = List.of(
         BuildArgs.of("--no-native", "--dependencies", "SVM,SVM_DRIVER,SVM_AGENT,SVM_DIAGNOSTICS_AGENT")
+        , BuildArgs.of("--only",
+                build.IS_WINDOWS ?
+                        "native-image.exe.image-bash," +
+                                "native-image-agent-library_native-image.properties," +
+                                "native-image-launcher_native-image.properties," +
+                                "native-image-diagnostics-agent-library_native-image.properties"
+                        :
+                        "native-image.image-bash," +
+                                "native-image-agent-library_native-image.properties," +
+                                "native-image-launcher_native-image.properties," +
+                                "native-image-diagnostics-agent-library_native-image.properties")
     );
 
     static final List<BuildArgs> BUILD_NATIVE_STEPS = List.of(
@@ -664,17 +675,6 @@ class Mx
                     "com.oracle.svm.core.windows" :
                 "com.oracle.svm.native.libchelper," +
                     "com.oracle.svm.native.jvm.posix")
-        , BuildArgs.of("--only",
-            build.IS_WINDOWS ?
-                "native-image.exe.image-bash," +
-                    "native-image-agent-library_native-image.properties," +
-                    "native-image-launcher_native-image.properties," +
-                    "native-image-diagnostics-agent-library_native-image.properties"
-                :
-                "native-image.image-bash," +
-                    "native-image-agent-library_native-image.properties," +
-                    "native-image-launcher_native-image.properties," +
-                    "native-image-diagnostics-agent-library_native-image.properties")
     );
 
     static void removeMxbuilds(Path mandrelRepo) throws IOException
