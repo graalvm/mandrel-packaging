@@ -234,8 +234,6 @@ jobs:
   build-and-test-2-step:
     name: 2-step Linux Build and test ${{ matrix.mandrel-ref }} branch/tag
     runs-on: ubuntu-latest
-    # don't fail the workflow till we fix the build issue like we did for 21.2 in #168
-    continue-on-error: true
     strategy:
       fail-fast: false
       matrix:
