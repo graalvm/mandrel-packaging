@@ -799,7 +799,6 @@ class Mx
         final Path suitePy = Path.of("substratevm", "mx.substratevm", "suite.py");
         final Path path = mandrelRepo.apply(suitePy);
         final List<String> dependencies = Arrays.asList(
-            "jdk.scripting.nashorn@11..14", // workaround for https://github.com/graalvm/mandrel/issues/280
             "com.oracle.svm.truffle",
             "com.oracle.svm.truffle.api                   to org.graalvm.truffle",
             "com.oracle.truffle.api.TruffleLanguage.Provider",
