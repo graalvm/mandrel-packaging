@@ -9,6 +9,7 @@ matrixJob('mandrel-linux-container-integration-tests') {
         text('QUARKUS_VERSION',
                 '1.11.7.Final',
                 '2.2.3.Final',
+                '2.3.0.Final'
         )
         labelExpression('label', ['el8'])
     }
