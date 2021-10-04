@@ -15,11 +15,11 @@ job('mandrel-linux-quarkus-container-tests') {
         stringParam('CONTAINER_IMAGE', 'quay.io/quarkus/ubi-quarkus-mandrel:21.2-java11', 'Mandrel builder image.')
         stringParam('CONTAINER_RUNTIME', 'podman', 'Command used, either "docker" or "podman". Note that podman is not installed on all executors...')
         stringParam('QUARKUS_REPO', 'https://github.com/quarkusio/quarkus.git', 'Quarkus repository.')
-        stringParam('QUARKUS_VERSION', '2.2.3.Final', 'Quarkus version branch or tag.')
+        stringParam('QUARKUS_VERSION', '2.3.0.Final', 'Quarkus version branch or tag.')
         choiceParam(
                 'OPENJDK',
                 [
-                        'openjdk-11.0.13_6',
+                        'openjdk-11.0.13_7',
                         'openjdk-11.0.12_7',
                         'openjdk-11-ea',
                         'openjdk-11'
