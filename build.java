@@ -44,6 +44,7 @@ public class build
 {
     static final Logger logger = LogManager.getLogger(build.class);
     public static final boolean IS_WINDOWS = System.getProperty("os.name").matches(".*[Ww]indows.*");
+    public static final String JDK_VERSION = "jdk" + Runtime.version().feature();
 
     public static void main(String... args) throws IOException
     {
@@ -83,22 +84,23 @@ public class build
         if (!options.skipJava)
         {
             logger.debugf("Copy jars...");
-            Maven.ARTIFACT_IDS.forEach(artifact ->
+            Maven.ARTIFACTS.forEach(artifact ->
             {
                 final String source = PathFinder.getFirstExisting(Maven.DISTS_PATHS, mandrelRepo, artifact).toString();
                 final String destination = mandrelHome.resolve(Maven.JDK_PATHS.get(artifact)).toString();
-                FileSystem.copy(Path.of(source + ".jar"), Path.of(destination + ".jar"));
-                FileSystem.copy(Path.of(source + ".src.zip"), Path.of(destination + ".src.zip"));
+                FileSystem.copy(Path.of(source), Path.of(destination));
+                FileSystem.copy(Path.of(source.replace(".jar", ".src.zip")), Path.of(destination.replace(".jar", ".src.zip")));
                 logger.debugf("Copying .jar and .src.zip for src: %s, dst: %s", source, destination);
             });
 
             logger.debugf("Copy macros...");
-            fs.copyDirectory(mandrelRepo.resolve(Path.of("sdk", "mxbuild", "native-image.properties", "native-image-agent-library")),
-                    mandrelHome.resolve(Path.of("lib", "svm", "macros", "native-image-agent-library")));
-            fs.copyDirectory(mandrelRepo.resolve(Path.of("sdk", "mxbuild", "native-image.properties", "native-image-launcher")),
-                    mandrelHome.resolve(Path.of("lib", "svm", "macros", "native-image-launcher")));
-            fs.copyDirectory(mandrelRepo.resolve(Path.of("sdk", "mxbuild", "native-image.properties", "native-image-diagnostics-agent-library")),
-                    mandrelHome.resolve(Path.of("lib", "svm", "macros", "native-image-diagnostics-agent-library")));
+            Maven.MACRO_IDS.forEach(macro ->
+            {
+                final Path source = PathFinder.getFirstExisting(Maven.MACRO_PATHS, mandrelRepo, macro);
+                final Path destination = mandrelHome.resolve(Path.of("lib", "svm", "macros", macro));
+                fs.copyDirectory(source, destination);
+                logger.debugf("Copying macro src: %s, dst: %s", source, destination);
+            });
 
             logger.debugf("Copy native-image...");
             FileSystem.copy(mandrelRepo.resolve(
@@ -134,17 +136,21 @@ public class build
                 mandrelHome.resolve(Path.of("lib", "svm", "clibraries", PLATFORM, "include", "svm_libffi.h")));
             FileSystem.copy(mandrelRepo.resolve(Path.of("truffle", "src", "com.oracle.truffle.nfi.native", "include", "trufflenfi.h")),
                 mandrelHome.resolve(Path.of("lib", "svm", "clibraries", PLATFORM, "include", "trufflenfi.h")));
-            FileSystem.copy(mandrelRepo.resolve(
-                Path.of("substratevm", "mxbuild", PLATFORM, "src", "com.oracle.svm.native.libchelper", ARCH, IS_WINDOWS ? "libchelper.lib" : "liblibchelper.a")),
-                mandrelHome.resolve(Path.of("lib", "svm", "clibraries", PLATFORM, IS_WINDOWS ? "libchelper.lib" : "liblibchelper.a")));
             if (IS_WINDOWS)
             {
-                FileSystem.copy(mandrelRepo.resolve(Path.of("substratevm", "mxbuild", PLATFORM, "src", "com.oracle.svm.native.jvm.windows", ARCH, "jvm.lib")),
+                String platformAndJDK = PLATFORM + "-" + JDK_VERSION;
+                FileSystem.copy(mandrelRepo.resolve(
+                                Path.of("substratevm", "mxbuild", platformAndJDK, "com.oracle.svm.native.libchelper", ARCH, "libchelper.lib")),
+                        mandrelHome.resolve(Path.of("lib", "svm", "clibraries", PLATFORM, "libchelper.lib")));
+                FileSystem.copy(mandrelRepo.resolve(Path.of("substratevm", "mxbuild", platformAndJDK, "com.oracle.svm.native.jvm.windows", ARCH, "jvm.lib")),
                     mandrelHome.resolve(Path.of("lib", "svm", "clibraries", PLATFORM, "jvm.lib")));
             }
             else
             {
-                FileSystem.copy(mandrelRepo.resolve(Path.of("substratevm", "mxbuild", PLATFORM, "src", "com.oracle.svm.native.jvm.posix", ARCH, "libjvm.a")),
+                FileSystem.copy(mandrelRepo.resolve(
+                                Path.of("substratevm", "mxbuild", PLATFORM, "com.oracle.svm.native.libchelper", ARCH, "liblibchelper.a")),
+                        mandrelHome.resolve(Path.of("lib", "svm", "clibraries", PLATFORM, "liblibchelper.a")));
+                FileSystem.copy(mandrelRepo.resolve(Path.of("substratevm", "mxbuild", PLATFORM + "-jdk" + Runtime.version().feature(), "com.oracle.svm.native.jvm.posix", ARCH, "libjvm.a")),
                     mandrelHome.resolve(Path.of("lib", "svm", "clibraries", PLATFORM, "libjvm.a")));
             }
             // We don't create symlink on Windows, See https://github.com/graalvm/mandrel-packaging/pull/71#discussion_r517268470
@@ -1061,15 +1067,16 @@ class PathFinder
     // Highest compatible is selected, e.g. jdk17, even if jdk11 dir might be there too.
     public static final List<String> POSSIBLE_DIRS = IntStream.rangeClosed(9, Runtime.version().feature())
         .boxed().sorted(Collections.reverseOrder()).map(i -> "jdk" + i).collect(Collectors.toList());
+    public static final String JDK_NUMBER_DIRECTORY = "@JDK_NUMBER_DIRECTORY@";
 
     static Path getFirstExisting(Map<String, Path> paths, Path mandrelRepo, String artifact)
     {
         final String basePath = mandrelRepo.resolve(paths.get(artifact)).toString();
         for (String dir : POSSIBLE_DIRS)
         {
-            final String file = basePath.replace("@JDK_NUMBER_DIRECTORY@", dir);
-            LOG.debugf("Trying path: %s", file + ".jar");
-            if (new File(file + ".jar").exists())
+            final String file = basePath.replace(JDK_NUMBER_DIRECTORY, dir);
+            LOG.debugf("Trying path: %s", file);
+            if (new File(file).exists())
             {
                 // returning file without suffix
                 return Path.of(file);
@@ -1081,19 +1088,25 @@ class PathFinder
 
 class Maven
 {
-    static final Collection<String> ARTIFACT_IDS = Arrays.asList(
-        "graal-sdk"
-        , "svm"
-        , "pointsto"
-        , "library-support"
-        , "truffle-api"
-        , "compiler"
-        , "objectfile"
-        , "svm-driver"
-        , "jvmti-agent-base"
-        , "svm-agent"
-        , "svm-diagnostics-agent"
-        , "svm-configure"
+    static final Collection<String> ARTIFACTS = Arrays.asList(
+        "graal-sdk.jar"
+        , "svm.jar"
+        , "pointsto.jar"
+        , "library-support.jar"
+        , "truffle-api.jar"
+        , "compiler.jar"
+        , "objectfile.jar"
+        , "svm-driver.jar"
+        , "jvmti-agent-base.jar"
+        , "svm-agent.jar"
+        , "svm-diagnostics-agent.jar"
+        , "svm-configure.jar"
+    );
+
+    static final Collection<String> MACRO_IDS = Arrays.asList(
+        "native-image-agent-library"
+        , "native-image-launcher"
+        , "native-image-diagnostics-agent-library"
     );
 
     static final String INSTALL_FILE_VERSION = "2.4";
@@ -1126,33 +1139,39 @@ class Maven
     );
 
     static final Map<String, Path> DISTS_PATHS = Map.ofEntries(
-        new SimpleEntry<>("graal-sdk", Path.of("sdk", "mxbuild", "dists", "@JDK_NUMBER_DIRECTORY@", "graal-sdk")),
-        new SimpleEntry<>("svm", Path.of("substratevm", "mxbuild", "dists", "@JDK_NUMBER_DIRECTORY@", "svm")),
-        new SimpleEntry<>("pointsto", Path.of("substratevm", "mxbuild", "dists", "@JDK_NUMBER_DIRECTORY@", "pointsto")),
-        new SimpleEntry<>("library-support", Path.of("substratevm", "mxbuild", "dists", "@JDK_NUMBER_DIRECTORY@", "library-support")),
-        new SimpleEntry<>("truffle-api", Path.of("truffle", "mxbuild", "dists", "@JDK_NUMBER_DIRECTORY@", "truffle-api")),
-        new SimpleEntry<>("compiler", Path.of("compiler", "mxbuild", "dists", "@JDK_NUMBER_DIRECTORY@", "graal")),
-        new SimpleEntry<>("objectfile", Path.of("substratevm", "mxbuild", "dists", "@JDK_NUMBER_DIRECTORY@", "objectfile")),
-        new SimpleEntry<>("svm-driver", Path.of("substratevm", "mxbuild", "dists", "@JDK_NUMBER_DIRECTORY@", "svm-driver")),
-        new SimpleEntry<>("jvmti-agent-base", Path.of("substratevm", "mxbuild", "dists", "@JDK_NUMBER_DIRECTORY@", "jvmti-agent-base")),
-        new SimpleEntry<>("svm-agent", Path.of("substratevm", "mxbuild", "dists", "@JDK_NUMBER_DIRECTORY@", "svm-agent")),
-        new SimpleEntry<>("svm-diagnostics-agent", Path.of("substratevm", "mxbuild", "dists", "@JDK_NUMBER_DIRECTORY@", "svm-diagnostics-agent")),
-        new SimpleEntry<>("svm-configure", Path.of("substratevm", "mxbuild", "dists", "@JDK_NUMBER_DIRECTORY@", "svm-configure"))
+        new SimpleEntry<>("graal-sdk.jar", Path.of("sdk", "mxbuild", build.JDK_VERSION, "dists", PathFinder.JDK_NUMBER_DIRECTORY, "graal-sdk.jar")),
+        new SimpleEntry<>("svm.jar", Path.of("substratevm", "mxbuild", build.JDK_VERSION, "dists", PathFinder.JDK_NUMBER_DIRECTORY, "svm.jar")),
+        new SimpleEntry<>("pointsto.jar", Path.of("substratevm", "mxbuild", build.JDK_VERSION, "dists", PathFinder.JDK_NUMBER_DIRECTORY, "pointsto.jar")),
+        new SimpleEntry<>("library-support.jar", Path.of("substratevm", "mxbuild", build.JDK_VERSION, "dists", PathFinder.JDK_NUMBER_DIRECTORY, "library-support.jar")),
+        new SimpleEntry<>("truffle-api.jar", Path.of("truffle", "mxbuild", build.JDK_VERSION, "dists", PathFinder.JDK_NUMBER_DIRECTORY, "truffle-api.jar")),
+        new SimpleEntry<>("compiler.jar", Path.of("compiler", "mxbuild", build.JDK_VERSION, "dists", PathFinder.JDK_NUMBER_DIRECTORY, "graal.jar")),
+        new SimpleEntry<>("objectfile.jar", Path.of("substratevm", "mxbuild", build.JDK_VERSION, "dists", PathFinder.JDK_NUMBER_DIRECTORY, "objectfile.jar")),
+        new SimpleEntry<>("svm-driver.jar", Path.of("substratevm", "mxbuild", build.JDK_VERSION, "dists", PathFinder.JDK_NUMBER_DIRECTORY, "svm-driver.jar")),
+        new SimpleEntry<>("jvmti-agent-base.jar", Path.of("substratevm", "mxbuild", build.JDK_VERSION, "dists", PathFinder.JDK_NUMBER_DIRECTORY, "jvmti-agent-base.jar")),
+        new SimpleEntry<>("svm-agent.jar", Path.of("substratevm", "mxbuild", build.JDK_VERSION, "dists", PathFinder.JDK_NUMBER_DIRECTORY, "svm-agent.jar")),
+        new SimpleEntry<>("svm-diagnostics-agent.jar", Path.of("substratevm", "mxbuild", build.JDK_VERSION, "dists", PathFinder.JDK_NUMBER_DIRECTORY, "svm-diagnostics-agent.jar")),
+        new SimpleEntry<>("svm-configure.jar", Path.of("substratevm", "mxbuild", build.JDK_VERSION, "dists", PathFinder.JDK_NUMBER_DIRECTORY, "svm-configure.jar"))
+    );
+
+    static final Map<String, Path> MACRO_PATHS = Map.ofEntries(
+        new SimpleEntry<>("native-image-agent-library", Path.of("sdk", "mxbuild", build.JDK_VERSION, "native-image.properties", "native-image-agent-library")),
+        new SimpleEntry<>("native-image-launcher", Path.of("sdk", "mxbuild", build.JDK_VERSION, "native-image.properties", "native-image-launcher")),
+        new SimpleEntry<>("native-image-diagnostics-agent-library", Path.of("sdk", "mxbuild", build.JDK_VERSION, "native-image.properties", "native-image-diagnostics-agent-library"))
     );
 
     static final Map<String, Path> JDK_PATHS = Map.ofEntries(
-        new SimpleEntry<>("graal-sdk", Path.of("lib", "jvmci", "graal-sdk")),
-        new SimpleEntry<>("svm", Path.of("lib", "svm", "builder", "svm")),
-        new SimpleEntry<>("pointsto", Path.of("lib", "svm", "builder", "pointsto")),
-        new SimpleEntry<>("library-support", Path.of("lib", "svm", "library-support")),
-        new SimpleEntry<>("truffle-api", Path.of("lib", "truffle", "truffle-api")),
-        new SimpleEntry<>("compiler", Path.of("lib", "jvmci", "graal")),
-        new SimpleEntry<>("objectfile", Path.of("lib", "svm", "builder", "objectfile")),
-        new SimpleEntry<>("svm-driver", Path.of("lib", "graalvm", "svm-driver")),
-        new SimpleEntry<>("jvmti-agent-base", Path.of("lib", "graalvm", "jvmti-agent-base")),
-        new SimpleEntry<>("svm-agent", Path.of("lib", "graalvm", "svm-agent")),
-        new SimpleEntry<>("svm-diagnostics-agent", Path.of("lib", "graalvm", "svm-diagnostics-agent")),
-        new SimpleEntry<>("svm-configure", Path.of("lib", "graalvm", "svm-configure"))
+        new SimpleEntry<>("graal-sdk.jar", Path.of("lib", "jvmci", "graal-sdk.jar")),
+        new SimpleEntry<>("svm.jar", Path.of("lib", "svm", "builder", "svm.jar")),
+        new SimpleEntry<>("pointsto.jar", Path.of("lib", "svm", "builder", "pointsto.jar")),
+        new SimpleEntry<>("library-support.jar", Path.of("lib", "svm", "library-support.jar")),
+        new SimpleEntry<>("truffle-api.jar", Path.of("lib", "truffle", "truffle-api.jar")),
+        new SimpleEntry<>("compiler.jar", Path.of("lib", "jvmci", "graal.jar")),
+        new SimpleEntry<>("objectfile.jar", Path.of("lib", "svm", "builder", "objectfile.jar")),
+        new SimpleEntry<>("svm-driver.jar", Path.of("lib", "graalvm", "svm-driver.jar")),
+        new SimpleEntry<>("jvmti-agent-base.jar", Path.of("lib", "graalvm", "jvmti-agent-base.jar")),
+        new SimpleEntry<>("svm-agent.jar", Path.of("lib", "graalvm", "svm-agent.jar")),
+        new SimpleEntry<>("svm-diagnostics-agent.jar", Path.of("lib", "graalvm", "svm-diagnostics-agent.jar")),
+        new SimpleEntry<>("svm-configure.jar", Path.of("lib", "graalvm", "svm-configure.jar"))
     );
 
     final Path mvn;
@@ -1183,7 +1202,7 @@ class Maven
     {
         // Only invoke mvn if all mx builds succeeded
         final List<Maven.ReleaseArtifact> releaseArtifacts =
-            ARTIFACT_IDS.stream()
+            ARTIFACTS.stream()
                 .map(mvnInstall(options, exec, replace, mandrelRepo, workingDir))
                 .collect(Collectors.toList());
 
