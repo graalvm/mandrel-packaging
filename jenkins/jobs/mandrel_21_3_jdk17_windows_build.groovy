@@ -59,7 +59,7 @@ Windows build for 21.3 branch with JDK17.
         )
         stringParam(
                 'PACKAGING_REPOSITORY_BRANCH_OR_TAG',
-                'master',
+                '21.3',
                 'e.g. master if you use heads or some tag if you use tags.'
         )
         stringParam(
@@ -92,9 +92,9 @@ Windows build for 21.3 branch with JDK17.
             remote {
                 url('https://github.com/graalvm/mx.git')
             }
-            branches('*/master')
+            branches('refs/tags/5.309.2')
             extensions {
-                localBranch('master')
+                localBranch('5.309.2')
                 relativeTargetDirectory('mx')
             }
         }
