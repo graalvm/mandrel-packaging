@@ -30,7 +30,6 @@ import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Predicate;
-import java.util.function.Supplier;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -64,7 +63,7 @@ public class build
         logger.debugf("Building...");
         if (options.mandrelVersion == null)
         {
-            options.mandrelVersion = getMandrelVersion(options, fs, os, mandrelRepo);
+            options.mandrelVersion = getMandrelVersion(fs, os, mandrelRepo);
         }
         final String mandrelVersionUntilSpace = options.mandrelVersion.split(" ")[0];
 
@@ -234,24 +233,24 @@ public class build
         os.exec(archiveCommand, false);
     }
 
-    private static String getMandrelVersion(Options options, FileSystem fs, OperatingSystem os, Path mandrelRepo)
+    private static String getMandrelVersion(FileSystem fs, OperatingSystem os, Path mandrelRepo)
     {
-        String mxVersion = os.exec(Mx.mxversion(options, fs::mxHome, fs::mandrelRepo), true).get(0);
+        String mandrelVersion = os.exec(Mx.mandrelVersion(fs.mxHome(), fs.mandrelRepo()), true).get(0);
 
-        if (mxVersion.endsWith("-dev"))
+        if (mandrelVersion.endsWith("-dev"))
         {
             final Tasks.Exec command = Tasks.Exec.of(Arrays.asList("git", "rev-parse", "--short", "HEAD"), mandrelRepo);
             List<String> output = os.exec(command, true);
             if (!output.isEmpty())
             {
-                mxVersion += output.get(0);
+                mandrelVersion += output.get(0);
             }
         }
         else
         {
-            mxVersion += "-Final";
+            mandrelVersion += "-Final";
         }
-        return mxVersion;
+        return mandrelVersion;
     }
 
 
@@ -270,12 +269,11 @@ public class build
                 logger.debugf("Launcher line BEFORE: %s", lines.get(i));
                 logger.debugf("launcherMatcher.group(1): %s", launcherMatcher.group(1));
                 logger.debugf("launcherMatcher.group(2): %s", launcherMatcher.group(2));
-                StringBuilder launcherLine = new StringBuilder(lines.get(i).length() * 2);
-                launcherLine.append(launcherMatcher.group(1));
-                launcherLine.append(" -Dorg.graalvm.version=\"" + mandrelVersion + "\"");
-                launcherLine.append(" -Dorg.graalvm.config=\"Mandrel Distribution\"");
-                launcherLine.append(launcherMatcher.group(2));
-                lines.set(i, launcherLine.toString());
+                String launcherLine = launcherMatcher.group(1) +
+                        " -Dorg.graalvm.version=\"" + mandrelVersion + "\"" +
+                        " -Dorg.graalvm.config=\"Mandrel Distribution\"" +
+                        launcherMatcher.group(2);
+                lines.set(i, launcherLine);
                 logger.debugf("Launcher line AFTER: %s", lines.get(i));
                 break;
             }
@@ -327,7 +325,7 @@ class Dependency
 class Options
 {
     final MavenAction mavenAction;
-    String mavenVersion;
+    final String mavenVersion;
     String mandrelVersion;
     final boolean verbose;
     final String mavenProxy;
@@ -516,11 +514,11 @@ class SequentialBuild
     {
         final Tasks.Exec.Effects exec = new Tasks.Exec.Effects(task -> os.exec(task, false));
         final Tasks.FileReplace.Effects replace = Tasks.FileReplace.Effects.ofSystem();
-        Mx.build(options, exec, replace, fs::mxHome, fs::mandrelRepo, os::javaHome);
+        Mx.build(options, exec, replace, fs.mxHome(), fs.mandrelRepo(), os.javaHome());
         if (options.mavenAction != Options.MavenAction.NOP && !options.skipJava)
         {
-            final Maven maven = Maven.of(fs::mavenHome, fs::mavenRepoHome);
-            maven.mvn(options, exec, replace, fs.mandrelRepo(), fs::workingDir);
+            final Maven maven = Maven.of(fs.mavenHome(), fs.mavenRepoHome());
+            maven.mvn(options, exec, replace, fs.mandrelRepo(), fs.workingDir());
         }
     }
 }
@@ -705,77 +703,76 @@ class Mx
         Options options
         , Tasks.Exec.Effects exec
         , Tasks.FileReplace.Effects replace
-        , Function<Path, Path> mxHome
-        , Function<Path, Path> mandrelRepo
-        , Supplier<Path> javaHome
+        , Path mxHome
+        , Path mandrelRepo
+        , Path javaHome
     )
     {
-        Mx.swapDependencies(options, replace, mxHome);
-        Mx.removeDependencies(replace, mandrelRepo);
-        Mx.hookMavenProxy(options, replace, mxHome);
+        swapDependencies(options, replace, mxHome);
+        removeDependencies(replace, mandrelRepo);
+        hookMavenProxy(options, replace, mxHome);
 
         final boolean clean = !options.skipClean;
         if (clean)
-            exec.exec.accept(Mx.mxclean(options, mxHome, mandrelRepo));
+            exec.exec.accept(mxclean(options, mxHome, mandrelRepo));
 
         if (!options.skipJava)
         {
             BUILD_JAVA_STEPS.stream()
-                .map(Mx.mxbuild(options, mxHome, mandrelRepo, javaHome))
+                .map(mxbuild(options, mxHome, mandrelRepo, javaHome))
                 .forEach(exec.exec);
         }
 
         if (!options.skipNative)
         {
             BUILD_NATIVE_STEPS.stream()
-                .map(Mx.mxbuild(options, mxHome, mandrelRepo, javaHome))
+                .map(mxbuild(options, mxHome, mandrelRepo, javaHome))
                 .forEach(exec.exec);
         }
     }
 
     private static Tasks.Exec mxclean(
         Options options
-        , Function<Path, Path> mxHome
-        , Function<Path, Path> mandrelRepo
+        , Path mxHome
+        , Path mandrelRepo
     )
     {
-        final Path mx = mxHome.apply(Paths.get("mx"));
+        final Path mx = mxHome.resolve("mx");
         return Tasks.Exec.of(
             Arrays.asList(
                 mx.toString()
                 , options.verbose ? "-V" : ""
                 , "clean"
             )
-            , mandrelRepo.apply(Path.of("substratevm"))
+            , mandrelRepo.resolve("substratevm")
         );
     }
 
-    static Tasks.Exec mxversion(
-        Options options
-        , Function<Path, Path> mxHome
-        , Function<Path, Path> mandrelRepo
+    static Tasks.Exec mandrelVersion(
+        Path mxHome
+        , Path mandrelRepo
     )
     {
-        final Path mx = mxHome.apply(Paths.get("mx"));
+        final Path mx = mxHome.resolve("mx");
         return Tasks.Exec.of(
             Arrays.asList(
                 mx.toString()
                 , "graalvm-version"
             )
-            , mandrelRepo.apply(Path.of("substratevm"))
+            , mandrelRepo.resolve("substratevm")
         );
     }
 
     private static Function<BuildArgs, Tasks.Exec> mxbuild(
         Options options
-        , Function<Path, Path> mxHome
-        , Function<Path, Path> mandrelRepo
-        , Supplier<Path> javaHome
+        , Path mxHome
+        , Path mandrelRepo
+        , Path javaHome
     )
     {
         return buildArgs ->
         {
-            final Path mx = mxHome.apply(Paths.get("mx"));
+            final Path mx = mxHome.resolve("mx");
             final List<String> args = Lists.concat(
                 List.of(
                     mx.toString()
@@ -783,7 +780,7 @@ class Mx
                     , "--trust-http"
                     , "--no-jlinking"
                     , "--java-home"
-                    , javaHome.get().toString()
+                    , javaHome.toString()
                     , "--native-images=lib:native-image-agent,lib:native-image-diagnostics-agent"
                     , "--exclude-components=nju,svmnfi"
                     , "build"
@@ -793,16 +790,16 @@ class Mx
 
             return Tasks.Exec.of(
                 args
-                , mandrelRepo.apply(Path.of("substratevm"))
+                , mandrelRepo.resolve("substratevm")
             );
         };
     }
 
-    static void removeDependencies(Tasks.FileReplace.Effects effects, Function<Path, Path> mandrelRepo)
+    static void removeDependencies(Tasks.FileReplace.Effects effects, Path mandrelRepo)
     {
         LOG.debugf("Remove dependencies");
         final Path suitePy = Path.of("substratevm", "mx.substratevm", "suite.py");
-        final Path path = mandrelRepo.apply(suitePy);
+        final Path path = mandrelRepo.resolve(suitePy);
         final List<String> dependencies = Arrays.asList(
             "com.oracle.svm.truffle",
             "com.oracle.svm.truffle.api                   to org.graalvm.truffle",
@@ -842,7 +839,7 @@ class Mx
         return true;
     }
 
-    static void swapDependencies(Options options, Tasks.FileReplace.Effects effects, Function<Path, Path> mxHome)
+    static void swapDependencies(Options options, Tasks.FileReplace.Effects effects, Path mxHome)
     {
         final List<Dependency> dependencies = options.dependencies;
         if (dependencies.isEmpty())
@@ -851,7 +848,7 @@ class Mx
         }
         LOG.debugf("Swap dependencies: %s", dependencies);
         final Path suitePy = Path.of("mx.mx", "suite.py");
-        final Path path = mxHome.apply(suitePy);
+        final Path path = mxHome.resolve(suitePy);
 
         Tasks.FileReplace.replace(
             new Tasks.FileReplace(path, swapDependencies(dependencies))
@@ -881,7 +878,7 @@ class Mx
     {
         return artifact ->
         {
-            final Mx.Coordinate coordinate = values.get(artifact.id);
+            final Coordinate coordinate = values.get(artifact.id);
             if (coordinate != null)
             {
                 final String line = lines.get(coordinate.lineNumber);
@@ -959,13 +956,13 @@ class Mx
         return null;
     }
 
-    static void hookMavenProxy(Options options, Tasks.FileReplace.Effects effects, Function<Path, Path> mxHome)
+    static void hookMavenProxy(Options options, Tasks.FileReplace.Effects effects, Path mxHome)
     {
         if (options.mavenProxy != null)
         {
-            final Path mxPy = mxHome.apply(Paths.get("mx.py"));
+            final Path mxPy = mxHome.resolve("mx.py");
             Tasks.FileReplace.replace(
-                new Tasks.FileReplace(mxPy, Mx.prependMavenProxyToMxPy(options))
+                new Tasks.FileReplace(mxPy, prependMavenProxyToMxPy(options))
                 , effects
             );
         }
@@ -1147,21 +1144,20 @@ class Maven
     );
 
     final Path mvn;
-    final Function<Path, Path> repoHome;
+    final Path repoHome;
 
-    private Maven(Path mvn, Function<Path, Path> repoHome)
+    private Maven(Path mvn, Path repoHome)
     {
         this.mvn = mvn;
         this.repoHome = repoHome;
     }
 
-    static Maven of(Supplier<Path> lazyHome, Function<Path, Path> repoHome)
+    static Maven of(Path lazyHome, Path repoHome)
     {
-        final Path home = lazyHome.get();
-        final Path mvn = home.toString().isEmpty()
+        final Path mvn = lazyHome.toString().isEmpty()
             ? Path.of("mvn")
             : Path.of("bin", "mvn");
-        return new Maven(home.resolve(mvn), repoHome);
+        return new Maven(lazyHome.resolve(mvn), repoHome);
     }
 
     void mvn(
@@ -1169,7 +1165,7 @@ class Maven
         , Tasks.Exec.Effects exec
         , Tasks.FileReplace.Effects replace
         , Path mandrelRepo
-        , Function<Path, Path> workingDir
+        , Path workingDir
     )
     {
         // Only invoke mvn if all mx builds succeeded
@@ -1197,12 +1193,12 @@ class Maven
         }
     }
 
-    private Consumer<ReleaseArtifact> mvnDeploy(Options options, Tasks.Exec.Effects exec, Function<Path, Path> workingDir)
+    private Consumer<ReleaseArtifact> mvnDeploy(Options options, Tasks.Exec.Effects exec, Path workingDir)
     {
         return artifact -> exec.exec.accept(deploy(artifact, options, workingDir));
     }
 
-    private Tasks.Exec deploy(ReleaseArtifact artifact, Options options, Function<Path, Path> workingDir)
+    private Tasks.Exec deploy(ReleaseArtifact artifact, Options options, Path workingDir)
     {
         return Tasks.Exec.of(
             Arrays.asList(
@@ -1220,7 +1216,7 @@ class Maven
                 , String.format("-DrepositoryId=%s", options.mavenRepoId)
                 , String.format("-Durl=%s", options.mavenURL)
             )
-            , workingDir.apply(Path.of(""))
+            , workingDir
         );
     }
 
@@ -1249,7 +1245,7 @@ class Maven
                 )
                 , String.format(
                     "-Dsources=%s.src.zip"
-                    , artifact.distsPath.toString()
+                    , artifact.distsPath
                 )
                 , "-DcreateChecksum=true"
             )
@@ -1261,7 +1257,7 @@ class Maven
         Artifact artifact
         , Options options
         , Tasks.FileReplace.Effects effects
-        , Function<Path, Path> workingDir
+        , Path workingDir
     )
     {
         final Path pomPath = Path.of(
@@ -1291,7 +1287,7 @@ class Maven
         ReleaseArtifact releaseArtifact
         , Options options
         , Tasks.FileReplace.Effects replace
-        , Function<Path, Path> workingDir
+        , Path workingDir
     )
     {
         Tasks.FileReplace.copyReplace(
@@ -1314,7 +1310,7 @@ class Maven
                 , "-DcreateChecksum=true"
                 , String.format("-DpomFile=%s", releaseArtifact.pomPaths.target)
             )
-            , workingDir.apply(Path.of(""))
+            , workingDir
         );
     }
 
@@ -1358,7 +1354,7 @@ class Maven
         // TODO Release artifact should not depend on mavenRepoHome,
         //      it can be built with relative paths throughout.
         //      The final paths can be computed when constructing the mvn command.
-        static ReleaseArtifact of(Artifact artifact, Options options, Function<Path, Path> workingDir, Function<Path, Path> mavenRepoHome)
+        static ReleaseArtifact of(Artifact artifact, Options options, Path workingDir, Path mavenRepoHome)
         {
             final Path releasePomPath = Path.of(
                 "release"
@@ -1375,7 +1371,7 @@ class Maven
             );
 
             final Path artifactPath = mavenRepoHome
-                .apply(Path.of(artifact.groupId.replace(".", "/")))
+                .resolve(Path.of(artifact.groupId.replace(".", "/")))
                 .resolve(artifact.artifactId);
 
             final Path jarPath = artifactPath
@@ -1413,11 +1409,11 @@ class Maven
             this.target = target;
         }
 
-        static DirectionalPaths ofPom(Path pomPath, Function<Path, Path> workingDir)
+        static DirectionalPaths ofPom(Path pomPath, Path workingDir)
         {
             return new DirectionalPaths(
-                workingDir.apply(Path.of("resources").resolve(pomPath))
-                , workingDir.apply(Path.of("target").resolve(pomPath))
+                workingDir.resolve(Path.of("resources").resolve(pomPath))
+                , workingDir.resolve(Path.of("target").resolve(pomPath))
             );
         }
     }
@@ -1443,14 +1439,9 @@ class FileSystem
         this.mavenHome = mavenHome;
     }
 
-    Path mxHome(Path relative)
+    Path mxHome()
     {
-        return mxHome.resolve(relative);
-    }
-
-    Path mandrelRepo(Path relative)
-    {
-        return mandrelRepo.resolve(relative);
+        return mxHome;
     }
 
     Path mandrelRepo()
@@ -1463,14 +1454,9 @@ class FileSystem
         return workingDir;
     }
 
-    Path workingDir(Path relative)
+    Path mavenRepoHome()
     {
-        return workingDir.resolve(relative);
-    }
-
-    Path mavenRepoHome(Path relative)
-    {
-        return mavenRepoHome.resolve(relative);
+        return mavenRepoHome;
     }
 
     Path mavenHome()
@@ -1787,7 +1773,7 @@ final class Lists
 {
     static <E> List<E> concat(List<? extends E> a, List<? extends E> b)
     {
-        final List<E> list = new ArrayList<E>(a.size() + b.size());
+        final List<E> list = new ArrayList<>(a.size() + b.size());
         list.addAll(a);
         list.addAll(b);
         return list;
@@ -1808,9 +1794,7 @@ final class Check
         final RecordingOperatingSystem os = new RecordingOperatingSystem();
         final Tasks.Exec.Effects exec = new Tasks.Exec.Effects(os::record);
         final Tasks.FileReplace.Effects replace = Tasks.FileReplace.Effects.noop();
-        final Function<Path, Path> identity = Function.identity();
-        final Supplier<Path> javaHome = () -> Path.of("java");
-        Mx.build(options, exec, replace, identity, identity, javaHome);
+        Mx.build(options, exec, replace, Path.of(""), Path.of(""), Path.of("java"));
         os.assertNumberOfTasks(4);
         os.assertTask("mx clean");
     }
@@ -1841,7 +1825,7 @@ final class Check
         void assertNumberOfTasks(int size)
         {
             assert tasks.size() == size
-                : String.format("%d:%s", tasks.size(), tasks.toString());
+                : String.format("%d:%s", tasks.size(), tasks);
         }
 
         private void assertTask(String expected)
