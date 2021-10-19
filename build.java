@@ -1124,18 +1124,18 @@ class Maven
     );
 
     static final Map<String, String> GROUP_IDS = Map.ofEntries(
-        new SimpleEntry<>("graal-sdk", "org.graalvm.sdk"),
-        new SimpleEntry<>("svm", "org.graalvm.nativeimage"),
-        new SimpleEntry<>("pointsto", "org.graalvm.nativeimage"),
-        new SimpleEntry<>("library-support", "org.graalvm.nativeimage"),
-        new SimpleEntry<>("truffle-api", "org.graalvm.truffle"),
-        new SimpleEntry<>("compiler", "org.graalvm.compiler"),
-        new SimpleEntry<>("objectfile", "org.graalvm.nativeimage"),
-        new SimpleEntry<>("svm-driver", "org.graalvm.nativeimage"),
-        new SimpleEntry<>("jvmti-agent-base", "org.graalvm.nativeimage"),
-        new SimpleEntry<>("svm-agent", "org.graalvm.nativeimage"),
-        new SimpleEntry<>("svm-diagnostics-agent", "org.graalvm.nativeimage"),
-        new SimpleEntry<>("svm-configure", "org.graalvm.nativeimage")
+        new SimpleEntry<>("graal-sdk.jar", "org.graalvm.sdk"),
+        new SimpleEntry<>("svm.jar", "org.graalvm.nativeimage"),
+        new SimpleEntry<>("pointsto.jar", "org.graalvm.nativeimage"),
+        new SimpleEntry<>("library-support.jar", "org.graalvm.nativeimage"),
+        new SimpleEntry<>("truffle-api.jar", "org.graalvm.truffle"),
+        new SimpleEntry<>("compiler.jar", "org.graalvm.compiler"),
+        new SimpleEntry<>("objectfile.jar", "org.graalvm.nativeimage"),
+        new SimpleEntry<>("svm-driver.jar", "org.graalvm.nativeimage"),
+        new SimpleEntry<>("jvmti-agent-base.jar", "org.graalvm.nativeimage"),
+        new SimpleEntry<>("svm-agent.jar", "org.graalvm.nativeimage"),
+        new SimpleEntry<>("svm-diagnostics-agent.jar", "org.graalvm.nativeimage"),
+        new SimpleEntry<>("svm-configure.jar", "org.graalvm.nativeimage")
     );
 
     static final Map<String, Path> DISTS_PATHS = Map.ofEntries(
