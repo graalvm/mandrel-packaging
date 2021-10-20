@@ -34,7 +34,7 @@ Windows build for 20.3 branch.
         choiceParam(
                 'OPENJDK',
                 [
-                        'openjdk-11.0.13_7',
+                        'openjdk-11.0.13_8',
                         'openjdk-11.0.12_7',
                         'openjdk-11-ea',
                         'openjdk-11'
