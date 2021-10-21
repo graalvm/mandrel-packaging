@@ -749,6 +749,8 @@ class Mx
                         new Path[]{sdkDistPath.resolve("graal-sdk.jar"), Path.of("lib", "jvmci", "graal-sdk.jar")}),
                 new SimpleEntry<>("org.graalvm.nativeimage:svm.jar",
                         new Path[]{substrateDistPath.resolve("svm.jar"), Path.of("lib", "svm", "builder", "svm.jar")}),
+                new SimpleEntry<>("org.graalvm.nativeimage:native-image-base.jar",
+                        new Path[]{substrateDistPath.resolve("native-image-base.jar"), Path.of("lib", "svm", "builder", "native-image-base.jar")}),
                 new SimpleEntry<>("org.graalvm.nativeimage:pointsto.jar",
                         new Path[]{substrateDistPath.resolve("pointsto.jar"), Path.of("lib", "svm", "builder", "pointsto.jar")}),
                 new SimpleEntry<>("org.graalvm.nativeimage:library-support.jar",
