@@ -1,9 +1,7 @@
-job('mandrel-20.3-linux-build') {
-    label 'el8'
-    displayName('Linux Build :: 20.3')
-    description('''
-Linux build for 20.3 branch.
-    ''')
+job('mandrel-graal-vm-21.3-windows-build') {
+    label 'w2k19'
+    displayName('Windows Build :: graal-vm/21.3')
+    description('Graal Windows build for graal-vm/21.3 branch.')
     logRotator {
         numToKeep(5)
     }
@@ -23,13 +21,12 @@ Linux build for 20.3 branch.
                 [
                         'heads',
                         'tags',
-
                 ],
                 'To be used with the repository, e.g. to use a certain head or a tag.'
         )
         stringParam(
                 'BRANCH_OR_TAG',
-                'mandrel/20.3',
+                'mandrel/21.3',
                 'e.g. your PR branch or a specific tag.'
         )
         choiceParam(
@@ -39,7 +36,6 @@ Linux build for 20.3 branch.
                         'openjdk-11.0.12_7',
                         'openjdk-11-ea',
                         'openjdk-11'
-
                 ],
                 'OpenJDK including Static libs'
         )
@@ -57,18 +53,17 @@ Linux build for 20.3 branch.
                 [
                         'heads',
                         'tags',
-
                 ],
                 'To be used with the repository, e.g. to use a certain head or a tag.'
         )
         stringParam(
                 'PACKAGING_REPOSITORY_BRANCH_OR_TAG',
-                '20.3',
+                '21.3',
                 'e.g. master if you use heads or some tag if you use tags.'
         )
         stringParam(
                 'MANDREL_VERSION_SUBSTRING',
-                '20.3-SNAPSHOT',
+                '21.3-SNAPSHOT',
                 'It must not contain spaces as it is used in tarball name too.'
         )
     }
@@ -96,9 +91,9 @@ Linux build for 20.3 branch.
             remote {
                 url('https://github.com/graalvm/mx.git')
             }
-            branches('refs/tags/5.273.0')
+            branches('refs/tags/5.309.2')
             extensions {
-                localBranch('5.273.0')
+                localBranch('5.309.2')
                 relativeTargetDirectory('mx')
             }
         }
@@ -107,12 +102,27 @@ Linux build for 20.3 branch.
         scm('H H/2 * * *')
     }
     steps {
-        shell('echo MANDREL_VERSION_SUBSTRING=${MANDREL_VERSION_SUBSTRING}')
+        batchFile('echo MANDREL_VERSION_SUBSTRING=%MANDREL_VERSION_SUBSTRING%')
         buildDescription(/MANDREL_VERSION_SUBSTRING=([^\s]*)/, '\\1')
-        shell('./jenkins/jobs/scripts/mandrel_linux_build.sh')
+        batchFile('''
+            pushd mandrel
+            git remote add upstream https://github.com/oracle/graal.git
+            git fetch upstream release/graal-vm/21.3
+            git config --global merge.ours.driver true
+            @echo off
+            echo(>>.gitattributes
+            echo **/suite.py merge=ours>>.gitattributes
+            @echo on
+            type .gitattributes
+            git add .gitattributes
+            git commit -m x
+            git merge -s recursive -Xdiff-algorithm=patience --no-edit upstream/release/graal-vm/21.3
+            popd
+        ''')
+        batchFile('cmd /C jenkins\\jobs\\scripts\\mandrel_windows_build.bat')
     }
     publishers {
-        archiveArtifacts('*.tar.gz,MANDREL.md,*.sha1,*.sha256')
+        archiveArtifacts('*.zip,MANDREL.md,*.sha1,*.sha256')
         wsCleanup()
         extendedEmail {
             recipientList('karm@redhat.com,fzakkak@redhat.com')
@@ -126,11 +136,11 @@ Linux build for 20.3 branch.
             }
         }
         downstreamParameterized {
-            trigger(['mandrel-linux-quarkus-tests', 'mandrel-linux-integration-tests']) {
+            trigger(['mandrel-windows-quarkus-tests', 'mandrel-windows-integration-tests']) {
                 condition('SUCCESS')
                 parameters {
                     currentBuild()
-                    matrixSubset('(MANDREL_VERSION=="20.3" && LABEL=="el8")')
+                    matrixSubset('(MANDREL_VERSION=="graal-vm-21.3" && LABEL=="w2k19")')
                 }
             }
         }

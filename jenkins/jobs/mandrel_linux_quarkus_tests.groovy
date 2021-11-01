@@ -1,18 +1,15 @@
 matrixJob('mandrel-linux-quarkus-tests') {
     axes {
         text('MANDREL_VERSION',
-                'graal-vm-20.3',
-                '20.3',
-                '21.2',
+                'graal-vm-21.3',
                 '21.3',
                 '21.3-jdk17',
                 'master',
                 'master-jdk17'
         )
         text('QUARKUS_VERSION',
-                '1.11.7.Final',
                 '2.2.3.Final',
-                '2.3.0.Final',
+                '2.4.0.Final',
                 'main'
         )
         labelExpression('LABEL', ['el8'])
@@ -29,28 +26,17 @@ matrixJob('mandrel-linux-quarkus-tests') {
             absolute(720)
         }
     }
-    combinationFilter(
-            ' (MANDREL_VERSION.contains("20") && QUARKUS_VERSION.startsWith("1.")) ||' +
-            ' (MANDREL_VERSION.contains("20") && QUARKUS_VERSION.startsWith("2.")) ||' +
-            ' ((MANDREL_VERSION.contains("21") || MANDREL_VERSION.contains("master")) && (QUARKUS_VERSION=="main" || QUARKUS_VERSION.startsWith("2.")))')
+//    combinationFilter(
+//            ' (MANDREL_VERSION.contains("20") && QUARKUS_VERSION.startsWith("1.")) ||' +
+//            ' (MANDREL_VERSION.contains("20") && QUARKUS_VERSION.startsWith("2.")) ||' +
+//            ' ((MANDREL_VERSION.contains("21") || MANDREL_VERSION.contains("master")) && (QUARKUS_VERSION=="main" || QUARKUS_VERSION.startsWith("2.")))')
     parameters {
         stringParam('QUARKUS_REPO', 'https://github.com/quarkusio/quarkus.git', 'Quarkus repository.')
     }
     steps {
         shell('''
             # Prepare Mandrel
-            case $MANDREL_VERSION in
-                graal-vm-20.3)  BUILD_JOB='mandrel-graal-vm-20.3-linux-build';;
-                20.3)           BUILD_JOB='mandrel-20.3-linux-build';;
-                21.2)           BUILD_JOB='mandrel-21.2-linux-build';;
-                21.3)           BUILD_JOB='mandrel-21.3-linux-build';;
-                21.3-jdk17)     BUILD_JOB='mandrel-21.3-jdk17-linux-build';;
-                master)         BUILD_JOB='mandrel-master-linux-build';;
-                master-jdk17)   BUILD_JOB='mandrel-master-jdk17-linux-build';;
-                *)
-                    echo "UNKNOWN Mandrel version: $MANDREL_VERSION"
-                    exit 1
-            esac
+            export BUILD_JOB="mandrel-${MANDREL_VERSION}-linux-build"
             wget "https://ci.modcluster.io/view/Mandrel/job/${BUILD_JOB}/lastSuccessfulBuild/artifact/*zip*/archive.zip" 
             unzip archive.zip
             pushd archive

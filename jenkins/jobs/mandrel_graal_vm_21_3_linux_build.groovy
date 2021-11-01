@@ -1,7 +1,7 @@
-job('mandrel-graal-vm-20.3-windows-build') {
-    label 'w2k19'
-    displayName('Windows Build :: graal-vm/20.3')
-    description('Graal Windows build for graal-vm/20.3 branch.')
+job('mandrel-graal-vm-21.3-linux-build') {
+    label 'el8'
+    displayName('Linux Build :: graal-vm/21.3')
+    description('Graal Linux build for graal-vm/21.3 branch.')
     logRotator {
         numToKeep(5)
     }
@@ -21,12 +21,13 @@ job('mandrel-graal-vm-20.3-windows-build') {
                 [
                         'heads',
                         'tags',
+
                 ],
                 'To be used with the repository, e.g. to use a certain head or a tag.'
         )
         stringParam(
                 'BRANCH_OR_TAG',
-                'mandrel/20.3',
+                'mandrel/21.3',
                 'e.g. your PR branch or a specific tag.'
         )
         choiceParam(
@@ -58,12 +59,12 @@ job('mandrel-graal-vm-20.3-windows-build') {
         )
         stringParam(
                 'PACKAGING_REPOSITORY_BRANCH_OR_TAG',
-                '20.3',
+                '21.3',
                 'e.g. master if you use heads or some tag if you use tags.'
         )
         stringParam(
                 'MANDREL_VERSION_SUBSTRING',
-                '20.3-SNAPSHOT',
+                '21.3-SNAPSHOT',
                 'It must not contain spaces as it is used in tarball name too.'
         )
     }
@@ -91,9 +92,9 @@ job('mandrel-graal-vm-20.3-windows-build') {
             remote {
                 url('https://github.com/graalvm/mx.git')
             }
-            branches('refs/tags/5.273.0')
+            branches('refs/tags/5.309.2')
             extensions {
-                localBranch('5.273.0')
+                localBranch('5.309.2')
                 relativeTargetDirectory('mx')
             }
         }
@@ -102,27 +103,24 @@ job('mandrel-graal-vm-20.3-windows-build') {
         scm('H H/2 * * *')
     }
     steps {
-        batchFile('echo MANDREL_VERSION_SUBSTRING=%MANDREL_VERSION_SUBSTRING%')
+        shell('echo MANDREL_VERSION_SUBSTRING=${MANDREL_VERSION_SUBSTRING}')
         buildDescription(/MANDREL_VERSION_SUBSTRING=([^\s]*)/, '\\1')
-        batchFile('''
+        shell('''
+            set +e
             pushd mandrel
             git remote add upstream https://github.com/oracle/graal.git
-            git fetch upstream release/graal-vm/20.3
+            git fetch upstream release/graal-vm/21.3
             git config --global merge.ours.driver true
-            @echo off
-            echo(>>.gitattributes
-            echo **/suite.py merge=ours>>.gitattributes
-            @echo on
-            type .gitattributes
+            echo -e '\\n**/suite.py merge=ours\\n' >> .gitattributes
             git add .gitattributes
             git commit -m x
-            git merge -s recursive -Xdiff-algorithm=patience --no-edit upstream/release/graal-vm/20.3
+            git merge -s recursive -Xdiff-algorithm=patience --no-edit upstream/release/graal-vm/21.3
             popd
         ''')
-        batchFile('cmd /C jenkins\\jobs\\scripts\\mandrel_windows_build.bat')
+        shell('./jenkins/jobs/scripts/mandrel_linux_build.sh')
     }
     publishers {
-        archiveArtifacts('*.zip,MANDREL.md,*.sha1,*.sha256')
+        archiveArtifacts('*.tar.gz,MANDREL.md,*.sha1,*.sha256')
         wsCleanup()
         extendedEmail {
             recipientList('karm@redhat.com,fzakkak@redhat.com')
@@ -136,11 +134,11 @@ job('mandrel-graal-vm-20.3-windows-build') {
             }
         }
         downstreamParameterized {
-            trigger(['mandrel-windows-quarkus-tests', 'mandrel-windows-integration-tests']) {
+            trigger(['mandrel-linux-quarkus-tests', 'mandrel-linux-integration-tests']) {
                 condition('SUCCESS')
                 parameters {
                     currentBuild()
-                    matrixSubset('(MANDREL_VERSION=="graal-vm-20.3" && LABEL=="w2k19")')
+                    matrixSubset('(MANDREL_VERSION=="graal-vm-21.3" && LABEL=="el8")')
                 }
             }
         }

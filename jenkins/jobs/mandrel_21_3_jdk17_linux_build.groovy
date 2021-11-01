@@ -36,6 +36,8 @@ Linux build for 21.3 branch with JDK17.
         choiceParam(
                 'OPENJDK',
                 [
+                        'jdk-17.0.1+12',
+                        'openjdk-17',
                         'openjdk-17-ea'
                 ],
                 'OpenJDK including Static libs'

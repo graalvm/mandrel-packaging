@@ -1,15 +1,14 @@
 matrixJob('mandrel-linux-container-integration-tests') {
     axes {
         text('BUILDER_IMAGE',
-                'quay.io/quarkus/ubi-quarkus-mandrel:20.3-java11',
                 'quay.io/quarkus/ubi-quarkus-mandrel:21.2-java11',
-                'registry-proxy.engineering.redhat.com/rh-osbs/quarkus-mandrel-21-rhel8',
-                'registry-proxy.engineering.redhat.com/rh-osbs/quarkus-quarkus-mandrel-20-rhel8'
+                'quay.io/quarkus/ubi-quarkus-mandrel:21.3-java11',
+                'quay.io/quarkus/ubi-quarkus-mandrel:21.3-java17',
+                'registry-proxy.engineering.redhat.com/rh-osbs/quarkus-mandrel-21-rhel8'
         )
         text('QUARKUS_VERSION',
-                '1.11.7.Final',
                 '2.2.3.Final',
-                '2.3.0.Final'
+                '2.4.0.Final'
         )
         labelExpression('label', ['el8'])
     }
@@ -25,10 +24,10 @@ matrixJob('mandrel-linux-container-integration-tests') {
             absolute(120)
         }
     }
-    combinationFilter(
-            ' (BUILDER_IMAGE.contains("20") && QUARKUS_VERSION.startsWith("1.")) ||' +
-            ' (BUILDER_IMAGE.contains("20") && QUARKUS_VERSION.startsWith("2.")) ||' +
-            ' (BUILDER_IMAGE.contains("21") && QUARKUS_VERSION.startsWith("2."))')
+ //   combinationFilter(
+ //           ' (BUILDER_IMAGE.contains("20") && QUARKUS_VERSION.startsWith("1.")) ||' +
+ //           ' (BUILDER_IMAGE.contains("20") && QUARKUS_VERSION.startsWith("2.")) ||' +
+ //           ' (BUILDER_IMAGE.contains("21") && QUARKUS_VERSION.startsWith("2."))')
     parameters {
         stringParam('MANDREL_INTEGRATION_TESTS_REPO', 'https://github.com/Karm/mandrel-integration-tests.git', 'Test suite repository.')
         choiceParam(
