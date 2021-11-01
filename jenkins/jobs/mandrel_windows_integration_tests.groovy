@@ -1,18 +1,15 @@
 matrixJob('mandrel-windows-integration-tests') {
     axes {
         text('MANDREL_VERSION',
-                'graal-vm-20.3',
-                '20.3',
-                '21.2',
+                'graal-vm-21.3',
                 '21.3',
                 '21.3-jdk17',
                 'master',
                 'master-jdk17'
         )
         text('QUARKUS_VERSION',
-                '1.11.7.Final',
                 '2.2.3.Final',
-                '2.3.0.Final'
+                '2.4.0.Final'
         )
         labelExpression('LABEL', ['w2k19'])
     }
@@ -28,10 +25,10 @@ matrixJob('mandrel-windows-integration-tests') {
             absolute(120)
         }
     }
-    combinationFilter(
-            ' (MANDREL_VERSION.contains("20") && QUARKUS_VERSION.startsWith("1.")) ||' +
-            ' (MANDREL_VERSION.contains("20") && QUARKUS_VERSION.startsWith("2.")) ||' +
-            ' ((MANDREL_VERSION.contains("21") || MANDREL_VERSION.contains("master")) && (QUARKUS_VERSION=="main" || QUARKUS_VERSION.startsWith("2.")))')
+//    combinationFilter(
+//            ' (MANDREL_VERSION.contains("20") && QUARKUS_VERSION.startsWith("1.")) ||' +
+//            ' (MANDREL_VERSION.contains("20") && QUARKUS_VERSION.startsWith("2.")) ||' +
+//            ' ((MANDREL_VERSION.contains("21") || MANDREL_VERSION.contains("master")) && (QUARKUS_VERSION=="main" || QUARKUS_VERSION.startsWith("2.")))')
     parameters {
         stringParam('MANDREL_INTEGRATION_TESTS_REPO', 'https://github.com/Karm/mandrel-integration-tests.git', 'Test suite repository.')
         choiceParam(
@@ -57,26 +54,7 @@ matrixJob('mandrel-windows-integration-tests') {
 call vcvars64
 IF NOT %ERRORLEVEL% == 0 ( exit 1 )
 
-set BUILD_JOB=""
-IF "%MANDREL_VERSION%"=="20.3" (
-    set BUILD_JOB=mandrel-20.3-windows-build
-) ELSE IF "%MANDREL_VERSION%"=="graal-vm-20.3" (
-    set BUILD_JOB=mandrel-graal-vm-20.3-windows-build
-) ELSE IF "%MANDREL_VERSION%"=="21.2" (
-    set BUILD_JOB=mandrel-21.2-windows-build
-) ELSE IF "%MANDREL_VERSION%"=="21.3" (
-    set BUILD_JOB=mandrel-21.3-windows-build
-) ELSE IF "%MANDREL_VERSION%"=="21.3-jdk17" (
-    set BUILD_JOB=mandrel-21.3-jdk17-windows-build
-) ELSE IF "%MANDREL_VERSION%"=="master" (
-    set BUILD_JOB=mandrel-master-windows-build
-) ELSE IF "%MANDREL_VERSION%"=="master-jdk17" (
-    set BUILD_JOB=mandrel-master-jdk17-windows-build
-) ELSE (
-    echo "UNKNOWN Mandrel version: %MANDREL_VERSION%"
-    exit 1
-)
-
+set BUILD_JOB="mandrel-%MANDREL_VERSION%-windows-build"
 set downloadCommand= ^
 $c = New-Object System.Net.WebClient; ^
 $url = 'https://ci.modcluster.io/view/Mandrel/job/%BUILD_JOB%/lastSuccessfulBuild/artifact/*zip*/archive.zip'; $file = 'archive.zip'; ^
