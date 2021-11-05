@@ -910,9 +910,9 @@ class Mx
     static void removeDependencies(Tasks.FileReplace.Effects effects, Path mandrelRepo)
     {
         LOG.debugf("Remove dependencies");
-        final Path suitePy = Path.of("substratevm", "mx.substratevm", "suite.py");
-        final Path path = mandrelRepo.resolve(suitePy);
-        final List<String> dependencies = Arrays.asList(
+        Path suitePy = Path.of("substratevm", "mx.substratevm", "suite.py");
+        Path path = mandrelRepo.resolve(suitePy);
+        List<String> dependencies = Arrays.asList(
             "com.oracle.svm.truffle",
             "com.oracle.svm.truffle.api                   to org.graalvm.truffle",
             "com.oracle.truffle.api.TruffleLanguage.Provider",
@@ -924,7 +924,16 @@ class Mx
             "com.oracle.svm.truffle.nfi.windows",
             "extracted-dependency:truffle:LIBFFI_DIST",
             "extracted-dependency:truffle:TRUFFLE_NFI_NATIVE/include/*",
-            "file:src/com.oracle.svm.libffi/include/svm_libffi.h");
+            "file:src/com.oracle.svm.libffi/include/svm_libffi.h",
+            "org.graalvm.libgraal.jni");
+        Tasks.FileReplace.replace(
+            new Tasks.FileReplace(path, removeDependencies(dependencies))
+            , effects
+        );
+        suitePy = Path.of("compiler", "mx.compiler", "suite.py");
+        path = mandrelRepo.resolve(suitePy);
+        dependencies = Arrays.asList(
+            "org.graalvm.libgraal.jni");
         Tasks.FileReplace.replace(
             new Tasks.FileReplace(path, removeDependencies(dependencies))
             , effects
