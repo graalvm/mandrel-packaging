@@ -1,11 +1,15 @@
 package jenkins.jobs
 
-job('mandrel-master-jdk17-windows-build') {
-    label 'w2k19'
-    displayName('Windows Build :: master :: JDK 17')
-    description('''
-Windows build for master branch with JDK17.
-    ''')
+matrixJob('mandrel-graal-vm-21.3-linux-build-matrix') {
+    axes {
+        labelExpression('label', ['el8_aarch64', 'el8'])
+        text('JDK_VERSION',
+                'jdk11',
+                'jdk17'
+        )
+    }
+    displayName('Linux Build Matrix :: graal-vm/21.3')
+    description('Graal Linux build matrix for graal-vm/21.3 branch.')
     logRotator {
         numToKeep(5)
     }
@@ -25,22 +29,14 @@ Windows build for master branch with JDK17.
                 [
                         'heads',
                         'tags',
+
                 ],
                 'To be used with the repository, e.g. to use a certain head or a tag.'
         )
         stringParam(
                 'BRANCH_OR_TAG',
-                'graal/master',
+                'mandrel/21.3',
                 'e.g. your PR branch or a specific tag.'
-        )
-        choiceParam(
-                'OPENJDK',
-                [
-                        'jdk-17.0.1+12',
-                        'openjdk-17',
-                        'openjdk-17-ea'
-                ],
-                'OpenJDK including Static libs'
         )
         choiceParam(
                 'PACKAGING_REPOSITORY',
@@ -61,12 +57,12 @@ Windows build for master branch with JDK17.
         )
         stringParam(
                 'PACKAGING_REPOSITORY_BRANCH_OR_TAG',
-                'master',
+                '21.3',
                 'e.g. master if you use heads or some tag if you use tags.'
         )
         stringParam(
                 'MANDREL_VERSION_SUBSTRING',
-                'master-SNAPSHOT',
+                '21.3-SNAPSHOT',
                 'It must not contain spaces as it is used in tarball name too.'
         )
     }
@@ -94,9 +90,9 @@ Windows build for master branch with JDK17.
             remote {
                 url('https://github.com/graalvm/mx.git')
             }
-            branches('*/master')
+            branches('refs/tags/5.309.2')
             extensions {
-                localBranch('master')
+                localBranch('5.309.2')
                 relativeTargetDirectory('mx')
             }
         }
@@ -105,12 +101,35 @@ Windows build for master branch with JDK17.
         scm('H H/2 * * *')
     }
     steps {
-        batchFile('echo MANDREL_VERSION_SUBSTRING=%MANDREL_VERSION_SUBSTRING%')
+        shell('echo MANDREL_VERSION_SUBSTRING=${MANDREL_VERSION_SUBSTRING}')
         buildDescription(/MANDREL_VERSION_SUBSTRING=([^\s]*)/, '\\1')
-        batchFile('cmd /C jenkins\\jobs\\scripts\\mandrel_windows_build.bat')
+        shell('''
+            set +e
+            pushd mandrel
+            git remote add upstream https://github.com/oracle/graal.git
+            git fetch upstream release/graal-vm/21.3
+            git config --global merge.ours.driver true
+            echo -e '\\n**/suite.py merge=ours\\n' >> .gitattributes
+            git add .gitattributes
+            git commit -m x
+            git merge -s recursive -Xdiff-algorithm=patience --no-edit upstream/release/graal-vm/21.3
+            popd
+        ''')
+        shell('''
+            case $JDK_VERSION in
+                jdk11)
+                    export OPENJDK="openjdk-11.0.13_8";;
+                jdk17)
+                    export OPENJDK="jdk-17.0.1+12";;
+                *)
+                    echo "UNKNOWN JDK version: $JDK_VERSION"
+                    exit 1
+            esac
+            ./jenkins/jobs/scripts/mandrel_linux_build.sh
+        ''')
     }
     publishers {
-        archiveArtifacts('*.zip,MANDREL.md,*.sha1,*.sha256')
+        archiveArtifacts('*.tar.gz,MANDREL.md,*.sha1,*.sha256')
         wsCleanup()
         extendedEmail {
             recipientList('karm@redhat.com,fzakkak@redhat.com')
@@ -124,11 +143,11 @@ Windows build for master branch with JDK17.
             }
         }
         downstreamParameterized {
-            trigger(['mandrel-windows-quarkus-tests', 'mandrel-windows-integration-tests']) {
+            trigger(['mandrel-linux-quarkus-tests', 'mandrel-linux-integration-tests']) {
                 condition('SUCCESS')
                 parameters {
                     currentBuild()
-                    matrixSubset('(MANDREL_VERSION=="master-jdk17" && LABEL=="w2k19")')
+                    matrixSubset('(MANDREL_VERSION=="graal-vm-21.3" && JDK_VERSION=="${JDK_VERSION}" && LABEL=="${label}")')
                 }
             }
         }

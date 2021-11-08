@@ -1,17 +1,19 @@
 matrixJob('mandrel-linux-integration-tests') {
     axes {
+        text('JDK_VERSION',
+                'jdk11',
+                'jdk17'
+        )
         text('MANDREL_VERSION',
                 'graal-vm-21.3',
                 '21.3',
-                '21.3-jdk17',
-                'master',
-                'master-jdk17'
+                'master'
         )
         text('QUARKUS_VERSION',
                 '2.2.3.Final',
-                '2.4.0.Final'
+                '2.4.1.Final'
         )
-        labelExpression('LABEL', ['el8'])
+        labelExpression('label', ['el8_aarch64', 'el8'])
     }
     description('Run Mandrel integration tests')
     displayName('Linux :: Integration tests')
@@ -47,12 +49,11 @@ matrixJob('mandrel-linux-integration-tests') {
         }
     }
     steps {
-        shell('echo DESCRIPTION_STRING=Q:${QUARKUS_VERSION},M:${MANDREL_VERSION}')
+        shell('echo DESCRIPTION_STRING=Q:${QUARKUS_VERSION},M:${MANDREL_VERSION},J:${JDK_VERSION}')
         buildDescription(/DESCRIPTION_STRING=([^\s]*)/, '\\1')
         shell('''
             # Prepare Mandrel
-            export BUILD_JOB="mandrel-${MANDREL_VERSION}-linux-build"
-            wget "https://ci.modcluster.io/view/Mandrel/job/${BUILD_JOB}/lastSuccessfulBuild/artifact/*zip*/archive.zip" 
+            wget "https://ci.modcluster.io/view/Mandrel/job/mandrel-${MANDREL_VERSION}-linux-build-matrix/JDK_VERSION=${JDK_VERSION},label=${label}/lastSuccessfulBuild/artifact/*zip*/archive.zip" 
             unzip archive.zip
             pushd archive
             MANDREL_TAR=`ls -1 *.tar.gz`

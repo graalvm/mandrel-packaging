@@ -1,11 +1,15 @@
 package jenkins.jobs
 
-job('mandrel-21.3-linux-build') {
-    label 'el8'
-    displayName('Linux Build :: 21.3')
-    description('''
-Linux build for 21.3 branch.
-    ''')
+matrixJob('mandrel-graal-vm-21.3-windows-build-matrix') {
+    axes {
+        labelExpression('label', ['w2k19'])
+        text('JDK_VERSION',
+                'jdk11',
+                'jdk17'
+        )
+    }
+    displayName('Windows Build Matrix :: graal-vm/21.3')
+    description('Graal Windows build matrix for graal-vm/21.3 branch.')
     logRotator {
         numToKeep(5)
     }
@@ -32,16 +36,6 @@ Linux build for 21.3 branch.
                 'BRANCH_OR_TAG',
                 'mandrel/21.3',
                 'e.g. your PR branch or a specific tag.'
-        )
-        choiceParam(
-                'OPENJDK',
-                [
-                        'openjdk-11.0.13_8',
-                        'openjdk-11.0.12_7',
-                        'openjdk-11-ea',
-                        'openjdk-11'
-                ],
-                'OpenJDK including Static libs'
         )
         choiceParam(
                 'PACKAGING_REPOSITORY',
@@ -106,12 +100,38 @@ Linux build for 21.3 branch.
         scm('H H/2 * * *')
     }
     steps {
-        shell('echo MANDREL_VERSION_SUBSTRING=${MANDREL_VERSION_SUBSTRING}')
+        batchFile('echo MANDREL_VERSION_SUBSTRING=%MANDREL_VERSION_SUBSTRING%')
         buildDescription(/MANDREL_VERSION_SUBSTRING=([^\s]*)/, '\\1')
-        shell('./jenkins/jobs/scripts/mandrel_linux_build.sh')
+        batchFile('''
+            pushd mandrel
+            git remote add upstream https://github.com/oracle/graal.git
+            git fetch upstream release/graal-vm/21.3
+            git config --global merge.ours.driver true
+            @echo off
+            echo(>>.gitattributes
+            echo **/suite.py merge=ours>>.gitattributes
+            @echo on
+            type .gitattributes
+            git add .gitattributes
+            git commit -m x
+            git merge -s recursive -Xdiff-algorithm=patience --no-edit upstream/release/graal-vm/21.3
+            popd
+        ''')
+        batchFile('''
+            set OPENJDK=
+            IF "%JDK_VERSION%"=="jdk11" (
+                set OPENJDK=openjdk-11.0.13_8
+            ) ELSE IF "%JDK_VERSION%"=="jdk17" (
+                set OPENJDK=jdk-17.0.1+12
+            ) ELSE (
+                echo "UNKNOWN JDK version: %JDK_VERSION%"
+                exit 1
+            )
+            cmd /C jenkins\\jobs\\scripts\\mandrel_windows_build.bat
+        ''')
     }
     publishers {
-        archiveArtifacts('*.tar.gz,MANDREL.md,*.sha1,*.sha256')
+        archiveArtifacts('*.zip,MANDREL.md,*.sha1,*.sha256')
         wsCleanup()
         extendedEmail {
             recipientList('karm@redhat.com,fzakkak@redhat.com')
@@ -125,11 +145,11 @@ Linux build for 21.3 branch.
             }
         }
         downstreamParameterized {
-            trigger(['mandrel-linux-quarkus-tests', 'mandrel-linux-integration-tests']) {
+            trigger(['mandrel-windows-quarkus-tests', 'mandrel-windows-integration-tests']) {
                 condition('SUCCESS')
                 parameters {
                     currentBuild()
-                    matrixSubset('(MANDREL_VERSION=="21.3" && LABEL=="el8")')
+                    matrixSubset('(MANDREL_VERSION=="graal-vm-21.3" && JDK_VERSION=="${JDK_VERSION}" && LABEL=="${label}")')
                 }
             }
         }

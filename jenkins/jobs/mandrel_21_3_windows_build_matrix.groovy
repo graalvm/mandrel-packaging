@@ -1,10 +1,16 @@
 package jenkins.jobs
 
-job('mandrel-21.3-windows-build') {
-    label 'w2k19'
-    displayName('Windows Build :: 21.3')
+matrixJob('mandrel-21.3-windows-build-matrix') {
+    axes {
+        labelExpression('label', ['w2k19'])
+        text('JDK_VERSION',
+                'jdk11',
+                'jdk17'
+        )
+    }
+    displayName('Windows Build Matrix :: 21.3')
     description('''
-Windows build for 21.3 branch.
+Windows build matrix for 21.3 branch.
     ''')
     logRotator {
         numToKeep(5)
@@ -32,16 +38,6 @@ Windows build for 21.3 branch.
                 'BRANCH_OR_TAG',
                 'mandrel/21.3',
                 'e.g. your PR branch or a specific tag.'
-        )
-        choiceParam(
-                'OPENJDK',
-                [
-                        'openjdk-11.0.13_8',
-                        'openjdk-11.0.12_7',
-                        'openjdk-11-ea',
-                        'openjdk-11'
-                ],
-                'OpenJDK including Static libs'
         )
         choiceParam(
                 'PACKAGING_REPOSITORY',
@@ -108,7 +104,18 @@ Windows build for 21.3 branch.
     steps {
         batchFile('echo MANDREL_VERSION_SUBSTRING=%MANDREL_VERSION_SUBSTRING%')
         buildDescription(/MANDREL_VERSION_SUBSTRING=([^\s]*)/, '\\1')
-        batchFile('cmd /C jenkins\\jobs\\scripts\\mandrel_windows_build.bat')
+        batchFile('''
+            set OPENJDK=
+            IF "%JDK_VERSION%"=="jdk11" (
+                set OPENJDK=openjdk-11.0.13_8
+            ) ELSE IF "%JDK_VERSION%"=="jdk17" (
+                set OPENJDK=jdk-17.0.1+12
+            ) ELSE (
+                echo "UNKNOWN JDK version: %JDK_VERSION%"
+                exit 1
+            )
+            cmd /C jenkins\\jobs\\scripts\\mandrel_windows_build.bat
+        ''')
     }
     publishers {
         archiveArtifacts('*.zip,MANDREL.md,*.sha1,*.sha256')
@@ -129,7 +136,7 @@ Windows build for 21.3 branch.
                 condition('SUCCESS')
                 parameters {
                     currentBuild()
-                    matrixSubset('(MANDREL_VERSION=="21.3" && LABEL=="w2k19")')
+                    matrixSubset('(MANDREL_VERSION=="21.3" && JDK_VERSION=="${JDK_VERSION}" && LABEL=="${label}")')
                 }
             }
         }

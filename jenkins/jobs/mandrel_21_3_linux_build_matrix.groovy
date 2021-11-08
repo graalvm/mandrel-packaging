@@ -1,10 +1,16 @@
 package jenkins.jobs
 
-job('mandrel-master-jdk17-linux-build') {
-    label 'el8'
-    displayName('Linux Build :: master :: JDK 17')
+matrixJob('mandrel-21.3-linux-build-matrix') {
+    axes {
+        labelExpression('label', ['el8_aarch64', 'el8'])
+        text('JDK_VERSION',
+                'jdk11',
+                'jdk17'
+        )
+    }
+    displayName('Linux Build Matrix :: 21.3')
     description('''
-Linux build for master branch with JDK17.
+Linux build for 21.3 branch.
     ''')
     logRotator {
         numToKeep(5)
@@ -30,17 +36,8 @@ Linux build for master branch with JDK17.
         )
         stringParam(
                 'BRANCH_OR_TAG',
-                'graal/master',
+                'mandrel/21.3',
                 'e.g. your PR branch or a specific tag.'
-        )
-        choiceParam(
-                'OPENJDK',
-                [
-                        'jdk-17.0.1+12',
-                        'openjdk-17',
-                        'openjdk-17-ea'
-                ],
-                'OpenJDK including Static libs'
         )
         choiceParam(
                 'PACKAGING_REPOSITORY',
@@ -61,12 +58,12 @@ Linux build for master branch with JDK17.
         )
         stringParam(
                 'PACKAGING_REPOSITORY_BRANCH_OR_TAG',
-                'master',
+                '21.3',
                 'e.g. master if you use heads or some tag if you use tags.'
         )
         stringParam(
                 'MANDREL_VERSION_SUBSTRING',
-                'master-SNAPSHOT',
+                '21.3-SNAPSHOT',
                 'It must not contain spaces as it is used in tarball name too.'
         )
     }
@@ -94,9 +91,9 @@ Linux build for master branch with JDK17.
             remote {
                 url('https://github.com/graalvm/mx.git')
             }
-            branches('*/master')
+            branches('refs/tags/5.309.2')
             extensions {
-                localBranch('master')
+                localBranch('5.309.2')
                 relativeTargetDirectory('mx')
             }
         }
@@ -107,7 +104,18 @@ Linux build for master branch with JDK17.
     steps {
         shell('echo MANDREL_VERSION_SUBSTRING=${MANDREL_VERSION_SUBSTRING}')
         buildDescription(/MANDREL_VERSION_SUBSTRING=([^\s]*)/, '\\1')
-        shell('./jenkins/jobs/scripts/mandrel_linux_build.sh')
+        shell('''
+            case $JDK_VERSION in
+                jdk11)
+                    export OPENJDK="openjdk-11.0.13_8";;
+                jdk17)
+                    export OPENJDK="jdk-17.0.1+12";;
+                *)
+                    echo "UNKNOWN JDK version: $JDK_VERSION"
+                    exit 1
+            esac
+            ./jenkins/jobs/scripts/mandrel_linux_build.sh
+        ''')
     }
     publishers {
         archiveArtifacts('*.tar.gz,MANDREL.md,*.sha1,*.sha256')
@@ -128,7 +136,7 @@ Linux build for master branch with JDK17.
                 condition('SUCCESS')
                 parameters {
                     currentBuild()
-                    matrixSubset('(MANDREL_VERSION=="master-jdk17" && LABEL=="el8")')
+                    matrixSubset('(MANDREL_VERSION=="21.3" && JDK_VERSION=="${JDK_VERSION}" && LABEL=="${label}")')
                 }
             }
         }
