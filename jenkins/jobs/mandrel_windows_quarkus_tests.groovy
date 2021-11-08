@@ -1,18 +1,20 @@
 matrixJob('mandrel-windows-quarkus-tests') {
     axes {
+        text('JDK_VERSION',
+                'jdk11',
+                'jdk17'
+        )
         text('MANDREL_VERSION',
                 'graal-vm-21.3',
                 '21.3',
-                '21.3-jdk17',
-                'master',
-                'master-jdk17'
+                'master'
         )
         text('QUARKUS_VERSION',
                 '2.2.3.Final',
-                '2.4.0.Final',
+                '2.4.1.Final',
                 'main'
         )
-        labelExpression('LABEL', ['w2k19&&docker'])
+        labelExpression('label', ['w2k19'])
     }
     description('Run Quarkus TS with Mandrel distros. Quarkus versions differ according to particular Mandrel versions.')
     displayName('Windows :: Quarkus TS')
@@ -42,7 +44,7 @@ IF NOT %ERRORLEVEL% == 0 ( exit 1 )
 set BUILD_JOB="mandrel-%MANDREL_VERSION%-windows-build"
 set downloadCommand= ^
 $c = New-Object System.Net.WebClient; ^
-$url = 'https://ci.modcluster.io/view/Mandrel/job/%BUILD_JOB%/lastSuccessfulBuild/artifact/*zip*/archive.zip'; $file = 'archive.zip'; ^
+$url = 'https://ci.modcluster.io/view/Mandrel/job/mandrel-%MANDREL_VERSION%-linux-build-matrix/JDK_VERSION=%JDK_VERSION%,label=%label%/lastSuccessfulBuild/artifact/*zip*/archive.zip'; $file = 'archive.zip'; ^
 $c.DownloadFile($url, $file);
 powershell -Command "%downloadCommand%"
 

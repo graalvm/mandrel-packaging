@@ -1,7 +1,17 @@
-job('mandrel-graal-vm-21.3-linux-build') {
-    label 'el8'
-    displayName('Linux Build :: graal-vm/21.3')
-    description('Graal Linux build for graal-vm/21.3 branch.')
+package jenkins.jobs
+
+matrixJob('mandrel-master-linux-build-matrix') {
+    axes {
+        labelExpression('label', ['el8_aarch64', 'el8'])
+        text('JDK_VERSION',
+                'jdk11',
+                'jdk17'
+        )
+    }
+    displayName('Linux Build Matrix :: master')
+    description('''
+Linux build matrix for master branch.
+    ''')
     logRotator {
         numToKeep(5)
     }
@@ -21,24 +31,13 @@ job('mandrel-graal-vm-21.3-linux-build') {
                 [
                         'heads',
                         'tags',
-
                 ],
                 'To be used with the repository, e.g. to use a certain head or a tag.'
         )
         stringParam(
                 'BRANCH_OR_TAG',
-                'mandrel/21.3',
+                'graal/master',
                 'e.g. your PR branch or a specific tag.'
-        )
-        choiceParam(
-                'OPENJDK',
-                [
-                        'openjdk-11.0.13_8',
-                        'openjdk-11.0.12_7',
-                        'openjdk-11-ea',
-                        'openjdk-11'
-                ],
-                'OpenJDK including Static libs'
         )
         choiceParam(
                 'PACKAGING_REPOSITORY',
@@ -59,12 +58,12 @@ job('mandrel-graal-vm-21.3-linux-build') {
         )
         stringParam(
                 'PACKAGING_REPOSITORY_BRANCH_OR_TAG',
-                '21.3',
+                'master',
                 'e.g. master if you use heads or some tag if you use tags.'
         )
         stringParam(
                 'MANDREL_VERSION_SUBSTRING',
-                '21.3-SNAPSHOT',
+                'master-SNAPSHOT',
                 'It must not contain spaces as it is used in tarball name too.'
         )
     }
@@ -92,9 +91,9 @@ job('mandrel-graal-vm-21.3-linux-build') {
             remote {
                 url('https://github.com/graalvm/mx.git')
             }
-            branches('refs/tags/5.309.2')
+            branches('*/master')
             extensions {
-                localBranch('5.309.2')
+                localBranch('master')
                 relativeTargetDirectory('mx')
             }
         }
@@ -106,18 +105,17 @@ job('mandrel-graal-vm-21.3-linux-build') {
         shell('echo MANDREL_VERSION_SUBSTRING=${MANDREL_VERSION_SUBSTRING}')
         buildDescription(/MANDREL_VERSION_SUBSTRING=([^\s]*)/, '\\1')
         shell('''
-            set +e
-            pushd mandrel
-            git remote add upstream https://github.com/oracle/graal.git
-            git fetch upstream release/graal-vm/21.3
-            git config --global merge.ours.driver true
-            echo -e '\\n**/suite.py merge=ours\\n' >> .gitattributes
-            git add .gitattributes
-            git commit -m x
-            git merge -s recursive -Xdiff-algorithm=patience --no-edit upstream/release/graal-vm/21.3
-            popd
+            case $JDK_VERSION in
+                jdk11)
+                    export OPENJDK="openjdk-11.0.13_8";;
+                jdk17)
+                    export OPENJDK="jdk-17.0.1+12";;
+                *)
+                    echo "UNKNOWN JDK version: $JDK_VERSION"
+                    exit 1
+            esac
+            ./jenkins/jobs/scripts/mandrel_linux_build.sh
         ''')
-        shell('./jenkins/jobs/scripts/mandrel_linux_build.sh')
     }
     publishers {
         archiveArtifacts('*.tar.gz,MANDREL.md,*.sha1,*.sha256')
@@ -138,7 +136,7 @@ job('mandrel-graal-vm-21.3-linux-build') {
                 condition('SUCCESS')
                 parameters {
                     currentBuild()
-                    matrixSubset('(MANDREL_VERSION=="graal-vm-21.3" && LABEL=="el8")')
+                    matrixSubset('(MANDREL_VERSION=="master" && JDK_VERSION=="${JDK_VERSION}" && LABEL=="${label}")')
                 }
             }
         }
