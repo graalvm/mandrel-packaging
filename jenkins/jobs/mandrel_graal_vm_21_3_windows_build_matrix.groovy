@@ -11,7 +11,7 @@ matrixJob('mandrel-graal-vm-21.3-windows-build-matrix') {
     displayName('Windows Build Matrix :: graal-vm/21.3')
     description('Graal Windows build matrix for graal-vm/21.3 branch.')
     logRotator {
-        numToKeep(5)
+        numToKeep(25)
     }
     parameters {
         choiceParam(

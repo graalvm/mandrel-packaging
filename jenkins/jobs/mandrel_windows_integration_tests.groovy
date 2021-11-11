@@ -18,7 +18,7 @@ matrixJob('mandrel-windows-integration-tests') {
     description('Run Mandrel integration tests')
     displayName('Windows :: Integration tests')
     logRotator {
-        numToKeep(5)
+        numToKeep(25)
     }
     childCustomWorkspace('${SHORT_COMBINATION}')
     wrappers {

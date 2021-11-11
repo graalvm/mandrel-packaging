@@ -15,7 +15,7 @@ matrixJob('mandrel-linux-container-integration-tests') {
     description('Run Mandrel container integration tests')
     displayName('Linux :: Container Integration tests')
     logRotator {
-        numToKeep(5)
+        numToKeep(25)
     }
     childCustomWorkspace('${SHORT_COMBINATION}')
     wrappers {

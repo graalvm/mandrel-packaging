@@ -19,7 +19,7 @@ matrixJob('mandrel-windows-quarkus-tests') {
     description('Run Quarkus TS with Mandrel distros. Quarkus versions differ according to particular Mandrel versions.')
     displayName('Windows :: Quarkus TS')
     logRotator {
-        numToKeep(5)
+        numToKeep(25)
     }
     childCustomWorkspace('${SHORT_COMBINATION}')
     wrappers {

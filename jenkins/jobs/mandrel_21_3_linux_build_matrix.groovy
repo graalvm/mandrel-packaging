@@ -13,7 +13,7 @@ matrixJob('mandrel-21.3-linux-build-matrix') {
 Linux build for 21.3 branch.
     ''')
     logRotator {
-        numToKeep(5)
+        numToKeep(25)
     }
     parameters {
         choiceParam(
