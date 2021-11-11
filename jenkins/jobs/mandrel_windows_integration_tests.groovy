@@ -13,7 +13,7 @@ matrixJob('mandrel-windows-integration-tests') {
                 '2.2.3.Final',
                 '2.4.1.Final'
         )
-        labelExpression('label', ['w2k19'])
+        labelExpression('LABEL', ['w2k19'])
     }
     description('Run Mandrel integration tests')
     displayName('Windows :: Integration tests')

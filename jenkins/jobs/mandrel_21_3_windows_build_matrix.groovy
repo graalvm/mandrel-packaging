@@ -2,7 +2,7 @@ package jenkins.jobs
 
 matrixJob('mandrel-21.3-windows-build-matrix') {
     axes {
-        labelExpression('label', ['w2k19'])
+        labelExpression('LABEL', ['w2k19'])
         text('JDK_VERSION',
                 'jdk11',
                 'jdk17'
@@ -136,7 +136,7 @@ Windows build matrix for 21.3 branch.
                 condition('SUCCESS')
                 parameters {
                     currentBuild()
-                    matrixSubset('(MANDREL_VERSION=="21.3" && JDK_VERSION=="${JDK_VERSION}" && LABEL=="${label}")')
+                    matrixSubset('(MANDREL_VERSION=="21.3" && JDK_VERSION=="${JDK_VERSION}" && LABEL=="${LABEL}")')
                 }
             }
         }

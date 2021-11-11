@@ -14,7 +14,7 @@ matrixJob('mandrel-linux-quarkus-tests') {
                 '2.4.1.Final',
                 'main'
         )
-        labelExpression('label', ['el8_aarch64', 'el8'])
+        labelExpression('LABEL', ['el8_aarch64', 'el8'])
     }
     description('Run Quarkus TS with Mandrel distros. Quarkus versions differ according to particular Mandrel versions.')
     displayName('Linux :: Quarkus TS')
@@ -38,7 +38,7 @@ matrixJob('mandrel-linux-quarkus-tests') {
     steps {
         shell('''
             # Prepare Mandrel
-            wget "https://ci.modcluster.io/view/Mandrel/job/mandrel-${MANDREL_VERSION}-linux-build-matrix/JDK_VERSION=${JDK_VERSION},label=${label}/lastSuccessfulBuild/artifact/*zip*/archive.zip" 
+            wget "https://ci.modcluster.io/view/Mandrel/job/mandrel-${MANDREL_VERSION}-linux-build-matrix/JDK_VERSION=${JDK_VERSION},label=${LABEL}/lastSuccessfulBuild/artifact/*zip*/archive.zip" 
             unzip archive.zip
             pushd archive
             MANDREL_TAR=`ls -1 *.tar.gz`

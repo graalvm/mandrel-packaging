@@ -13,7 +13,7 @@ matrixJob('mandrel-linux-integration-tests') {
                 '2.2.3.Final',
                 '2.4.1.Final'
         )
-        labelExpression('label', ['el8_aarch64', 'el8'])
+        labelExpression('LABEL', ['el8_aarch64', 'el8'])
     }
     description('Run Mandrel integration tests')
     displayName('Linux :: Integration tests')
@@ -53,7 +53,7 @@ matrixJob('mandrel-linux-integration-tests') {
         buildDescription(/DESCRIPTION_STRING=([^\s]*)/, '\\1')
         shell('''
             # Prepare Mandrel
-            wget "https://ci.modcluster.io/view/Mandrel/job/mandrel-${MANDREL_VERSION}-linux-build-matrix/JDK_VERSION=${JDK_VERSION},label=${label}/lastSuccessfulBuild/artifact/*zip*/archive.zip" 
+            wget "https://ci.modcluster.io/view/Mandrel/job/mandrel-${MANDREL_VERSION}-linux-build-matrix/JDK_VERSION=${JDK_VERSION},label=${LABEL}/lastSuccessfulBuild/artifact/*zip*/archive.zip" 
             unzip archive.zip
             pushd archive
             MANDREL_TAR=`ls -1 *.tar.gz`

@@ -10,7 +10,7 @@ matrixJob('mandrel-linux-container-integration-tests') {
                 '2.2.3.Final',
                 '2.4.1.Final'
         )
-        labelExpression('label', ['el8'])
+        labelExpression('LABEL', ['el8'])
     }
     description('Run Mandrel container integration tests')
     displayName('Linux :: Container Integration tests')
