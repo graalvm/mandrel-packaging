@@ -13,7 +13,7 @@ matrixJob('mandrel-21.3-windows-build-matrix') {
 Windows build matrix for 21.3 branch.
     ''')
     logRotator {
-        numToKeep(25)
+        numToKeep(30)
     }
     parameters {
         choiceParam(
@@ -118,6 +118,11 @@ Windows build matrix for 21.3 branch.
         ''')
     }
     publishers {
+        groovyPostBuild('''
+            if(manager.logContains(".*MANDREL_VERSION_SUBSTRING.*-Final.*")){
+                (Thread.currentThread()?.executable).keepLog(true)
+            }
+            ''', Behavior.DoNothing)
         archiveArtifacts('*.zip,MANDREL.md,*.sha1,*.sha256')
         wsCleanup()
         extendedEmail {

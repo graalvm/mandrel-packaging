@@ -19,7 +19,7 @@ matrixJob('mandrel-linux-quarkus-tests') {
     description('Run Quarkus TS with Mandrel distros. Quarkus versions differ according to particular Mandrel versions.')
     displayName('Linux :: Quarkus TS')
     logRotator {
-        numToKeep(25)
+        numToKeep(30)
     }
     childCustomWorkspace('${SHORT_COMBINATION}')
     wrappers {
@@ -72,6 +72,11 @@ matrixJob('mandrel-linux-quarkus-tests') {
         ''')
     }
     publishers {
+        groovyPostBuild('''
+            if(manager.logContains(".*GRAALVM_HOME.*mandrel-java1.*-Final.*")){
+                (Thread.currentThread()?.executable).keepLog(true)
+            }
+            ''', Behavior.DoNothing)
         archiveJunit('**/target/*-reports/*.xml') {
             allowEmptyResults(false)
             retainLongStdout(false)
