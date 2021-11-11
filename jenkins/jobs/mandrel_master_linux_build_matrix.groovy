@@ -2,7 +2,7 @@ package jenkins.jobs
 
 matrixJob('mandrel-master-linux-build-matrix') {
     axes {
-        labelExpression('label', ['el8_aarch64', 'el8'])
+        labelExpression('LABEL', ['el8_aarch64', 'el8'])
         text('JDK_VERSION',
                 'jdk11',
                 'jdk17'
@@ -136,7 +136,7 @@ Linux build matrix for master branch.
                 condition('SUCCESS')
                 parameters {
                     currentBuild()
-                    matrixSubset('(MANDREL_VERSION=="master" && JDK_VERSION=="${JDK_VERSION}" && LABEL=="${label}")')
+                    matrixSubset('(MANDREL_VERSION=="master" && JDK_VERSION=="${JDK_VERSION}" && LABEL=="${LABEL}")')
                 }
             }
         }

@@ -14,7 +14,7 @@ matrixJob('mandrel-windows-quarkus-tests') {
                 '2.4.1.Final',
                 'main'
         )
-        labelExpression('label', ['w2k19'])
+        labelExpression('LABEL', ['w2k19'])
     }
     description('Run Quarkus TS with Mandrel distros. Quarkus versions differ according to particular Mandrel versions.')
     displayName('Windows :: Quarkus TS')
