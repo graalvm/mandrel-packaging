@@ -3,7 +3,7 @@ job('mandrel-linux-quarkus-container-tests') {
     description('Run Quarkus TS with Mandrel distros. Quarkus versions differ according to particular Mandrel versions.')
     displayName('Linux :: Quarkus Builder image TS')
     logRotator {
-        numToKeep(25)
+        numToKeep(30)
     }
     wrappers {
         timestamps()

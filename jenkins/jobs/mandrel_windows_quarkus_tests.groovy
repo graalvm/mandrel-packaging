@@ -19,7 +19,7 @@ matrixJob('mandrel-windows-quarkus-tests') {
     description('Run Quarkus TS with Mandrel distros. Quarkus versions differ according to particular Mandrel versions.')
     displayName('Windows :: Quarkus TS')
     logRotator {
-        numToKeep(25)
+        numToKeep(30)
     }
     childCustomWorkspace('${SHORT_COMBINATION}')
     wrappers {
@@ -44,9 +44,11 @@ IF NOT %ERRORLEVEL% == 0 ( exit 1 )
 set BUILD_JOB="mandrel-%MANDREL_VERSION%-windows-build"
 set downloadCommand= ^
 $c = New-Object System.Net.WebClient; ^
-$url = 'https://ci.modcluster.io/view/Mandrel/job/mandrel-%MANDREL_VERSION%-linux-build-matrix/JDK_VERSION=%JDK_VERSION%,label=%label%/lastSuccessfulBuild/artifact/*zip*/archive.zip'; $file = 'archive.zip'; ^
+$url = 'https://ci.modcluster.io/view/Mandrel/job/mandrel-%MANDREL_VERSION%-windows-build-matrix/JDK_VERSION=%JDK_VERSION%,label=%label%/lastSuccessfulBuild/artifact/*zip*/archive.zip'; $file = 'archive.zip'; ^
 $c.DownloadFile($url, $file);
 powershell -Command "%downloadCommand%"
+
+if not exist archive.zip exit 1
 
 powershell -c "Expand-Archive -Path archive.zip -DestinationPath . -Force"
 
@@ -85,6 +87,11 @@ mvnw install -Dquickly & mvnw verify -f integration-tests/pom.xml --fail-at-end 
         ''')
     }
     publishers {
+        groovyPostBuild('''
+            if(manager.logContains(".*GRAALVM_HOME.*mandrel-java1.*-Final.*")){
+                (Thread.currentThread()?.executable).keepLog(true)
+            }
+            ''', Behavior.DoNothing)
         archiveJunit('**/target/*-reports/*.xml') {
             allowEmptyResults(false)
             retainLongStdout(false)

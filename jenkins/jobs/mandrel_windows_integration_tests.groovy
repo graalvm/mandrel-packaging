@@ -18,7 +18,7 @@ matrixJob('mandrel-windows-integration-tests') {
     description('Run Mandrel integration tests')
     displayName('Windows :: Integration tests')
     logRotator {
-        numToKeep(25)
+        numToKeep(30)
     }
     childCustomWorkspace('${SHORT_COMBINATION}')
     wrappers {
@@ -58,9 +58,11 @@ IF NOT %ERRORLEVEL% == 0 ( exit 1 )
 
 set downloadCommand= ^
 $c = New-Object System.Net.WebClient; ^
-$url = 'https://ci.modcluster.io/view/Mandrel/job/mandrel-%MANDREL_VERSION%-linux-build-matrix/JDK_VERSION=%JDK_VERSION%,label=%label%/lastSuccessfulBuild/artifact/*zip*/archive.zip'; $file = 'archive.zip'; ^
+$url = 'https://ci.modcluster.io/view/Mandrel/job/mandrel-%MANDREL_VERSION%-windows-build-matrix/JDK_VERSION=%JDK_VERSION%,label=%label%/lastSuccessfulBuild/artifact/*zip*/archive.zip'; $file = 'archive.zip'; ^
 $c.DownloadFile($url, $file);
 powershell -Command "%downloadCommand%"
+
+if not exist archive.zip exit 1
 
 powershell -c "Expand-Archive -Path archive.zip -DestinationPath . -Force"
 
@@ -90,6 +92,11 @@ mvn clean verify -Ptestsuite -Dquarkus.version=%QUARKUS_VERSION%
                  ''')
     }
     publishers {
+        groovyPostBuild('''
+            if(manager.logContains(".*GRAALVM_HOME.*mandrel-java1.*-Final.*")){
+                (Thread.currentThread()?.executable).keepLog(true)
+            }
+            ''', Behavior.DoNothing)
         archiveJunit('**/target/*-reports/*.xml') {
             allowEmptyResults(false)
             retainLongStdout(false)

@@ -18,7 +18,7 @@ matrixJob('mandrel-linux-integration-tests') {
     description('Run Mandrel integration tests')
     displayName('Linux :: Integration tests')
     logRotator {
-        numToKeep(25)
+        numToKeep(30)
     }
     childCustomWorkspace('${SHORT_COMBINATION}')
     wrappers {
@@ -72,6 +72,11 @@ matrixJob('mandrel-linux-integration-tests') {
         ''')
     }
     publishers {
+        groovyPostBuild('''
+            if(manager.logContains(".*GRAALVM_HOME.*mandrel-java1.*-Final.*")){
+                (Thread.currentThread()?.executable).keepLog(true)
+            }
+            ''', Behavior.DoNothing)
         archiveJunit('**/target/*-reports/*.xml') {
             allowEmptyResults(false)
             retainLongStdout(false)

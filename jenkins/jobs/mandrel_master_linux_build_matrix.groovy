@@ -13,7 +13,7 @@ matrixJob('mandrel-master-linux-build-matrix') {
 Linux build matrix for master branch.
     ''')
     logRotator {
-        numToKeep(25)
+        numToKeep(30)
     }
     parameters {
         choiceParam(
@@ -118,6 +118,11 @@ Linux build matrix for master branch.
         ''')
     }
     publishers {
+        groovyPostBuild('''
+            if(manager.logContains(".*MANDREL_VERSION_SUBSTRING.*-Final.*")){
+                (Thread.currentThread()?.executable).keepLog(true)
+            }
+            ''', Behavior.DoNothing)
         archiveArtifacts('*.tar.gz,MANDREL.md,*.sha1,*.sha256')
         wsCleanup()
         extendedEmail {

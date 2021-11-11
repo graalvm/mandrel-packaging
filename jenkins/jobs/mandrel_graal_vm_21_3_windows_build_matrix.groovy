@@ -11,7 +11,7 @@ matrixJob('mandrel-graal-vm-21.3-windows-build-matrix') {
     displayName('Windows Build Matrix :: graal-vm/21.3')
     description('Graal Windows build matrix for graal-vm/21.3 branch.')
     logRotator {
-        numToKeep(25)
+        numToKeep(30)
     }
     parameters {
         choiceParam(
@@ -131,6 +131,11 @@ matrixJob('mandrel-graal-vm-21.3-windows-build-matrix') {
         ''')
     }
     publishers {
+        groovyPostBuild('''
+            if(manager.logContains(".*MANDREL_VERSION_SUBSTRING.*-Final.*")){
+                (Thread.currentThread()?.executable).keepLog(true)
+            }
+            ''', Behavior.DoNothing)
         archiveArtifacts('*.zip,MANDREL.md,*.sha1,*.sha256')
         wsCleanup()
         extendedEmail {
