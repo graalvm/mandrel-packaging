@@ -53,10 +53,10 @@ matrixJob('mandrel-linux-integration-tests') {
         buildDescription(/DESCRIPTION_STRING=([^\s]*)/, '\\1')
         shell('''
             # Prepare Mandrel
-            wget "https://ci.modcluster.io/view/Mandrel/job/mandrel-${MANDREL_VERSION}-linux-build-matrix/JDK_VERSION=${JDK_VERSION},label=${LABEL}/lastSuccessfulBuild/artifact/*zip*/archive.zip" 
+            wget "https://ci.modcluster.io/view/Mandrel/job/mandrel-${MANDREL_VERSION}-linux-build-matrix/JDK_VERSION=${JDK_VERSION},LABEL=${LABEL}/lastSuccessfulBuild/artifact/*zip*/archive.zip"
             unzip archive.zip
             pushd archive
-            MANDREL_TAR=`ls -1 *.tar.gz`
+            export MANDREL_TAR=`ls -1 *.tar.gz`
             tar -xvf "${MANDREL_TAR}"
             source /etc/profile.d/jdks.sh
             export JAVA_HOME="$( pwd )/$( echo mandrel-java1*-*/ )"
@@ -74,9 +74,10 @@ matrixJob('mandrel-linux-integration-tests') {
     publishers {
         groovyPostBuild('''
             if(manager.logContains(".*GRAALVM_HOME.*mandrel-java1.*-Final.*")){
-                (Thread.currentThread()?.executable).keepLog(true)
+                def build = Thread.currentThread()?.executable
+                build.rootBuild.keepLog(true)
             }
-            ''', Behavior.DoNothing)
+        ''', Behavior.DoNothing)
         archiveJunit('**/target/*-reports/*.xml') {
             allowEmptyResults(false)
             retainLongStdout(false)
@@ -96,5 +97,12 @@ matrixJob('mandrel-linux-integration-tests') {
             }
         }
         wsCleanup()
+        postBuildCleanup {
+            cleaner {
+                psCleaner {
+                    killerType('org.jenkinsci.plugins.proccleaner.PsRecursiveKiller')
+                }
+            }
+        }
     }
 }

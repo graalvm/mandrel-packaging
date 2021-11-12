@@ -86,5 +86,12 @@ job('mandrel-linux-quarkus-container-tests') {
             }
         }
         wsCleanup()
+        postBuildCleanup {
+            cleaner {
+                psCleaner {
+                    killerType('org.jenkinsci.plugins.proccleaner.PsRecursiveKiller')
+                }
+            }
+        }
     }
 }

@@ -5,13 +5,11 @@ matrixJob('mandrel-linux-quarkus-tests') {
                 'jdk17'
         )
         text('MANDREL_VERSION',
-                'graal-vm-21.3',
                 '21.3',
                 'master'
         )
         text('QUARKUS_VERSION',
                 '2.2.3.Final',
-                '2.4.1.Final',
                 'main'
         )
         labelExpression('LABEL', ['el8_aarch64', 'el8'])
@@ -38,10 +36,10 @@ matrixJob('mandrel-linux-quarkus-tests') {
     steps {
         shell('''
             # Prepare Mandrel
-            wget "https://ci.modcluster.io/view/Mandrel/job/mandrel-${MANDREL_VERSION}-linux-build-matrix/JDK_VERSION=${JDK_VERSION},label=${LABEL}/lastSuccessfulBuild/artifact/*zip*/archive.zip" 
+            wget "https://ci.modcluster.io/view/Mandrel/job/mandrel-${MANDREL_VERSION}-linux-build-matrix/JDK_VERSION=${JDK_VERSION},LABEL=${LABEL}/lastSuccessfulBuild/artifact/*zip*/archive.zip"
             unzip archive.zip
             pushd archive
-            MANDREL_TAR=`ls -1 *.tar.gz`
+            export MANDREL_TAR=`ls -1 *.tar.gz`
             tar -xvf "${MANDREL_TAR}"
             export JAVA_HOME="$( pwd )/$( echo mandrel-java1*-*/ )"
             export GRAALVM_HOME="${JAVA_HOME}"
@@ -74,9 +72,10 @@ matrixJob('mandrel-linux-quarkus-tests') {
     publishers {
         groovyPostBuild('''
             if(manager.logContains(".*GRAALVM_HOME.*mandrel-java1.*-Final.*")){
-                (Thread.currentThread()?.executable).keepLog(true)
+                def build = Thread.currentThread()?.executable
+                build.rootBuild.keepLog(true)
             }
-            ''', Behavior.DoNothing)
+        ''', Behavior.DoNothing)
         archiveJunit('**/target/*-reports/*.xml') {
             allowEmptyResults(false)
             retainLongStdout(false)
@@ -96,5 +95,12 @@ matrixJob('mandrel-linux-quarkus-tests') {
             }
         }
         wsCleanup()
+        postBuildCleanup {
+            cleaner {
+                psCleaner {
+                    killerType('org.jenkinsci.plugins.proccleaner.PsRecursiveKiller')
+                }
+            }
+        }
     }
 }

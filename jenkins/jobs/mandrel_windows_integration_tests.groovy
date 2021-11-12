@@ -58,7 +58,7 @@ IF NOT %ERRORLEVEL% == 0 ( exit 1 )
 
 set downloadCommand= ^
 $c = New-Object System.Net.WebClient; ^
-$url = 'https://ci.modcluster.io/view/Mandrel/job/mandrel-%MANDREL_VERSION%-windows-build-matrix/JDK_VERSION=%JDK_VERSION%,label=%label%/lastSuccessfulBuild/artifact/*zip*/archive.zip'; $file = 'archive.zip'; ^
+$url = 'https://ci.modcluster.io/view/Mandrel/job/mandrel-%MANDREL_VERSION%-windows-build-matrix/JDK_VERSION=%JDK_VERSION%,LABEL=%label%/lastSuccessfulBuild/artifact/*zip*/archive.zip'; $file = 'archive.zip'; ^
 $c.DownloadFile($url, $file);
 powershell -Command "%downloadCommand%"
 
@@ -94,9 +94,10 @@ mvn clean verify -Ptestsuite -Dquarkus.version=%QUARKUS_VERSION%
     publishers {
         groovyPostBuild('''
             if(manager.logContains(".*GRAALVM_HOME.*mandrel-java1.*-Final.*")){
-                (Thread.currentThread()?.executable).keepLog(true)
+                def build = Thread.currentThread()?.executable
+                build.rootBuild.keepLog(true)
             }
-            ''', Behavior.DoNothing)
+        ''', Behavior.DoNothing)
         archiveJunit('**/target/*-reports/*.xml') {
             allowEmptyResults(false)
             retainLongStdout(false)
@@ -116,5 +117,12 @@ mvn clean verify -Ptestsuite -Dquarkus.version=%QUARKUS_VERSION%
             }
         }
         wsCleanup()
+        postBuildCleanup {
+            cleaner {
+                psCleaner {
+                    killerType('org.jenkinsci.plugins.proccleaner.PsRecursiveKiller')
+                }
+            }
+        }
     }
 }

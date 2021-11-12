@@ -5,13 +5,11 @@ matrixJob('mandrel-windows-quarkus-tests') {
                 'jdk17'
         )
         text('MANDREL_VERSION',
-                'graal-vm-21.3',
                 '21.3',
                 'master'
         )
         text('QUARKUS_VERSION',
                 '2.2.3.Final',
-                '2.4.1.Final',
                 'main'
         )
         labelExpression('LABEL', ['w2k19'])
@@ -44,7 +42,7 @@ IF NOT %ERRORLEVEL% == 0 ( exit 1 )
 set BUILD_JOB="mandrel-%MANDREL_VERSION%-windows-build"
 set downloadCommand= ^
 $c = New-Object System.Net.WebClient; ^
-$url = 'https://ci.modcluster.io/view/Mandrel/job/mandrel-%MANDREL_VERSION%-windows-build-matrix/JDK_VERSION=%JDK_VERSION%,label=%label%/lastSuccessfulBuild/artifact/*zip*/archive.zip'; $file = 'archive.zip'; ^
+$url = 'https://ci.modcluster.io/view/Mandrel/job/mandrel-%MANDREL_VERSION%-windows-build-matrix/JDK_VERSION=%JDK_VERSION%,LABEL=%label%/lastSuccessfulBuild/artifact/*zip*/archive.zip'; $file = 'archive.zip'; ^
 $c.DownloadFile($url, $file);
 powershell -Command "%downloadCommand%"
 
@@ -89,9 +87,10 @@ mvnw install -Dquickly & mvnw verify -f integration-tests/pom.xml --fail-at-end 
     publishers {
         groovyPostBuild('''
             if(manager.logContains(".*GRAALVM_HOME.*mandrel-java1.*-Final.*")){
-                (Thread.currentThread()?.executable).keepLog(true)
+                def build = Thread.currentThread()?.executable
+                build.rootBuild.keepLog(true)
             }
-            ''', Behavior.DoNothing)
+        ''', Behavior.DoNothing)
         archiveJunit('**/target/*-reports/*.xml') {
             allowEmptyResults(false)
             retainLongStdout(false)
@@ -111,5 +110,12 @@ mvnw install -Dquickly & mvnw verify -f integration-tests/pom.xml --fail-at-end 
             }
         }
         wsCleanup()
+        postBuildCleanup {
+            cleaner {
+                psCleaner {
+                    killerType('org.jenkinsci.plugins.proccleaner.PsRecursiveKiller')
+                }
+            }
+        }
     }
 }
