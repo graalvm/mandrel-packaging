@@ -119,12 +119,21 @@ Windows build matrix for 21.3 branch.
     }
     publishers {
         groovyPostBuild('''
-            if(manager.logContains(".*MANDREL_VERSION_SUBSTRING.*-Final.*")){
-                (Thread.currentThread()?.executable).keepLog(true)
+            if(manager.logContains(".*MANDREL_VERSION_SUBSTRING.*-Final.*")) {
+                def build = Thread.currentThread()?.executable
+                build.rootBuild.keepLog(true)
+                build.rootBuild.description="${build.environment.MANDREL_VERSION_SUBSTRING}"
             }
-            ''', Behavior.DoNothing)
+        ''', Behavior.DoNothing)
         archiveArtifacts('*.zip,MANDREL.md,*.sha1,*.sha256')
         wsCleanup()
+        postBuildCleanup {
+            cleaner {
+                psCleaner {
+                    killerType('org.jenkinsci.plugins.proccleaner.PsRecursiveKiller')
+                }
+            }
+        }
         extendedEmail {
             recipientList('karm@redhat.com,fzakkak@redhat.com')
             triggers {
