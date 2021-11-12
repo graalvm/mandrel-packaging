@@ -1,23 +1,20 @@
-matrixJob('mandrel-linux-integration-tests') {
+matrixJob('mandrel-linux-quarkus-release-tests') {
     axes {
         text('JDK_VERSION',
                 'jdk11',
                 'jdk17'
         )
         text('MANDREL_VERSION',
-                'graal-vm-21.3',
-                '21.3',
-                'master'
+                '21.3'
         )
         text('QUARKUS_VERSION',
                 '2.2.3.Final',
-                '2.4.1.Final',
-                '2.5.0.CR1'
+                '2.4.1.Final'
         )
         labelExpression('LABEL', ['el8_aarch64', 'el8'])
     }
-    description('Run Mandrel integration tests')
-    displayName('Linux :: Integration tests')
+    description('Run Quarkus TS with Mandrel distros. Quarkus versions differ according to particular Mandrel versions.')
+    displayName('Linux :: Quarkus TS RELEASE')
     logRotator {
         numToKeep(30)
     }
@@ -25,35 +22,27 @@ matrixJob('mandrel-linux-integration-tests') {
     wrappers {
         timestamps()
         timeout {
-            absolute(120)
+            absolute(720)
         }
     }
     combinationFilter(
-        '!(JDK_VERSION.contains("17") && QUARKUS_VERSION.contains("2.2"))'
+            '!(JDK_VERSION.contains("17") && QUARKUS_VERSION.contains("2.2"))'
     )
     parameters {
-        stringParam('MANDREL_INTEGRATION_TESTS_REPO', 'https://github.com/Karm/mandrel-integration-tests.git', 'Test suite repository.')
-        choiceParam(
-                'MANDREL_INTEGRATION_TESTS_REF_TYPE',
-                ['heads', 'tags'],
-                'Choose "heads" if you want to build from a branch, or "tags" if you want to build from a tag.'
-        )
-        stringParam('MANDREL_INTEGRATION_TESTS_REF', 'master', 'Branch or tag.')
-    }
-    scm {
-        git {
-            remote {
-                url('${MANDREL_INTEGRATION_TESTS_REPO}')
-            }
-            branch('refs/${MANDREL_INTEGRATION_TESTS_REF_TYPE}/${MANDREL_INTEGRATION_TESTS_REF}')
-        }
+        stringParam('QUARKUS_REPO', 'https://github.com/quarkusio/quarkus.git', 'Quarkus repository.')
+        stringParam('MANDREL_21_3_BUILD_NUM', '7', 'Build number of the Final build: https://ci.modcluster.io/job/mandrel-21.3-linux-build-matrix/')
     }
     steps {
-        shell('echo DESCRIPTION_STRING=Q:${QUARKUS_VERSION},M:${MANDREL_VERSION},J:${JDK_VERSION}')
-        buildDescription(/DESCRIPTION_STRING=([^\s]*)/, '\\1')
         shell('''
             # Prepare Mandrel
-            wget "https://ci.modcluster.io/view/Mandrel/job/mandrel-${MANDREL_VERSION}-linux-build-matrix/JDK_VERSION=${JDK_VERSION},LABEL=${LABEL}/lastSuccessfulBuild/artifact/*zip*/archive.zip"
+            case ${MANDREL_VERSION} in
+                21.3)
+                    export MANDREL_BUILD_NUM="${MANDREL_21_3_BUILD_NUM}";;
+                *)
+                    echo "UNKNOWN Mandrel version: $MANDREL_VERSION"
+                    exit 1
+            esac
+            wget "https://ci.modcluster.io/view/Mandrel/job/mandrel-${MANDREL_VERSION}-linux-build-matrix/JDK_VERSION=${JDK_VERSION},LABEL=${LABEL}/${MANDREL_BUILD_NUM}/artifact/*zip*/archive.zip"
             if [[ ! -f "archive.zip" ]]; then 
                 echo "Download failed. Quitting..."
                 exit 1
@@ -62,17 +51,32 @@ matrixJob('mandrel-linux-integration-tests') {
             pushd archive
             export MANDREL_TAR=`ls -1 *.tar.gz`
             tar -xvf "${MANDREL_TAR}"
-            source /etc/profile.d/jdks.sh
             export JAVA_HOME="$( pwd )/$( echo mandrel-java1*-*/ )"
             export GRAALVM_HOME="${JAVA_HOME}"
             export PATH="${JAVA_HOME}/bin:${PATH}"
+            popd
             if [[ ! -e "${JAVA_HOME}/bin/native-image" ]]; then
                 echo "Cannot find native-image tool. Quitting..."
                 exit 1
             fi
             native-image --version
-            popd
-            mvn clean verify -Ptestsuite -Dquarkus.version=${QUARKUS_VERSION}
+            # Prepare Quarkus
+            git clone --depth 1 --branch ${QUARKUS_VERSION} ${QUARKUS_REPO}
+            cd quarkus
+            
+            # Build Quarkus
+            ./mvnw install -Dquickly
+            
+            # Test Quarkus
+            export MODULES="-pl \\
+!bouncycastle-fips-jsse,\\
+!devtools,\\
+!google-cloud-functions,\\
+!google-cloud-functions-http,\\
+!kubernetes-client,\\
+!kubernetes/maven-invoker-way,\\
+!maven"
+            ./mvnw verify -f integration-tests/pom.xml --fail-at-end --batch-mode -DfailIfNoTests=false -Dnative ${MODULES}
         ''')
     }
     publishers {
@@ -87,7 +91,7 @@ matrixJob('mandrel-linux-integration-tests') {
             retainLongStdout(false)
             healthScaleFactor(1.0)
         }
-        archiveArtifacts('**/target/*-reports/*.xml,**/target/archived-logs/**')
+        archiveArtifacts('**/target/*-reports/*.xml')
         extendedEmail {
             recipientList('karm@redhat.com')
             triggers {
@@ -104,15 +108,6 @@ matrixJob('mandrel-linux-integration-tests') {
             cleaner {
                 psCleaner {
                     killerType('org.jenkinsci.plugins.proccleaner.PsRecursiveKiller')
-                }
-            }
-        }
-        downstreamParameterized {
-            trigger(['mandrel-linux-quarkus-tests']) {
-                condition('COMPLETE')
-                parameters {
-                    currentBuild()
-                    matrixSubset('(MANDREL_VERSION=="${MANDREL_VERSION}" && JDK_VERSION=="${JDK_VERSION}" && LABEL=="${LABEL}")')
                 }
             }
         }
