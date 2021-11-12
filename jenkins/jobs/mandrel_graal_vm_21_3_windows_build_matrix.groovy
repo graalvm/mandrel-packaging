@@ -1,5 +1,3 @@
-package jenkins.jobs
-
 matrixJob('mandrel-graal-vm-21.3-windows-build-matrix') {
     axes {
         labelExpression('LABEL', ['w2k19'])
@@ -159,7 +157,7 @@ matrixJob('mandrel-graal-vm-21.3-windows-build-matrix') {
             }
         }
         downstreamParameterized {
-            trigger(['mandrel-windows-quarkus-tests', 'mandrel-windows-integration-tests']) {
+            trigger(['mandrel-windows-integration-tests']) {
                 condition('SUCCESS')
                 parameters {
                     currentBuild()

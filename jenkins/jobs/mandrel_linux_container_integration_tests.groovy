@@ -8,7 +8,8 @@ matrixJob('mandrel-linux-container-integration-tests') {
         )
         text('QUARKUS_VERSION',
                 '2.2.3.Final',
-                '2.4.1.Final'
+                '2.4.1.Final',
+                '2.5.0.CR1'
         )
         labelExpression('LABEL', ['el8'])
     }
@@ -24,10 +25,9 @@ matrixJob('mandrel-linux-container-integration-tests') {
             absolute(120)
         }
     }
- //   combinationFilter(
- //           ' (BUILDER_IMAGE.contains("20") && QUARKUS_VERSION.startsWith("1.")) ||' +
- //           ' (BUILDER_IMAGE.contains("20") && QUARKUS_VERSION.startsWith("2.")) ||' +
- //           ' (BUILDER_IMAGE.contains("21") && QUARKUS_VERSION.startsWith("2."))')
+    combinationFilter(
+            '!(BUILDER_IMAGE.contains("17") && QUARKUS_VERSION.contains("2.2"))'
+    )
     parameters {
         stringParam('MANDREL_INTEGRATION_TESTS_REPO', 'https://github.com/Karm/mandrel-integration-tests.git', 'Test suite repository.')
         choiceParam(
@@ -45,7 +45,6 @@ matrixJob('mandrel-linux-container-integration-tests') {
             branch('refs/${MANDREL_INTEGRATION_TESTS_REF_TYPE}/${MANDREL_INTEGRATION_TESTS_REF}')
         }
     }
-
     steps {
         shell('echo DESCRIPTION_STRING=${QUARKUS_VERSION},${BUILDER_IMAGE}')
         buildDescription(/DESCRIPTION_STRING=([^\s]*)/, '\\1')
@@ -66,7 +65,6 @@ matrixJob('mandrel-linux-container-integration-tests') {
             healthScaleFactor(1.0)
         }
         archiveArtifacts('**/target/*-reports/*.xml,**/target/archived-logs/**')
-
         extendedEmail {
             recipientList('karm@redhat.com')
             triggers {

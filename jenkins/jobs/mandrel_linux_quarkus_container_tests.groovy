@@ -73,7 +73,6 @@ job('mandrel-linux-quarkus-container-tests') {
             healthScaleFactor(1.0)
         }
         archiveArtifacts('**/target/*-reports/*.xml')
-
         extendedEmail {
             recipientList('karm@redhat.com')
             triggers {

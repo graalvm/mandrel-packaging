@@ -1,21 +1,20 @@
-matrixJob('mandrel-windows-quarkus-tests') {
+matrixJob('mandrel-windows-quarkus-release-tests') {
     axes {
         text('JDK_VERSION',
                 'jdk11',
                 'jdk17'
         )
         text('MANDREL_VERSION',
-                '21.3',
-                'master'
+                '21.3'
         )
         text('QUARKUS_VERSION',
                 '2.2.3.Final',
-                'main'
+                '2.4.1.Final'
         )
         labelExpression('LABEL', ['w2k19'])
     }
     description('Run Quarkus TS with Mandrel distros. Quarkus versions differ according to particular Mandrel versions.')
-    displayName('Windows :: Quarkus TS')
+    displayName('Windows :: Quarkus TS RELEASE')
     logRotator {
         numToKeep(30)
     }
@@ -31,6 +30,7 @@ matrixJob('mandrel-windows-quarkus-tests') {
     )
     parameters {
         stringParam('QUARKUS_REPO', 'https://github.com/quarkusio/quarkus.git', 'Quarkus repository.')
+        stringParam('MANDREL_21_3_BUILD_NUM', '3', 'Build number of the Final build: https://ci.modcluster.io/job/mandrel-21.3-windows-build-matrix/')
     }
     steps {
         batchFile('''
@@ -38,10 +38,16 @@ REM Prepare Mandrel
 call vcvars64
 IF NOT %ERRORLEVEL% == 0 ( exit 1 )
 
-set BUILD_JOB="mandrel-%MANDREL_VERSION%-windows-build"
+IF "%MANDREL_VERSION%"=="21.3" (
+    set MANDREL_BUILD_NUM=%MANDREL_21_3_BUILD_NUM%
+) ELSE (
+  echo "UNKNOWN Mandrel version: %MANDREL_VERSION% Quitting..."
+  exit 1
+)
+
 set downloadCommand= ^
 $c = New-Object System.Net.WebClient; ^
-$url = 'https://ci.modcluster.io/view/Mandrel/job/mandrel-%MANDREL_VERSION%-windows-build-matrix/JDK_VERSION=%JDK_VERSION%,LABEL=%LABEL%/lastSuccessfulBuild/artifact/*zip*/archive.zip'; $file = 'archive.zip'; ^
+$url = 'https://ci.modcluster.io/view/Mandrel/job/mandrel-%MANDREL_VERSION%-windows-build-matrix/JDK_VERSION=%JDK_VERSION%,LABEL=%LABEL%/%MANDREL_BUILD_NUM%/artifact/*zip*/archive.zip'; $file = 'archive.zip'; ^
 $c.DownloadFile($url, $file);
 powershell -Command "%downloadCommand%"
 

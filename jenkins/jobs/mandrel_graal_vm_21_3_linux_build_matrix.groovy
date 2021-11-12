@@ -1,5 +1,3 @@
-package jenkins.jobs
-
 matrixJob('mandrel-graal-vm-21.3-linux-build-matrix') {
     axes {
         labelExpression('LABEL', ['el8_aarch64', 'el8'])
@@ -157,7 +155,7 @@ matrixJob('mandrel-graal-vm-21.3-linux-build-matrix') {
             }
         }
         downstreamParameterized {
-            trigger(['mandrel-linux-quarkus-tests', 'mandrel-linux-integration-tests']) {
+            trigger(['mandrel-linux-integration-tests']) {
                 condition('SUCCESS')
                 parameters {
                     currentBuild()

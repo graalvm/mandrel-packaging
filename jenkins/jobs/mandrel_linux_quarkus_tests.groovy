@@ -26,10 +26,9 @@ matrixJob('mandrel-linux-quarkus-tests') {
             absolute(720)
         }
     }
-//    combinationFilter(
-//            ' (MANDREL_VERSION.contains("20") && QUARKUS_VERSION.startsWith("1.")) ||' +
-//            ' (MANDREL_VERSION.contains("20") && QUARKUS_VERSION.startsWith("2.")) ||' +
-//            ' ((MANDREL_VERSION.contains("21") || MANDREL_VERSION.contains("master")) && (QUARKUS_VERSION=="main" || QUARKUS_VERSION.startsWith("2.")))')
+    combinationFilter(
+            '!(JDK_VERSION.contains("17") && QUARKUS_VERSION.contains("2.2"))'
+    )
     parameters {
         stringParam('QUARKUS_REPO', 'https://github.com/quarkusio/quarkus.git', 'Quarkus repository.')
     }
@@ -37,6 +36,10 @@ matrixJob('mandrel-linux-quarkus-tests') {
         shell('''
             # Prepare Mandrel
             wget "https://ci.modcluster.io/view/Mandrel/job/mandrel-${MANDREL_VERSION}-linux-build-matrix/JDK_VERSION=${JDK_VERSION},LABEL=${LABEL}/lastSuccessfulBuild/artifact/*zip*/archive.zip"
+            if [[ ! -f "archive.zip" ]]; then 
+                echo "Download failed. Quitting..."
+                exit 1
+            fi
             unzip archive.zip
             pushd archive
             export MANDREL_TAR=`ls -1 *.tar.gz`
@@ -82,7 +85,6 @@ matrixJob('mandrel-linux-quarkus-tests') {
             healthScaleFactor(1.0)
         }
         archiveArtifacts('**/target/*-reports/*.xml')
-
         extendedEmail {
             recipientList('karm@redhat.com')
             triggers {

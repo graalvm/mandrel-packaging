@@ -1,23 +1,21 @@
-matrixJob('mandrel-windows-integration-tests') {
+matrixJob('mandrel-linux-integration-release-tests') {
     axes {
         text('JDK_VERSION',
                 'jdk11',
                 'jdk17'
         )
         text('MANDREL_VERSION',
-                'graal-vm-21.3',
-                '21.3',
-                'master'
+                '21.3'
         )
         text('QUARKUS_VERSION',
                 '2.2.3.Final',
                 '2.4.1.Final',
                 '2.5.0.CR1'
         )
-        labelExpression('LABEL', ['w2k19'])
+        labelExpression('LABEL', ['el8_aarch64', 'el8'])
     }
-    description('Run Mandrel integration tests')
-    displayName('Windows :: Integration tests')
+    description('Run Mandrel integration release tests')
+    displayName('Linux :: Integration RELEASE tests')
     logRotator {
         numToKeep(30)
     }
@@ -29,7 +27,7 @@ matrixJob('mandrel-windows-integration-tests') {
         }
     }
     combinationFilter(
-            '!(JDK_VERSION.contains("17") && QUARKUS_VERSION.contains("2.2"))'
+        '!(JDK_VERSION.contains("17") && QUARKUS_VERSION.contains("2.2"))'
     )
     parameters {
         stringParam('MANDREL_INTEGRATION_TESTS_REPO', 'https://github.com/Karm/mandrel-integration-tests.git', 'Test suite repository.')
@@ -39,6 +37,7 @@ matrixJob('mandrel-windows-integration-tests') {
                 'Choose "heads" if you want to build from a branch, or "tags" if you want to build from a tag.'
         )
         stringParam('MANDREL_INTEGRATION_TESTS_REF', 'master', 'Branch or tag.')
+        stringParam('MANDREL_21_3_BUILD_NUM', '7', 'Build number of the Final build: https://ci.modcluster.io/job/mandrel-21.3-linux-build-matrix/')
     }
     scm {
         git {
@@ -49,47 +48,38 @@ matrixJob('mandrel-windows-integration-tests') {
         }
     }
     steps {
-        batchFile('echo DESCRIPTION_STRING=Q:%QUARKUS_VERSION%,M:%MANDREL_VERSION%,J:%JDK_VERSION%')
+        shell('echo DESCRIPTION_STRING=Q:${QUARKUS_VERSION},M:${MANDREL_VERSION},J:${JDK_VERSION}')
         buildDescription(/DESCRIPTION_STRING=([^\s]*)/, '\\1')
-        batchFile('''
-@echo off
-call vcvars64
-IF NOT %ERRORLEVEL% == 0 ( exit 1 )
-
-set downloadCommand= ^
-$c = New-Object System.Net.WebClient; ^
-$url = 'https://ci.modcluster.io/view/Mandrel/job/mandrel-%MANDREL_VERSION%-windows-build-matrix/JDK_VERSION=%JDK_VERSION%,LABEL=%LABEL%/lastSuccessfulBuild/artifact/*zip*/archive.zip'; $file = 'archive.zip'; ^
-$c.DownloadFile($url, $file);
-powershell -Command "%downloadCommand%"
-
-if not exist archive.zip exit 1
-
-powershell -c "Expand-Archive -Path archive.zip -DestinationPath . -Force"
-
-pushd archive
-
-for /f "tokens=5" %%g in ('dir mandrel-*.zip ^| findstr /R mandrel-.*.zip') do set ZIP_NAME=%%g
-
-powershell -c "Expand-Archive -Path %ZIP_NAME% -DestinationPath . -Force"
-echo ZIP_NAME: %ZIP_NAME%
-
-for /f "tokens=5" %%g in ('dir /AD mandrel-* ^| findstr /R mandrel-.*') do set GRAALVM_HOME=%cd%\\%%g
-echo GRAALVM_HOME: %GRAALVM_HOME%
-
-set "JAVA_HOME=%GRAALVM_HOME%"
-set "PATH=%JAVA_HOME%\\bin;%PATH%"
-
-if not exist "%GRAALVM_HOME%\\bin\\native-image.cmd" (
-  echo "Cannot find native-image tool. Quitting..."
-  exit 1
-) else (
-  echo "native-image.cmd is present, good."
-  cmd /C native-image --version
-)
-popd
-
-mvn clean verify -Ptestsuite -Dquarkus.version=%QUARKUS_VERSION%
-                 ''')
+        shell('''
+            # Prepare Mandrel
+            case ${MANDREL_VERSION} in
+                21.3)
+                    export MANDREL_BUILD_NUM="${MANDREL_21_3_BUILD_NUM}";;
+                *)
+                    echo "UNKNOWN Mandrel version: $MANDREL_VERSION"
+                    exit 1
+            esac
+            wget "https://ci.modcluster.io/view/Mandrel/job/mandrel-${MANDREL_VERSION}-linux-build-matrix/JDK_VERSION=${JDK_VERSION},LABEL=${LABEL}/${MANDREL_BUILD_NUM}/artifact/*zip*/archive.zip"
+            if [[ ! -f "archive.zip" ]]; then 
+                echo "Download failed. Quitting..."
+                exit 1
+            fi
+            unzip archive.zip
+            pushd archive
+            export MANDREL_TAR=`ls -1 *.tar.gz`
+            tar -xvf "${MANDREL_TAR}"
+            source /etc/profile.d/jdks.sh
+            export JAVA_HOME="$( pwd )/$( echo mandrel-java1*-*/ )"
+            export GRAALVM_HOME="${JAVA_HOME}"
+            export PATH="${JAVA_HOME}/bin:${PATH}"
+            if [[ ! -e "${JAVA_HOME}/bin/native-image" ]]; then
+                echo "Cannot find native-image tool. Quitting..."
+                exit 1
+            fi
+            native-image --version
+            popd
+            mvn clean verify -Ptestsuite -Dquarkus.version=${QUARKUS_VERSION}
+        ''')
     }
     publishers {
         groovyPostBuild('''
@@ -104,7 +94,6 @@ mvn clean verify -Ptestsuite -Dquarkus.version=%QUARKUS_VERSION%
             healthScaleFactor(1.0)
         }
         archiveArtifacts('**/target/*-reports/*.xml,**/target/archived-logs/**')
-
         extendedEmail {
             recipientList('karm@redhat.com')
             triggers {
@@ -121,15 +110,6 @@ mvn clean verify -Ptestsuite -Dquarkus.version=%QUARKUS_VERSION%
             cleaner {
                 psCleaner {
                     killerType('org.jenkinsci.plugins.proccleaner.PsRecursiveKiller')
-                }
-            }
-        }
-        downstreamParameterized {
-            trigger(['mandrel-windows-quarkus-tests']) {
-                condition('COMPLETE')
-                parameters {
-                    currentBuild()
-                    matrixSubset('(MANDREL_VERSION=="${MANDREL_VERSION}" && JDK_VERSION=="${JDK_VERSION}" && LABEL=="${LABEL}")')
                 }
             }
         }

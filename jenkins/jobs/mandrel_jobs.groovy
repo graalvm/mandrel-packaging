@@ -1,6 +1,6 @@
 job('mandrel-jobs') {
     description('Update all Mandrel Jenkins jobs from https://github.com/graalvm/mandrel-packaging/tree/master/jenkins')
-    label('el8||master')
+    label('master')
     logRotator {
         numToKeep(1)
     }
