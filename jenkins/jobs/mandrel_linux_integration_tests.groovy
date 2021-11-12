@@ -109,7 +109,7 @@ matrixJob('mandrel-linux-integration-tests') {
         }
         downstreamParameterized {
             trigger(['mandrel-linux-quarkus-tests']) {
-                condition('COMPLETE')
+                condition('ALWAYS')
                 parameters {
                     currentBuild()
                     matrixSubset('(MANDREL_VERSION=="${MANDREL_VERSION}" && JDK_VERSION=="${JDK_VERSION}" && LABEL=="${LABEL}")')
