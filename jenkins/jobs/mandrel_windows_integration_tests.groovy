@@ -126,7 +126,7 @@ mvn clean verify -Ptestsuite -Dquarkus.version=%QUARKUS_VERSION%
         }
         downstreamParameterized {
             trigger(['mandrel-windows-quarkus-tests']) {
-                condition('COMPLETE')
+                condition('ALWAYS')
                 parameters {
                     currentBuild()
                     matrixSubset('(MANDREL_VERSION=="${MANDREL_VERSION}" && JDK_VERSION=="${JDK_VERSION}" && LABEL=="${LABEL}")')
