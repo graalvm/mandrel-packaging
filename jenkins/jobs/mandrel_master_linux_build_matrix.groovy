@@ -11,7 +11,7 @@ matrixJob('mandrel-master-linux-build-matrix') {
 Linux build matrix for master branch.
     ''')
     logRotator {
-        numToKeep(30)
+        numToKeep(10)
     }
     parameters {
         choiceParam(

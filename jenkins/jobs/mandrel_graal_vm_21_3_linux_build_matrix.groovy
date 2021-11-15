@@ -9,7 +9,7 @@ matrixJob('mandrel-graal-vm-21.3-linux-build-matrix') {
     displayName('Linux Build Matrix :: graal-vm/21.3')
     description('Graal Linux build matrix for graal-vm/21.3 branch.')
     logRotator {
-        numToKeep(30)
+        numToKeep(10)
     }
     parameters {
         choiceParam(
