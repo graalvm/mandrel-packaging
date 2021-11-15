@@ -49,13 +49,21 @@ matrixJob('mandrel-linux-container-integration-tests') {
         shell('echo DESCRIPTION_STRING=${QUARKUS_VERSION},${BUILDER_IMAGE}')
         buildDescription(/DESCRIPTION_STRING=([^\s]*)/, '\\1')
         shell('''
+            export CONTAINER_RUNTIME=podman
             source /etc/profile.d/jdks.sh
             set +e
-            yes | sudo podman volume prune
+            sudo ${CONTAINER_RUNTIME} stop $(sudo ${CONTAINER_RUNTIME} ps -a -q)
+            sudo ${CONTAINER_RUNTIME} rm -f $(sudo ${CONTAINER_RUNTIME} ps -a -f "status=exited" -q)
+            yes | sudo ${CONTAINER_RUNTIME} volume prune
             set -e
+            sudo ${CONTAINER_RUNTIME} pull ${BUILDER_IMAGE}
+            if [ "$?" -ne 0 ]; then
+                echo There was a problem pulling the image ${BUILDER_IMAGE}. We cannot proceed.
+                exit 1
+            fi
             export JAVA_HOME="/usr/java/openjdk-11"
             export PATH="${JAVA_HOME}/bin:${PATH}"
-            mvn clean verify -Ptestsuite-builder-image -Dquarkus.version=${QUARKUS_VERSION} -Dquarkus.native.container-runtime=podman -Dquarkus.native.builder-image=${BUILDER_IMAGE}
+            mvn clean verify -Ptestsuite-builder-image -Dquarkus.version=${QUARKUS_VERSION} -Dquarkus.native.container-runtime=${CONTAINER_RUNTIME} -Dquarkus.native.builder-image=${BUILDER_IMAGE}
         ''')
     }
     publishers {

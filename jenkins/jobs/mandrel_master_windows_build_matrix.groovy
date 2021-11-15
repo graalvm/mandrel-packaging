@@ -11,7 +11,7 @@ matrixJob('mandrel-master-windows-build-matrix') {
 Windows build matrix for master branch.
     ''')
     logRotator {
-        numToKeep(30)
+        numToKeep(10)
     }
     parameters {
         choiceParam(

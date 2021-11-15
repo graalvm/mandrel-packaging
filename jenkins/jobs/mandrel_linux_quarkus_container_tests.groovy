@@ -40,7 +40,7 @@ job('mandrel-linux-quarkus-container-tests') {
             export PATH=${JAVA_HOME}/bin:${PATH}
             set +e
             sudo ${CONTAINER_RUNTIME} stop $(sudo ${CONTAINER_RUNTIME} ps -a -q)
-            sudo ${CONTAINER_RUNTIME} rm $(sudo ${CONTAINER_RUNTIME} ps -a -q)
+            sudo ${CONTAINER_RUNTIME} rm -f $(sudo ${CONTAINER_RUNTIME} ps -a -f "status=exited" -q)
             yes | sudo ${CONTAINER_RUNTIME} volume prune
             set -e
             sudo ${CONTAINER_RUNTIME} pull ${CONTAINER_IMAGE}
