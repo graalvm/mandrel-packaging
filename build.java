@@ -567,6 +567,12 @@ class EnvVar
         this.name = name;
         this.value = value;
     }
+
+    @Override
+    public String toString()
+    {
+        return name + "=" + value;
+    }
 }
 
 class Tasks
@@ -850,7 +856,7 @@ class Mx
     )
     {
         final Path mx = mxHome.resolve("mx");
-        return Tasks.Exec.of(
+        return execTask(
             Arrays.asList(
                 mx.toString()
                 , options.verbose ? "-V" : ""
@@ -863,7 +869,7 @@ class Mx
     static Tasks.Exec mxversion(Path mxHome)
     {
         final Path mx = mxHome.resolve("mx");
-        return Tasks.Exec.of(
+        return execTask(
             Arrays.asList(
                 mx.toString()
                 , "version"
@@ -878,7 +884,7 @@ class Mx
     )
     {
         final Path mx = mxHome.resolve("mx");
-        return Tasks.Exec.of(
+        return execTask(
             Arrays.asList(
                 mx.toString()
                 , "graalvm-version"
@@ -912,11 +918,19 @@ class Mx
                 , buildArgs.args
             );
 
-            return Tasks.Exec.of(
+            return execTask(
                 args
                 , mandrelRepo.resolve("substratevm")
             );
         };
+    }
+
+    private static Tasks.Exec execTask(List<String> args, Path directory, EnvVar... envVars)
+    {
+        final EnvVar[] mxEnvVars = new EnvVar[envVars.length + 1];
+        mxEnvVars[0] = new EnvVar("MX_PYTHON", "python3");
+        System.arraycopy(envVars, 0, mxEnvVars, 1, envVars.length);
+        return Tasks.Exec.of(args, directory, mxEnvVars);
     }
 
     static void removeDependencies(Tasks.FileReplace.Effects effects, Path mandrelRepo)
@@ -1763,7 +1777,7 @@ class OperatingSystem
 
     List<String> exec(Tasks.Exec task, boolean getOutput)
     {
-        LOG.debugf("Execute %s in %s", task.args, task.directory);
+        LOG.debugf("Execute %s in %s with environment variables %s", task.args, task.directory, task.envVars);
         try
         {
             List<String> s = new ArrayList<>();
