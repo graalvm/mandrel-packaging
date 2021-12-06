@@ -139,39 +139,49 @@ public class build
             {
                 Path libchelperSource;
                 Path jvmlibSource;
+                Path reporterchelperSource;
                 if (MxVersion.mx5_313_0.compareTo(mx.version) > 0)
                 {
                     libchelperSource = Path.of("substratevm", "mxbuild", PLATFORM, "src", "com.oracle.svm.native.libchelper", ARCH, "libchelper.lib");
                     jvmlibSource = Path.of("substratevm", "mxbuild", PLATFORM, "src", "com.oracle.svm.native.jvm.windows", ARCH, "jvm.lib");
+                    reporterchelperSource = Path.of("substratevm", "mxbuild", PLATFORM, "src", "com.oracle.svm.native.reporterchelper", ARCH, "reporterchelper.dll");
                 }
                 else
                 {
                     libchelperSource = Path.of("substratevm", "mxbuild", platformAndJDK, "com.oracle.svm.native.libchelper", ARCH, "libchelper.lib");
                     jvmlibSource = Path.of("substratevm", "mxbuild", platformAndJDK, "com.oracle.svm.native.jvm.windows", ARCH, "jvm.lib");
+                    reporterchelperSource = Path.of("substratevm", "mxbuild", platformAndJDK, "com.oracle.svm.native.reporterchelper", ARCH, "reporterchelper.dll");
                 }
                 FileSystem.copy(mandrelRepo.resolve(libchelperSource),
                         mandrelHome.resolve(Path.of("lib", "svm", "clibraries", PLATFORM, "libchelper.lib")));
                 FileSystem.copy(mandrelRepo.resolve(jvmlibSource),
                         mandrelHome.resolve(Path.of("lib", "svm", "clibraries", PLATFORM, "jvm.lib")));
+                FileSystem.copy(mandrelRepo.resolve(reporterchelperSource),
+                        mandrelHome.resolve(Path.of("lib", "svm", "builder", "lib", "reporterchelper.dll")));
             }
             else
             {
                 Path libchelperSource;
                 Path libjvmSource;
+                Path reporterchelperSource;
                 if (MxVersion.mx5_313_0.compareTo(mx.version) > 0)
                 {
                     libchelperSource = Path.of("substratevm", "mxbuild", PLATFORM, "src", "com.oracle.svm.native.libchelper", ARCH, "liblibchelper.a");
                     libjvmSource = Path.of("substratevm", "mxbuild", PLATFORM, "src", "com.oracle.svm.native.jvm.posix", ARCH, "libjvm.a");
+                    reporterchelperSource = Path.of("substratevm", "mxbuild", PLATFORM, "src", "com.oracle.svm.native.reporterchelper", ARCH, "libreporterchelper.so");
                 }
                 else
                 {
                     libchelperSource = Path.of("substratevm", "mxbuild", PLATFORM, "com.oracle.svm.native.libchelper", ARCH, "liblibchelper.a");
                     libjvmSource = Path.of("substratevm", "mxbuild", platformAndJDK, "com.oracle.svm.native.jvm.posix", ARCH, "libjvm.a");
+                    reporterchelperSource = Path.of("substratevm", "mxbuild", platformAndJDK, "com.oracle.svm.native.reporterchelper", ARCH, "libreporterchelper.so");
                 }
                 FileSystem.copy(mandrelRepo.resolve(libchelperSource),
                         mandrelHome.resolve(Path.of("lib", "svm", "clibraries", PLATFORM, "liblibchelper.a")));
                 FileSystem.copy(mandrelRepo.resolve(libjvmSource),
                         mandrelHome.resolve(Path.of("lib", "svm", "clibraries", PLATFORM, "libjvm.a")));
+                FileSystem.copy(mandrelRepo.resolve(reporterchelperSource),
+                        mandrelHome.resolve(Path.of("lib", "svm", "builder", "lib", "libreporterchelper.so")));
             }
             // We don't create symlink on Windows, See https://github.com/graalvm/mandrel-packaging/pull/71#discussion_r517268470
             if (IS_WINDOWS)
@@ -717,9 +727,11 @@ class Mx
         BuildArgs.of("--projects",
             build.IS_WINDOWS ?
                 "com.oracle.svm.native.libchelper," +
+                    "com.oracle.svm.native.reporterchelper," +
                     "com.oracle.svm.native.jvm.windows," +
                     "com.oracle.svm.core.windows" :
                 "com.oracle.svm.native.libchelper," +
+                    "com.oracle.svm.native.reporterchelper," +
                     "com.oracle.svm.native.jvm.posix")
     );
 
