@@ -38,7 +38,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        mandrel-ref: [graal/master]
+        mandrel-ref: [mandrel/21.3]
     steps:
     - uses: actions/checkout@v2
     - uses: actions/checkout@v2
@@ -51,7 +51,7 @@ jobs:
       with:
         repository: graalvm/mx.git
         fetch-depth: 1
-        ref: master
+        ref: 5.309.2
         path: ${{ github.workspace }}/mx
     - uses: actions/cache@v2.1.5
       with:
@@ -127,7 +127,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        mandrel-ref: [graal/master]
+        mandrel-ref: [mandrel/21.3]
     steps:
     - uses: actions/checkout@v2
     - uses: actions/checkout@v2
@@ -140,7 +140,7 @@ jobs:
       with:
         repository: graalvm/mx.git
         fetch-depth: 1
-        ref: master
+        ref: 5.309.2
         path: ${{ github.workspace }}/mx
     - uses: actions/cache@v2.1.5
       with:
@@ -237,7 +237,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        mandrel-ref: [graal/master]
+        mandrel-ref: [mandrel/21.3]
     steps:
     - uses: actions/checkout@v2
     - uses: actions/checkout@v2
@@ -250,7 +250,7 @@ jobs:
       with:
         repository: graalvm/mx.git
         fetch-depth: 1
-        ref: master
+        ref: 5.309.2
         path: ${{ github.workspace }}/mx
     - uses: actions/cache@v2.1.5
       with:
