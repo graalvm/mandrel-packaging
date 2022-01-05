@@ -1325,7 +1325,6 @@ class PathFinder
             LOG.debugf("Trying path: %s", file);
             if (new File(file).exists())
             {
-                // returning file without suffix
                 return Path.of(file);
             }
         }
@@ -1446,14 +1445,8 @@ class Maven
                 , String.format("-DartifactId=%s", artifact.artifactId)
                 , String.format("-Dversion=%s", Options.snapshotVersion(options))
                 , "-Dpackaging=jar"
-                , String.format(
-                    "-Dfile=%s.jar"
-                    , artifact.distsPath.toString()
-                )
-                , String.format(
-                    "-Dsources=%s.src.zip"
-                    , artifact.distsPath
-                )
+                , String.format("-Dfile=%s", artifact.distsPath)
+                , String.format("-Dsources=%s", artifact.distsPath.toString().replace(".jar", ".src.zip"))
                 , "-DcreateChecksum=true"
             )
             , mandrelRepo
@@ -1530,7 +1523,7 @@ class Maven
         Artifact(String groupId, String artifactId, Path distsPath)
         {
             this.groupId = groupId;
-            this.artifactId = artifactId;
+            this.artifactId = artifactId.replace(".jar", "");
             this.distsPath = distsPath;
         }
     }
