@@ -471,6 +471,7 @@ class Options
 
 class SequentialBuild
 {
+    static final Logger LOG = LogManager.getLogger(SequentialBuild.class);
     final FileSystem fs;
     final OperatingSystem os;
 
@@ -487,6 +488,14 @@ class SequentialBuild
         Mx.build(options, exec, replace, fs::mxHome, fs::mandrelRepo, os::javaHome);
         if (options.mavenDeploy && !options.skipJava)
         {
+            // Create wrapper jar file for archiving resources (e.g. native image launcher script)
+            LOG.debugf("Patch sdk suite.py ...");
+            String patchPath = fs.workingDir(Path.of("resources", "mandrel-packaging-wrapper.patch")).toString();
+            exec.exec.accept(Tasks.Exec.of(List.of("git", "apply", patchPath), fs.mandrelRepo()));
+            LOG.debugf("Build Mandrel's wrapper jar...");
+            Mx.BuildArgs buildArgs = Mx.BuildArgs.of("--only", "MANDREL_PACKAGING_WRAPPER");
+            exec.exec.accept(Mx.mxbuild(options, fs::mxHome, fs::mandrelRepo, os::javaHome).apply(buildArgs));
+            LOG.debugf("Deploy maven artifacts...");
             Mx.mavenDeploy(options, exec, fs::mxHome, fs::mandrelRepo, os::javaHome);
         }
     }
@@ -668,7 +677,8 @@ class Mx
                 "OBJECTFILE," +
                 "SVM," +
                 "SVM_CONFIGURE," +
-                "SVM_DRIVER")
+                "SVM_DRIVER," +
+                "MANDREL_PACKAGING_WRAPPER")
     );
 
     static void removeMxbuilds(Path mandrelRepo) throws IOException
@@ -754,6 +764,9 @@ class Mx
                     , javaHome.get().toString()
                     , "maven-deploy"
                     , "--all-suites"
+                    , "--all-distribution-types"
+                    , "--validate"
+                    , "full"
                     , "--licenses"
                     , "GPLv2-CPE,UPL"
                     , "--suppress-javadoc"
@@ -803,7 +816,7 @@ class Mx
         );
     }
 
-    private static Function<BuildArgs, Tasks.Exec> mxbuild(
+    static Function<BuildArgs, Tasks.Exec> mxbuild(
         Options options
         , Function<Path, Path> mxHome
         , Function<Path, Path> mandrelRepo
