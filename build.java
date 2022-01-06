@@ -511,6 +511,7 @@ class Options
 
 class SequentialBuild
 {
+    static final Logger LOG = LogManager.getLogger(SequentialBuild.class);
     final FileSystem fs;
     final OperatingSystem os;
     final Mx mx;
@@ -529,6 +530,14 @@ class SequentialBuild
         Mx.build(options, exec, replace, fs.mxHome(), fs.mandrelRepo(), os.javaHome());
         if (options.mavenDeploy && !options.skipJava)
         {
+            // Create wrapper jar file for archiving resources (e.g. native image launcher script)
+            LOG.debugf("Patch sdk suite.py ...");
+            String patchPath = fs.workingDir().resolve(Path.of("resources", "mandrel-packaging-wrapper.patch")).toString();
+            exec.exec.accept(Tasks.Exec.of(List.of("git", "apply", patchPath), fs.mandrelRepo()));
+            LOG.debugf("Build Mandrel's wrapper jar...");
+            Mx.BuildArgs buildArgs = Mx.BuildArgs.of("--only", "MANDREL_PACKAGING_WRAPPER");
+            exec.exec.accept(Mx.mxbuild(options, fs.mxHome(), fs.mandrelRepo(), os.javaHome()).apply(buildArgs));
+            LOG.debugf("Deploy maven artifacts...");
             Mx.mavenDeploy(options, exec, fs.mxHome(), fs.mandrelRepo(), os.javaHome());
         }
     }
@@ -789,7 +798,8 @@ class Mx
                 "JVMTI_AGENT_BASE," +
                 "SVM_AGENT," +
                 "SVM_DIAGNOSTICS_AGENT," +
-                "SVM_CONFIGURE")
+                "SVM_CONFIGURE," +
+                "MANDREL_PACKAGING_WRAPPER")
     );
 
     static void removeMxbuilds(Path mandrelRepo) throws IOException
@@ -938,7 +948,7 @@ class Mx
         );
     }
 
-    private static Function<BuildArgs, Tasks.Exec> mxbuild(
+    static Function<BuildArgs, Tasks.Exec> mxbuild(
         Options options
         , Path mxHome
         , Path mandrelRepo

@@ -1,0 +1,45 @@
+diff --git a/sdk/mx.sdk/suite.py b/sdk/mx.sdk/suite.py
+index d1f573c5567..5c0e64f570a 100644
+--- a/sdk/mx.sdk/suite.py
++++ b/sdk/mx.sdk/suite.py
+@@ -342,6 +342,40 @@ suite = {
+ 
+   # ------------- Distributions -------------
+   "distributions" : {
++    "MANDREL_PACKAGING_WRAPPER" : {
++        "description" : "Mandrel's SubstrateVM macros and native-image launcher wrapped in a jar for 2-step build purposes",
++        "native": True,
++        "platformDependent" : True,
++        "type": "jar",
++        "license" : "GPLv2-CPE",
++        "dependencies" : [
++          "native-image-agent-library_native-image.properties",
++          "native-image-diagnostics-agent-library_native-image.properties",
++          "native-image-launcher_native-image.properties",
++        ],
++        "distDependencies" : [],
++        "layout" : {
++            "sdk/mxbuild/native-image.properties/native-image-agent-library/native-image.properties" : "dependency:native-image-agent-library_native-image.properties",
++            "sdk/mxbuild/native-image.properties/native-image-diagnostics-agent-library/native-image.properties" : "dependency:native-image-diagnostics-agent-library_native-image.properties",
++            "sdk/mxbuild/native-image.properties/native-image-launcher/native-image.properties" : "dependency:native-image-launcher_native-image.properties",
++        },
++        "os_arch" : {
++            "windows": {
++                "<others>" : {
++                    "layout" : {
++                        "sdk/mxbuild/<os>-<arch>/native-image.exe.image-bash/": "dependency:native-image.exe.image-bash"
++                    },
++                },
++            },
++            "linux": {
++                "<others>" : {
++                    "layout" : {
++                        "sdk/mxbuild/<os>-<arch>/native-image.image-bash/": "dependency:native-image.image-bash"
++                    },
++                },
++            },
++        },
++    },
+     "GRAAL_SDK" : {
+       "subDir" : "src",
+       "dependencies" : [
