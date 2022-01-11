@@ -41,7 +41,6 @@
         dest: "/root/"
       with_items:
         - "{{ playbook_dir }}/../build.java"
-        - "{{ playbook_dir }}/../resources"
     - name: Set welcome message
       copy:
         dest: /etc/profile.d/welcome.sh
