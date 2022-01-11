@@ -2,13 +2,11 @@ on:
   push:
     paths:
       - 'build.java'
-      - 'resources/**'
       - '.github/workflows/buildJDK.yml'
   pull_request:
     types: [opened, synchronize, reopened, ready_for_review]
     paths:
       - 'build.java'
-      - 'resources/**'
       - '.github/workflows/buildJDK.yml'
 
 env:
@@ -282,9 +280,7 @@ jobs:
         --mandrel-repo ${MANDREL_REPO} \
         --mandrel-version "${MANDREL_VERSION}" \
         --skip-native \
-        --maven-install \
         --maven-deploy \
-        --maven-version "3.6.0" \
         --maven-repo-id myRepo \
         --maven-url "file:///tmp/myRepo" \
         --mandrel-home temp-build

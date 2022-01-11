@@ -321,14 +321,12 @@ class Dependency
 
 class Options
 {
-    final MavenAction mavenAction;
-    String mavenVersion;
+    final boolean mavenDeploy;
     String mandrelVersion;
     final boolean verbose;
     final String mavenProxy;
     final String mavenRepoId;
     final String mavenURL;
-    final String mavenLocalRepository;
     final String mandrelRepo;
     final String mandrelHome;
     final String mxHome;
@@ -341,14 +339,12 @@ class Options
     final String archiveSuffix;
 
     Options(
-        MavenAction action
-        , String mavenVersion
+        boolean action
         , String mandrelVersion
         , boolean verbose
         , String mavenProxy
         , String mavenRepoId
         , String mavenURL
-        , String mavenLocalRepository
         , String mandrelRepo
         , String mandrelHome
         , String mxHome
@@ -361,14 +357,12 @@ class Options
         , String archiveSuffix
     )
     {
-        this.mavenAction = action;
-        this.mavenVersion = mavenVersion;
+        this.mavenDeploy = action;
         this.mandrelVersion = mandrelVersion;
         this.verbose = verbose;
         this.mavenProxy = mavenProxy;
         this.mavenRepoId = mavenRepoId;
         this.mavenURL = mavenURL;
-        this.mavenLocalRepository = mavenLocalRepository;
         this.mandrelRepo = mandrelRepo;
         this.mandrelHome = mandrelHome;
         this.mxHome = mxHome;
@@ -384,20 +378,10 @@ class Options
     public static Options from(Map<String, List<String>> args)
     {
         // Maven related
-        Options.MavenAction mavenAction = MavenAction.NOP;
-        if (args.containsKey("maven-install"))
-        {
-            mavenAction = MavenAction.INSTALL;
-        }
-        if (args.containsKey("maven-deploy"))
-        {
-            mavenAction = MavenAction.DEPLOY;
-        }
-        final String mavenVersion = required("maven-version", args, mavenAction != MavenAction.NOP);
+        boolean mavenDeploy = args.containsKey("maven-deploy");
         final String mavenProxy = optional("maven-proxy", args);
-        final String mavenRepoId = required("maven-repo-id", args, mavenAction == MavenAction.DEPLOY);
-        final String mavenURL = required("maven-url", args, mavenAction == MavenAction.DEPLOY);
-        final String mavenLocalRepository = optional("maven-local-repository", args);
+        final String mavenRepoId = required("maven-repo-id", args, mavenDeploy);
+        final String mavenURL = required("maven-url", args, mavenDeploy);
         final String mavenHome = optional("maven-home", args);
 
         // Mandrel related
@@ -423,14 +407,12 @@ class Options
         final String archiveSuffix = optional("archive-suffix", args);
 
         return new Options(
-            mavenAction
-            , mavenVersion
+            mavenDeploy
             , mandrelVersion
             , verbose
             , mavenProxy
             , mavenRepoId
             , mavenURL
-            , mavenLocalRepository
             , mandrelRepo
             , mandrelHome
             , mxHome
@@ -460,11 +442,6 @@ class Options
             .collect(Collectors.toMap(fs -> fs[0], fs -> fs[1]));
     }
 
-    static String snapshotVersion(Options options)
-    {
-        return String.format("%s-SNAPSHOT", options.mavenVersion);
-    }
-
     private static String optional(String name, Map<String, List<String>> args)
     {
         return required(name, args, false);
@@ -490,10 +467,6 @@ class Options
         return option.get(0);
     }
 
-    enum MavenAction
-    {
-        INSTALL, DEPLOY, NOP
-    }
 }
 
 class SequentialBuild
@@ -512,10 +485,9 @@ class SequentialBuild
         final Tasks.Exec.Effects exec = new Tasks.Exec.Effects(task -> os.exec(task, false));
         final Tasks.FileReplace.Effects replace = Tasks.FileReplace.Effects.ofSystem();
         Mx.build(options, exec, replace, fs::mxHome, fs::mandrelRepo, os::javaHome);
-        if (options.mavenAction != Options.MavenAction.NOP && !options.skipJava)
+        if (options.mavenDeploy && !options.skipJava)
         {
-            final Maven maven = Maven.of(fs::mavenHome, fs::mavenRepoHome);
-            maven.mvn(options, exec, replace, fs::mandrelRepo, fs::workingDir);
+            Mx.mavenDeploy(options, exec, fs::mxHome, fs::mandrelRepo, os::javaHome);
         }
     }
 }
@@ -683,6 +655,22 @@ class Mx
                     "com.oracle.svm.native.jvm.posix")
     );
 
+    static final List<BuildArgs> DEPLOY_ARTIFACTS_STEPS = List.of(
+        BuildArgs.of("--only",
+            "GRAAL," +
+                "JVMTI_AGENT_BASE," +
+                "POINTSTO," +
+                "SVM_AGENT," +
+                "SVM_DIAGNOSTICS_AGENT," +
+                "TRUFFLE_API," +
+                "GRAAL_SDK," +
+                "LIBRARY_SUPPORT," +
+                "OBJECTFILE," +
+                "SVM," +
+                "SVM_CONFIGURE," +
+                "SVM_DRIVER")
+    );
+
     static void removeMxbuilds(Path mandrelRepo) throws IOException
     {
         final PathMatcher pathMatcher = FileSystems.getDefault().getPathMatcher("glob:**/mxbuild");
@@ -732,6 +720,54 @@ class Mx
                 .map(Mx.mxbuild(options, mxHome, mandrelRepo, javaHome))
                 .forEach(exec.exec);
         }
+    }
+
+    static void mavenDeploy(
+        Options options
+        , Tasks.Exec.Effects exec
+        , Function<Path, Path> mxHome
+        , Function<Path, Path> mandrelRepo
+        , Supplier<Path> javaHome
+    )
+    {
+        DEPLOY_ARTIFACTS_STEPS.stream()
+            .map(Mx.mxMavenDeploy(options, mxHome, mandrelRepo, javaHome))
+            .forEach(exec.exec);
+    }
+
+    private static Function<BuildArgs, Tasks.Exec> mxMavenDeploy(
+        Options options
+        , Function<Path, Path> mxHome
+        , Function<Path, Path> mandrelRepo
+        , Supplier<Path> javaHome
+    )
+    {
+        return buildArgs ->
+        {
+            final Path mx = mxHome.apply(Paths.get("mx"));
+            final List<String> args = Lists.concat(
+                List.of(
+                    mx.toString()
+                    , options.verbose ? "-V" : ""
+                    , "--trust-http"
+                    , "--java-home"
+                    , javaHome.get().toString()
+                    , "maven-deploy"
+                    , "--all-suites"
+                    , "--licenses"
+                    , "GPLv2-CPE,UPL"
+                    , "--suppress-javadoc"
+                    , options.mavenRepoId
+                    , options.mavenURL
+                )
+                , buildArgs.args
+            );
+
+            return execTask(
+                args
+                , mandrelRepo.apply(Path.of("substratevm"))
+            );
+        };
     }
 
     private static Tasks.Exec mxclean(
@@ -1188,35 +1224,6 @@ class Maven
         , "svm-configure"
     );
 
-    static final String INSTALL_FILE_VERSION = "2.4";
-
-    static final String INSTALL_FILE_GOAL = String.format(
-        "org.apache.maven.plugins:maven-install-plugin:%s:install-file"
-        , INSTALL_FILE_VERSION
-    );
-
-    static final String DEPLOY_FILE_VERSION = "2.7";
-
-    static final String DEPLOY_FILE_GOAL = String.format(
-        "org.apache.maven.plugins:maven-deploy-plugin:%s:deploy-file"
-        , DEPLOY_FILE_VERSION
-    );
-
-    static final Map<String, String> GROUP_IDS = Map.ofEntries(
-        new SimpleEntry<>("graal-sdk", "org.graalvm.sdk"),
-        new SimpleEntry<>("svm", "org.graalvm.nativeimage"),
-        new SimpleEntry<>("pointsto", "org.graalvm.nativeimage"),
-        new SimpleEntry<>("library-support", "org.graalvm.nativeimage"),
-        new SimpleEntry<>("truffle-api", "org.graalvm.truffle"),
-        new SimpleEntry<>("compiler", "org.graalvm.compiler"),
-        new SimpleEntry<>("objectfile", "org.graalvm.nativeimage"),
-        new SimpleEntry<>("svm-driver", "org.graalvm.nativeimage"),
-        new SimpleEntry<>("jvmti-agent-base", "org.graalvm.nativeimage"),
-        new SimpleEntry<>("svm-agent", "org.graalvm.nativeimage"),
-        new SimpleEntry<>("svm-diagnostics-agent", "org.graalvm.nativeimage"),
-        new SimpleEntry<>("svm-configure", "org.graalvm.nativeimage")
-    );
-
     static final Map<String, Path> DISTS_PATHS = Map.ofEntries(
         new SimpleEntry<>("graal-sdk", Path.of("sdk", "mxbuild", "dists", "@JDK_NUMBER_DIRECTORY@", "graal-sdk")),
         new SimpleEntry<>("svm", Path.of("substratevm", "mxbuild", "dists", "@JDK_NUMBER_DIRECTORY@", "svm")),
@@ -1247,302 +1254,6 @@ class Maven
         new SimpleEntry<>("svm-configure", Path.of("lib", "graalvm", "svm-configure"))
     );
 
-    final Path mvn;
-    final Function<Path, Path> repoHome;
-
-    private Maven(Path mvn, Function<Path, Path> repoHome)
-    {
-        this.mvn = mvn;
-        this.repoHome = repoHome;
-    }
-
-    static Maven of(Supplier<Path> lazyHome, Function<Path, Path> repoHome)
-    {
-        final Path home = lazyHome.get();
-        final Path mvn = home.toString().isEmpty()
-            ? Path.of("mvn")
-            : Path.of("bin", "mvn");
-        return new Maven(home.resolve(mvn), repoHome);
-    }
-
-    void mvn(
-        Options options
-        , Tasks.Exec.Effects exec
-        , Tasks.FileReplace.Effects replace
-        , Supplier<Path> mandrelRepo
-        , Function<Path, Path> workingDir
-    )
-    {
-        // Only invoke mvn if all mx builds succeeded
-        final List<Maven.ReleaseArtifact> releaseArtifacts =
-            ARTIFACT_IDS.stream()
-                .map(mvnInstall(options, exec, replace, mandrelRepo, workingDir))
-                .collect(Collectors.toList());
-
-        // Only deploy if all mvn installs worked
-        if (options.mavenAction == Options.MavenAction.DEPLOY)
-        {
-            releaseArtifacts.forEach(mvnDeploy(options, exec, workingDir));
-        }
-    }
-
-    private Function<String, ReleaseArtifact> mvnInstall(
-        Options options
-        , Tasks.Exec.Effects exec
-        , Tasks.FileReplace.Effects replace
-        , Supplier<Path> mandrelRepo
-        , Function<Path, Path> workingDir
-    )
-    {
-        return artifactId ->
-        {
-            final Maven.Artifact artifact = Maven.artifact(artifactId, mandrelRepo.get());
-
-            exec.exec.accept(mvnInstallSnapshot(artifact, options, mandrelRepo));
-            exec.exec.accept(mvnInstallAssembly(artifact, options, replace, workingDir));
-
-            final Maven.ReleaseArtifact releaseArtifact = ReleaseArtifact.of(artifact, options, workingDir, repoHome);
-            exec.exec.accept(mvnInstallRelease(releaseArtifact, options, replace, workingDir));
-
-            return releaseArtifact;
-        };
-    }
-
-    private Consumer<ReleaseArtifact> mvnDeploy(Options options, Tasks.Exec.Effects exec, Function<Path, Path> workingDir)
-    {
-        return artifact -> exec.exec.accept(deploy(artifact, options, workingDir));
-    }
-
-    private Tasks.Exec deploy(ReleaseArtifact artifact, Options options, Function<Path, Path> workingDir)
-    {
-        return Tasks.Exec.of(
-            Arrays.asList(
-                mvn.toString()
-                , options.verbose ? "--debug" : ""
-                , DEPLOY_FILE_GOAL
-                , String.format("-DgroupId=%s", artifact.groupId)
-                , String.format("-DartifactId=%s", artifact.artifactId)
-                , String.format("-Dversion=%s", options.mavenVersion)
-                , "-Dpackaging=jar"
-                , String.format("-Dfile=%s", artifact.jarPath)
-                , String.format("-Dsources=%s", artifact.sourceJarPath)
-                , "-DcreateChecksum=true"
-                , String.format("-DpomFile=%s", artifact.pomPaths.target)
-                , String.format("-DrepositoryId=%s", options.mavenRepoId)
-                , String.format("-Durl=%s", options.mavenURL)
-            )
-            , workingDir.apply(Path.of(""))
-        );
-    }
-
-    private static Artifact artifact(String artifactId, Path mandrelRepo)
-    {
-        final Path distsPath = PathFinder.getFirstExisting(Maven.DISTS_PATHS, mandrelRepo, artifactId);
-        final String groupId = GROUP_IDS.get(artifactId);
-        return new Artifact(
-            groupId
-            , artifactId
-            , distsPath
-        );
-    }
-
-    private static Function<Stream<String>, List<String>> replacePomXml(Options options)
-    {
-        return lines ->
-            lines
-                .map(line -> line.replace("999", options.mavenVersion))
-                .collect(Collectors.toList());
-    }
-
-    private Tasks.Exec mvnInstallSnapshot(Artifact artifact, Options options, Supplier<Path> mandrelRepo)
-    {
-        return Tasks.Exec.of(
-            Arrays.asList(
-                mvn.toString()
-                , options.verbose ? "--debug" : ""
-                , INSTALL_FILE_GOAL
-                , String.format("-DgroupId=%s", artifact.groupId)
-                , String.format("-DartifactId=%s", artifact.artifactId)
-                , String.format("-Dversion=%s", Options.snapshotVersion(options))
-                , "-Dpackaging=jar"
-                , String.format(
-                    "-Dfile=%s.jar"
-                    , artifact.distsPath.toString()
-                )
-                , String.format(
-                    "-Dsources=%s.src.zip"
-                    , artifact.distsPath.toString()
-                )
-                , "-DcreateChecksum=true"
-            )
-            , mandrelRepo.get()
-        );
-    }
-
-    private Tasks.Exec mvnInstallAssembly(
-        Artifact artifact
-        , Options options
-        , Tasks.FileReplace.Effects effects
-        , Function<Path, Path> workingDir
-    )
-    {
-        final Path pomPath = Path.of(
-            "assembly"
-            , artifact.artifactId
-            , "pom.xml"
-        );
-        final Maven.DirectionalPaths paths = DirectionalPaths.ofPom(pomPath, workingDir);
-
-        Tasks.FileReplace.copyReplace(
-            new Tasks.FileReplace(paths.target, Maven.replacePomXml(options))
-            , paths.source
-            , effects
-        );
-
-        return Tasks.Exec.of(
-            Arrays.asList(
-                mvn.toString()
-                , options.verbose ? "--debug" : ""
-                , "install"
-            )
-            , paths.target.getParent()
-        );
-    }
-
-    private Tasks.Exec mvnInstallRelease(
-        ReleaseArtifact releaseArtifact
-        , Options options
-        , Tasks.FileReplace.Effects replace
-        , Function<Path, Path> workingDir
-    )
-    {
-        Tasks.FileReplace.copyReplace(
-            new Tasks.FileReplace(releaseArtifact.pomPaths.target, Maven.replacePomXml(options))
-            , releaseArtifact.pomPaths.source
-            , replace
-        );
-
-        return Tasks.Exec.of(
-            Arrays.asList(
-                mvn.toString()
-                , options.verbose ? "--debug" : ""
-                , INSTALL_FILE_GOAL
-                , String.format("-DgroupId=%s", releaseArtifact.groupId)
-                , String.format("-DartifactId=%s", releaseArtifact.artifactId)
-                , String.format("-Dversion=%s", options.mavenVersion)
-                , "-Dpackaging=jar"
-                , String.format("-Dfile=%s", releaseArtifact.jarPath)
-                , String.format("-Dsources=%s", releaseArtifact.sourceJarPath)
-                , "-DcreateChecksum=true"
-                , String.format("-DpomFile=%s", releaseArtifact.pomPaths.target)
-            )
-            , workingDir.apply(Path.of(""))
-        );
-    }
-
-    private static final class Artifact
-    {
-        final String groupId;
-        final String artifactId;
-        final Path distsPath;
-
-        Artifact(String groupId, String artifactId, Path distsPath)
-        {
-            this.groupId = groupId;
-            this.artifactId = artifactId;
-            this.distsPath = distsPath;
-        }
-    }
-
-    private static final class ReleaseArtifact
-    {
-        final String groupId;
-        final String artifactId;
-        final DirectionalPaths pomPaths;
-        final Path jarPath;
-        final Path sourceJarPath;
-
-        private ReleaseArtifact(
-            String groupId
-            , String artifactId
-            , DirectionalPaths pomPaths
-            , Path jarPath
-            , Path sourceJarPath
-        )
-        {
-            this.groupId = groupId;
-            this.artifactId = artifactId;
-            this.pomPaths = pomPaths;
-            this.jarPath = jarPath;
-            this.sourceJarPath = sourceJarPath;
-        }
-
-        // TODO Release artifact should not depend on mavenRepoHome,
-        //      it can be built with relative paths throughout.
-        //      The final paths can be computed when constructing the mvn command.
-        static ReleaseArtifact of(Artifact artifact, Options options, Function<Path, Path> workingDir, Function<Path, Path> mavenRepoHome)
-        {
-            final Path releasePomPath = Path.of(
-                "release"
-                , artifact.artifactId
-                , "pom.xml"
-            );
-
-            final Maven.DirectionalPaths pomPaths = DirectionalPaths.ofPom(releasePomPath, workingDir);
-
-            final String jarName = String.format(
-                "%s-%s-ASSEMBLY-jar-with-dependencies.jar"
-                , artifact.artifactId
-                , options.mavenVersion
-            );
-
-            final Path artifactPath = mavenRepoHome
-                .apply(Path.of(artifact.groupId.replace(".", "/")))
-                .resolve(artifact.artifactId);
-
-            final Path jarPath = artifactPath
-                .resolve(String.format("%s-ASSEMBLY", options.mavenVersion))
-                .resolve(jarName);
-
-            final String sourceJarName = String.format(
-                "%s-%s-SNAPSHOT-sources.jar"
-                , artifact.artifactId
-                , options.mavenVersion
-            );
-
-            final Path sourceJarPath = artifactPath
-                .resolve(String.format("%s-SNAPSHOT", options.mavenVersion))
-                .resolve(sourceJarName);
-
-            return new ReleaseArtifact(
-                artifact.groupId
-                , artifact.artifactId
-                , pomPaths
-                , jarPath
-                , sourceJarPath
-            );
-        }
-    }
-
-    static final class DirectionalPaths
-    {
-        final Path source;
-        final Path target;
-
-        DirectionalPaths(Path source, Path target)
-        {
-            this.source = source;
-            this.target = target;
-        }
-
-        static DirectionalPaths ofPom(Path pomPath, Function<Path, Path> workingDir)
-        {
-            return new DirectionalPaths(
-                workingDir.apply(Path.of("resources").resolve(pomPath))
-                , workingDir.apply(Path.of("target").resolve(pomPath))
-            );
-        }
-    }
 }
 
 // Dependency
@@ -1553,15 +1264,13 @@ class FileSystem
     private final Path mandrelRepo;
     private final Path mxHome;
     private final Path workingDir;
-    private final Path mavenRepoHome;
     private final Path mavenHome;
 
-    FileSystem(Path mandrelRepo, Path mxHome, Path workingDir, Path mavenRepoHome, Path mavenHome)
+    FileSystem(Path mandrelRepo, Path mxHome, Path workingDir, Path mavenHome)
     {
         this.mandrelRepo = mandrelRepo;
         this.mxHome = mxHome;
         this.workingDir = workingDir;
-        this.mavenRepoHome = mavenRepoHome;
         this.mavenHome = mavenHome;
     }
 
@@ -1588,11 +1297,6 @@ class FileSystem
     Path workingDir(Path relative)
     {
         return workingDir.resolve(relative);
-    }
-
-    Path mavenRepoHome(Path relative)
-    {
-        return mavenRepoHome.resolve(relative);
     }
 
     Path mavenHome()
@@ -1716,9 +1420,8 @@ class FileSystem
         final Path mxHome = mxHome(options);
         final String userDir = System.getProperty("user.dir");
         final Path workingDir = new File(userDir).toPath();
-        final Path mavenRepoHome = mavenRepoHome(options);
         final Path mavenHome = mavenHome(options);
-        return new FileSystem(mandrelRepo, mxHome, workingDir, mavenRepoHome, mavenHome);
+        return new FileSystem(mandrelRepo, mxHome, workingDir, mavenHome);
     }
 
     static Path mandrelRepo(Options options)
@@ -1750,17 +1453,6 @@ class FileSystem
         }
 
         return Path.of(options.mxHome);
-    }
-
-    private static Path mavenRepoHome(Options options)
-    {
-        if (options.mavenLocalRepository == null)
-        {
-            final String userHome = System.getProperty("user.home");
-            return Path.of(userHome, ".m2", "repository");
-        }
-
-        return Path.of(options.mavenLocalRepository);
     }
 
     private static Path mavenHome(Options options)
