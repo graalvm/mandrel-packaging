@@ -105,6 +105,23 @@ public class build
                     Path.of("sdk", "mxbuild", PLATFORM, IS_WINDOWS ? "native-image.exe.image-bash" : "native-image.image-bash",
                             IS_WINDOWS ? "native-image.cmd" : "native-image")), nativeImage);
 
+            // We don't create symlink on Windows, See https://github.com/graalvm/mandrel-packaging/pull/71#discussion_r517268470
+            if (IS_WINDOWS)
+            {
+                // exe_link_template.cmd: DOS batch file, ASCII text, with CRLF line terminators
+                final String nativeImageCmd = Files.readString(mandrelRepo.resolve(
+                        Path.of("sdk", "mx.sdk", "vm", "exe_link_template.cmd")), StandardCharsets.US_ASCII)
+                    .replace("<target>", "..\\lib\\svm\\bin\\native-image.cmd");
+                Files.writeString(mandrelHome.resolve(
+                    Path.of("bin", "native-image.cmd")), nativeImageCmd, StandardCharsets.US_ASCII, StandardOpenOption.CREATE_NEW);
+            }
+            else
+            {
+                logger.debugf("Symlink native-image...");
+                Files.createSymbolicLink(mandrelHome.resolve(
+                    Path.of("bin", "native-image")), Path.of("..", "lib", "svm", "bin", "native-image"));
+            }
+
             logger.debugf("Patch native image...");
             patchNativeImageLauncher(nativeImage, options.mandrelVersion);
         }
@@ -146,22 +163,6 @@ public class build
             {
                 FileSystem.copy(mandrelRepo.resolve(Path.of("substratevm", "mxbuild", PLATFORM, "src", "com.oracle.svm.native.jvm.posix", ARCH, "libjvm.a")),
                     mandrelHome.resolve(Path.of("lib", "svm", "clibraries", PLATFORM, "libjvm.a")));
-            }
-            // We don't create symlink on Windows, See https://github.com/graalvm/mandrel-packaging/pull/71#discussion_r517268470
-            if (IS_WINDOWS)
-            {
-                // exe_link_template.cmd: DOS batch file, ASCII text, with CRLF line terminators
-                final String nativeImageCmd = Files.readString(mandrelRepo.resolve(
-                    Path.of("sdk", "mx.sdk", "vm", "exe_link_template.cmd")), StandardCharsets.US_ASCII)
-                    .replace("<target>", "..\\lib\\svm\\bin\\native-image.cmd");
-                Files.writeString(mandrelHome.resolve(
-                    Path.of("bin", "native-image.cmd")), nativeImageCmd, StandardCharsets.US_ASCII, StandardOpenOption.CREATE_NEW);
-            }
-            else
-            {
-                logger.debugf("Symlink native-image...");
-                Files.createSymbolicLink(mandrelHome.resolve(
-                    Path.of("bin", "native-image")), Path.of("..", "lib", "svm", "bin", "native-image"));
             }
 
             if (!options.skipNativeAgents)
