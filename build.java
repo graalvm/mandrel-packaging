@@ -104,9 +104,6 @@ public class build
             FileSystem.copy(mandrelRepo.resolve(
                     Path.of("sdk", "mxbuild", PLATFORM, IS_WINDOWS ? "native-image.exe.image-bash" : "native-image.image-bash",
                             IS_WINDOWS ? "native-image.cmd" : "native-image")), nativeImage);
-
-            logger.debugf("Patch native image...");
-            patchNativeImageLauncher(nativeImage, options.mandrelVersion);
         }
 
         if (!options.skipNative)
@@ -163,6 +160,9 @@ public class build
                 Files.createSymbolicLink(mandrelHome.resolve(
                     Path.of("bin", "native-image")), Path.of("..", "lib", "svm", "bin", "native-image"));
             }
+
+            logger.debugf("Patch native image...");
+            patchNativeImageLauncher(nativeImage, options.mandrelVersion);
 
             if (!options.skipNativeAgents)
             {
