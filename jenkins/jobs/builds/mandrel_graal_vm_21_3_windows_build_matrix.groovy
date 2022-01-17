@@ -1,29 +1,24 @@
-matrixJob('mandrel-21.3-windows-build-matrix') {
+final Class Constants = new GroovyClassLoader(getClass().getClassLoader())
+        .parseClass(readFileFromWorkspace("jenkins/jobs/builds/Constants.groovy"))
+matrixJob('mandrel-graal-vm-21-3-windows-build-matrix') {
     axes {
         labelExpression('LABEL', ['w2k19'])
         text('JDK_VERSION',
-                'jdk11',
-                'jdk17'
+                '11',
+                '17'
+        )
+        text('JDK_RELEASE',
+                'ea',
+                'ga'
         )
     }
-    displayName('Windows Build Matrix :: 21.3')
-    description('''
-Windows build matrix for 21.3 branch.
-    ''')
+    displayName('Windows Build Matrix :: graal-vm-21.3')
+    description('Windows build matrix for graal-vm-21.3 branch.')
     logRotator {
-        numToKeep(10)
+        numToKeep(15)
     }
     parameters {
-        choiceParam(
-                'REPOSITORY',
-                [
-                        'https://github.com/graalvm/mandrel.git',
-                        'https://github.com/jerboaa/graal.git',
-                        'https://github.com/Karm/graal.git',
-                        'https://github.com/zakkak/mandrel.git',
-                ],
-                'Mandrel repo'
-        )
+        choiceParam('REPOSITORY', Constants.REPOSITORY, 'Mandrel repo')
         choiceParam(
                 'HEADS_OR_TAGS',
                 [
@@ -37,15 +32,9 @@ Windows build matrix for 21.3 branch.
                 'mandrel/21.3',
                 'e.g. your PR branch or a specific tag.'
         )
-        choiceParam(
-                'PACKAGING_REPOSITORY',
-                [
-                        'https://github.com/mandrel/mandrel-packaging.git',
-                        'https://github.com/Karm/mandrel-packaging.git',
-                        'https://github.com/zakkak/mandrel-packaging.git'
-                ],
-                'Mandrel packaging scripts.'
-        )
+        stringParam('GRAALVM_REPO', 'https://github.com/oracle/graal.git')
+        stringParam('GRAALVM_BRANCH', 'release/graal-vm/21.3')
+        choiceParam('PACKAGING_REPOSITORY', Constants.PACKAGING_REPOSITORY, 'Mandrel packaging scripts.')
         choiceParam(
                 'PACKAGING_REPOSITORY_HEADS_OR_TAGS',
                 [
@@ -98,31 +87,17 @@ Windows build matrix for 21.3 branch.
     }
     triggers {
         scm('H H/2 * * *')
+        cron {
+            spec('0 2 * * 5')
+        }
     }
     steps {
-        batchFile('echo MANDREL_VERSION_SUBSTRING=%MANDREL_VERSION_SUBSTRING%')
-        buildDescription(/MANDREL_VERSION_SUBSTRING=([^\s]*)/, '\\1')
-        batchFile('''
-            set OPENJDK=
-            IF "%JDK_VERSION%"=="jdk11" (
-                set OPENJDK=openjdk-11.0.13_8
-            ) ELSE IF "%JDK_VERSION%"=="jdk17" (
-                set OPENJDK=jdk-17.0.1+12
-            ) ELSE (
-                echo "UNKNOWN JDK version: %JDK_VERSION%"
-                exit 1
-            )
-            cmd /C jenkins\\jobs\\scripts\\mandrel_windows_build.bat
-        ''')
+        batchFile {
+            command(Constants.WINDOWS_GRAAL_VM_BRANCH_BUILD_CMD)
+            unstableReturn(1)
+        }
     }
     publishers {
-        groovyPostBuild('''
-            if(manager.logContains(".*MANDREL_VERSION_SUBSTRING.*-Final.*")) {
-                def build = Thread.currentThread()?.executable
-                build.rootBuild.keepLog(true)
-                build.rootBuild.description="${build.environment.MANDREL_VERSION_SUBSTRING}"
-            }
-        ''', Behavior.DoNothing)
         archiveArtifacts('*.zip,MANDREL.md,*.sha1,*.sha256')
         wsCleanup()
         postBuildCleanup {
@@ -140,15 +115,6 @@ Windows build matrix for 21.3 branch.
                         recipientList()
                         attachBuildLog(true)
                     }
-                }
-            }
-        }
-        downstreamParameterized {
-            trigger(['mandrel-windows-integration-tests']) {
-                condition('SUCCESS')
-                parameters {
-                    currentBuild()
-                    matrixSubset('(MANDREL_VERSION=="21.3" && JDK_VERSION=="${JDK_VERSION}" && LABEL=="${LABEL}")')
                 }
             }
         }

@@ -1,6 +1,5 @@
 job('mandrel-jobs') {
     description('Update all Mandrel Jenkins jobs from https://github.com/graalvm/mandrel-packaging/tree/master/jenkins')
-    label('master')
     logRotator {
         numToKeep(1)
     }
@@ -14,7 +13,7 @@ job('mandrel-jobs') {
     }
     steps {
         dsl {
-            external('jenkins/jobs/**/*.groovy')
+            external('jenkins/jobs/**/mandrel*.groovy')
         }
     }
 }
