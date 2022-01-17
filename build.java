@@ -1,6 +1,7 @@
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileReader;
+import java.io.FileWriter;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.FileSystems;
@@ -327,6 +328,7 @@ class Options
     final String mavenProxy;
     final String mavenRepoId;
     final String mavenURL;
+    final String mavenVersion;
     final String mandrelRepo;
     final String mandrelHome;
     final String mxHome;
@@ -345,6 +347,7 @@ class Options
         , String mavenProxy
         , String mavenRepoId
         , String mavenURL
+        , String mavenVersion
         , String mandrelRepo
         , String mandrelHome
         , String mxHome
@@ -363,6 +366,7 @@ class Options
         this.mavenProxy = mavenProxy;
         this.mavenRepoId = mavenRepoId;
         this.mavenURL = mavenURL;
+        this.mavenVersion = mavenVersion;
         this.mandrelRepo = mandrelRepo;
         this.mandrelHome = mandrelHome;
         this.mxHome = mxHome;
@@ -382,6 +386,7 @@ class Options
         final String mavenProxy = optional("maven-proxy", args);
         final String mavenRepoId = required("maven-repo-id", args, mavenDeploy);
         final String mavenURL = required("maven-url", args, mavenDeploy);
+        final String mavenVersion = required("maven-version", args, mavenDeploy);
         final String mavenHome = optional("maven-home", args);
 
         // Mandrel related
@@ -413,6 +418,7 @@ class Options
             , mavenProxy
             , mavenRepoId
             , mavenURL
+            , mavenVersion
             , mandrelRepo
             , mandrelHome
             , mxHome
@@ -481,7 +487,7 @@ class SequentialBuild
         this.os = os;
     }
 
-    void build(Options options)
+    void build(Options options) throws IOException
     {
         final Tasks.Exec.Effects exec = new Tasks.Exec.Effects(task -> os.exec(task, false));
         final Tasks.FileReplace.Effects replace = Tasks.FileReplace.Effects.ofSystem();
@@ -495,9 +501,32 @@ class SequentialBuild
             LOG.debugf("Build Mandrel's wrapper jar...");
             Mx.BuildArgs buildArgs = Mx.BuildArgs.of("--only", "MANDREL_PACKAGING_WRAPPER");
             exec.exec.accept(Mx.mxbuild(options, fs::mxHome, fs::mandrelRepo, os::javaHome).apply(buildArgs));
+            // Add Specification-Version and Implementation-Version to jars' manifests.
+            // These attributes are access by Red Hat Build of Quarkus to verify that the correct artifacts are being used.
+            // The value of Specification-Version is not that important, but the Implementation-Version should match the version of the native-image.
+            LOG.debugf("Patch jars' manifests with Specification-Version and Implementation-Version...");
+            File manifest = createTempManifest(options);
+            Maven.ARTIFACT_IDS.forEach(artifact ->
+            {
+                final String jarPath = PathFinder.getFirstExisting(Maven.DISTS_PATHS, fs.mandrelRepo(), artifact) + ".jar";
+                exec.exec.accept(Tasks.Exec.of(List.of("jar", "uvfm", jarPath, manifest.getPath()), fs.mandrelRepo()));
+            });
             LOG.debugf("Deploy maven artifacts...");
             Mx.mavenDeploy(options, exec, fs::mxHome, fs::mandrelRepo, os::javaHome);
         }
+    }
+
+    private File createTempManifest(Options options) throws IOException
+    {
+        File manifest = File.createTempFile("manifest", "mf");
+        manifest.deleteOnExit();
+        try (FileWriter manifestWriter = new FileWriter(manifest))
+        {
+            manifestWriter.write("Specification-Version: 0.0\n");
+            manifestWriter.write("Implementation-Version: " + options.mavenVersion + "\n");
+            manifestWriter.flush();
+        }
+        return manifest;
     }
 }
 
