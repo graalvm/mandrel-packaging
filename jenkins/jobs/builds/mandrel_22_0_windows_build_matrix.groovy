@@ -1,29 +1,24 @@
-matrixJob('mandrel-master-linux-build-matrix') {
+final Class Constants = new GroovyClassLoader(getClass().getClassLoader())
+        .parseClass(readFileFromWorkspace("jenkins/jobs/builds/Constants.groovy"))
+matrixJob('mandrel-22-0-windows-build-matrix') {
     axes {
-        labelExpression('LABEL', ['el8_aarch64', 'el8'])
+        labelExpression('LABEL', ['w2k19'])
         text('JDK_VERSION',
-                'jdk11',
-                'jdk17'
+                '11',
+                '17'
+        )
+        text('JDK_RELEASE',
+                'ea',
+                'ga'
         )
     }
-    displayName('Linux Build Matrix :: master')
-    description('''
-Linux build matrix for master branch.
-    ''')
+    displayName('Windows Build Matrix :: 22.0')
+    description('Windows build matrix for 22.0 branch.')
     logRotator {
-        numToKeep(10)
+        numToKeep(15)
     }
     parameters {
-        choiceParam(
-                'REPOSITORY',
-                [
-                        'https://github.com/graalvm/mandrel.git',
-                        'https://github.com/jerboaa/graal.git',
-                        'https://github.com/Karm/graal.git',
-                        'https://github.com/zakkak/mandrel.git',
-                ],
-                'Mandrel repo'
-        )
+        choiceParam('REPOSITORY', Constants.REPOSITORY, 'Mandrel repo')
         choiceParam(
                 'HEADS_OR_TAGS',
                 [
@@ -34,18 +29,10 @@ Linux build matrix for master branch.
         )
         stringParam(
                 'BRANCH_OR_TAG',
-                'graal/master',
+                'mandrel/22.0',
                 'e.g. your PR branch or a specific tag.'
         )
-        choiceParam(
-                'PACKAGING_REPOSITORY',
-                [
-                        'https://github.com/mandrel/mandrel-packaging.git',
-                        'https://github.com/Karm/mandrel-packaging.git',
-                        'https://github.com/zakkak/mandrel-packaging.git'
-                ],
-                'Mandrel packaging scripts.'
-        )
+        choiceParam('PACKAGING_REPOSITORY', Constants.PACKAGING_REPOSITORY, 'Mandrel packaging scripts.')
         choiceParam(
                 'PACKAGING_REPOSITORY_HEADS_OR_TAGS',
                 [
@@ -56,12 +43,12 @@ Linux build matrix for master branch.
         )
         stringParam(
                 'PACKAGING_REPOSITORY_BRANCH_OR_TAG',
-                'master',
+                '22.0',
                 'e.g. master if you use heads or some tag if you use tags.'
         )
         stringParam(
                 'MANDREL_VERSION_SUBSTRING',
-                'master-SNAPSHOT',
+                '22.0-SNAPSHOT',
                 'It must not contain spaces as it is used in tarball name too.'
         )
     }
@@ -89,41 +76,27 @@ Linux build matrix for master branch.
             remote {
                 url('https://github.com/graalvm/mx.git')
             }
-            branches('*/master')
+            branches('refs/tags/5.317.3')
             extensions {
-                localBranch('master')
+                localBranch('5.317.3')
                 relativeTargetDirectory('mx')
             }
         }
     }
     triggers {
         scm('H H/2 * * *')
+        cron {
+            spec('0 2 * * 5')
+        }
     }
     steps {
-        shell('echo MANDREL_VERSION_SUBSTRING=${MANDREL_VERSION_SUBSTRING}')
-        buildDescription(/MANDREL_VERSION_SUBSTRING=([^\s]*)/, '\\1')
-        shell('''
-            case $JDK_VERSION in
-                jdk11)
-                    export OPENJDK="openjdk-11.0.13_8";;
-                jdk17)
-                    export OPENJDK="jdk-17.0.1+12";;
-                *)
-                    echo "UNKNOWN JDK version: $JDK_VERSION"
-                    exit 1
-            esac
-            ./jenkins/jobs/scripts/mandrel_linux_build.sh
-        ''')
+        batchFile {
+            command(Constants.WINDOWS_BUILD_CMD)
+            unstableReturn(1)
+        }
     }
     publishers {
-        groovyPostBuild('''
-            if(manager.logContains(".*MANDREL_VERSION_SUBSTRING.*-Final.*")) {
-                def build = Thread.currentThread()?.executable
-                build.rootBuild.keepLog(true)
-                build.rootBuild.description="${build.environment.MANDREL_VERSION_SUBSTRING}"
-            }
-        ''', Behavior.DoNothing)
-        archiveArtifacts('*.tar.gz,MANDREL.md,*.sha1,*.sha256')
+        archiveArtifacts('*.zip,MANDREL.md,*.sha1,*.sha256')
         wsCleanup()
         postBuildCleanup {
             cleaner {
@@ -144,11 +117,11 @@ Linux build matrix for master branch.
             }
         }
         downstreamParameterized {
-            trigger(['mandrel-linux-integration-tests']) {
+            trigger(['mandrel-windows-integration-tests']) {
                 condition('SUCCESS')
                 parameters {
-                    currentBuild()
-                    matrixSubset('(MANDREL_VERSION=="master" && JDK_VERSION=="${JDK_VERSION}" && LABEL=="${LABEL}")')
+                    predefinedProp('MANDREL_BUILD_NUMBER', '${BUILD_NUMBER}')
+                    matrixSubset('(MANDREL_BUILD=="${JOB_BASE_NAME} && JDK_VERSION=="${JDK_VERSION}" && JDK_RELEASE=="${JDK_RELEASE}" && LABEL=="${LABEL}")')
                 }
             }
         }

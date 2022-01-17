@@ -1,22 +1,21 @@
+final Class Constants = new GroovyClassLoader(getClass().getClassLoader())
+        .parseClass(readFileFromWorkspace("jenkins/jobs/tests/Constants.groovy"))
 matrixJob('mandrel-linux-container-integration-tests') {
     axes {
         text('BUILDER_IMAGE',
                 'quay.io/quarkus/ubi-quarkus-mandrel:21.2-java11',
                 'quay.io/quarkus/ubi-quarkus-mandrel:21.3-java11',
                 'quay.io/quarkus/ubi-quarkus-mandrel:21.3-java17',
-                'registry-proxy.engineering.redhat.com/rh-osbs/quarkus-mandrel-21-rhel8'
+                'quay.io/quarkus/ubi-quarkus-mandrel:22.0-java11',
+                'quay.io/quarkus/ubi-quarkus-mandrel:22.0-java17'
         )
-        text('QUARKUS_VERSION',
-                '2.2.3.Final',
-                '2.4.1.Final',
-                '2.5.0.CR1'
-        )
+        text('QUARKUS_VERSION', Constants.QUARKUS_VERSION_RELEASED)
         labelExpression('LABEL', ['el8'])
     }
     description('Run Mandrel container integration tests')
     displayName('Linux :: Container Integration tests')
     logRotator {
-        numToKeep(30)
+        numToKeep(300)
     }
     childCustomWorkspace('${SHORT_COMBINATION}')
     wrappers {
@@ -45,26 +44,18 @@ matrixJob('mandrel-linux-container-integration-tests') {
             branch('refs/${MANDREL_INTEGRATION_TESTS_REF_TYPE}/${MANDREL_INTEGRATION_TESTS_REF}')
         }
     }
+    triggers {
+        cron {
+            spec('0 1 * * 3,6')
+        }
+    }
     steps {
         shell('echo DESCRIPTION_STRING=${QUARKUS_VERSION},${BUILDER_IMAGE}')
         buildDescription(/DESCRIPTION_STRING=([^\s]*)/, '\\1')
-        shell('''
-            export CONTAINER_RUNTIME=podman
-            source /etc/profile.d/jdks.sh
-            set +e
-            sudo ${CONTAINER_RUNTIME} stop $(sudo ${CONTAINER_RUNTIME} ps -a -q)
-            sudo ${CONTAINER_RUNTIME} rm -f $(sudo ${CONTAINER_RUNTIME} ps -a -f "status=exited" -q)
-            yes | sudo ${CONTAINER_RUNTIME} volume prune
-            set -e
-            sudo ${CONTAINER_RUNTIME} pull ${BUILDER_IMAGE}
-            if [ "$?" -ne 0 ]; then
-                echo There was a problem pulling the image ${BUILDER_IMAGE}. We cannot proceed.
-                exit 1
-            fi
-            export JAVA_HOME="/usr/java/openjdk-11"
-            export PATH="${JAVA_HOME}/bin:${PATH}"
-            mvn clean verify -Ptestsuite-builder-image -Dquarkus.version=${QUARKUS_VERSION} -Dquarkus.native.container-runtime=${CONTAINER_RUNTIME} -Dquarkus.native.builder-image=${BUILDER_IMAGE}
-        ''')
+        shell {
+            command(Constants.LINUX_CONTAINER_INTEGRATION_TESTS)
+            unstableReturn(1)
+        }
     }
     publishers {
         archiveJunit('**/target/*-reports/*.xml') {

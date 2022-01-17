@@ -1,25 +1,27 @@
+final Class Constants = new GroovyClassLoader(getClass().getClassLoader())
+        .parseClass(readFileFromWorkspace("jenkins/jobs/tests/Constants.groovy"))
 matrixJob('mandrel-linux-integration-tests') {
     axes {
         text('JDK_VERSION',
-                'jdk11',
-                'jdk17'
+                '11',
+                '17'
         )
-        text('MANDREL_VERSION',
-                'graal-vm-21.3',
-                '21.3',
-                'master'
+        text('JDK_RELEASE',
+                'ea',
+                'ga'
         )
-        text('QUARKUS_VERSION',
-                '2.2.3.Final',
-                '2.4.1.Final',
-                '2.5.0.CR1'
+        text('MANDREL_BUILD',
+                'mandrel-21-3-linux-build-matrix',
+                'mandrel-22-0-linux-build-matrix',
+                'mandrel-master-linux-build-matrix'
         )
+        text('QUARKUS_VERSION', Constants.QUARKUS_VERSION_RELEASED)
         labelExpression('LABEL', ['el8_aarch64', 'el8'])
     }
     description('Run Mandrel integration tests')
     displayName('Linux :: Integration tests')
     logRotator {
-        numToKeep(30)
+        numToKeep(300)
     }
     childCustomWorkspace('${SHORT_COMBINATION}')
     wrappers {
@@ -29,9 +31,19 @@ matrixJob('mandrel-linux-integration-tests') {
         }
     }
     combinationFilter(
-        '!(JDK_VERSION.contains("17") && QUARKUS_VERSION.contains("2.2"))'
+            '!(' +
+                    'QUARKUS_VERSION.startsWith("2.2") && (' +
+                    '   MANDREL_BUILD.contains("mandrel-master") || ' +
+                    '   MANDREL_BUILD.contains("mandrel-22") || ' +
+                    '   JDK_VERSION.contains("17")' +
+                    '))'
     )
     parameters {
+        stringParam(
+                'MANDREL_BUILD_NUMBER',
+                'lastSuccessfulBuild',
+                'Pick a build number from MANDREL_BUILD or leave the default latest.'
+        )
         stringParam('MANDREL_INTEGRATION_TESTS_REPO', 'https://github.com/Karm/mandrel-integration-tests.git', 'Test suite repository.')
         choiceParam(
                 'MANDREL_INTEGRATION_TESTS_REF_TYPE',
@@ -49,39 +61,14 @@ matrixJob('mandrel-linux-integration-tests') {
         }
     }
     steps {
-        shell('echo DESCRIPTION_STRING=Q:${QUARKUS_VERSION},M:${MANDREL_VERSION},J:${JDK_VERSION}')
+        shell('echo DESCRIPTION_STRING=Q:${QUARKUS_VERSION},M:${MANDREL_BUILD},J:${JDK_VERSION}-${JDK_RELEASE}')
         buildDescription(/DESCRIPTION_STRING=([^\s]*)/, '\\1')
-        shell('''
-            # Prepare Mandrel
-            wget "https://ci.modcluster.io/view/Mandrel/job/mandrel-${MANDREL_VERSION}-linux-build-matrix/JDK_VERSION=${JDK_VERSION},LABEL=${LABEL}/lastSuccessfulBuild/artifact/*zip*/archive.zip"
-            if [[ ! -f "archive.zip" ]]; then 
-                echo "Download failed. Quitting..."
-                exit 1
-            fi
-            unzip archive.zip
-            pushd archive
-            export MANDREL_TAR=`ls -1 *.tar.gz`
-            tar -xvf "${MANDREL_TAR}"
-            source /etc/profile.d/jdks.sh
-            export JAVA_HOME="$( pwd )/$( echo mandrel-java1*-*/ )"
-            export GRAALVM_HOME="${JAVA_HOME}"
-            export PATH="${JAVA_HOME}/bin:${PATH}"
-            if [[ ! -e "${JAVA_HOME}/bin/native-image" ]]; then
-                echo "Cannot find native-image tool. Quitting..."
-                exit 1
-            fi
-            native-image --version
-            popd
-            mvn clean verify -Ptestsuite -Dquarkus.version=${QUARKUS_VERSION}
-        ''')
+        shell {
+            command(Constants.LINUX_INTEGRATION_TESTS)
+            unstableReturn(1)
+        }
     }
     publishers {
-        groovyPostBuild('''
-            if(manager.logContains(".*GRAALVM_HOME.*mandrel-java1.*-Final.*")){
-                def build = Thread.currentThread()?.executable
-                build.rootBuild.keepLog(true)
-            }
-        ''', Behavior.DoNothing)
         archiveJunit('**/target/*-reports/*.xml') {
             allowEmptyResults(false)
             retainLongStdout(false)
@@ -111,8 +98,8 @@ matrixJob('mandrel-linux-integration-tests') {
             trigger(['mandrel-linux-quarkus-tests']) {
                 condition('ALWAYS')
                 parameters {
-                    currentBuild()
-                    matrixSubset('(MANDREL_VERSION=="${MANDREL_VERSION}" && JDK_VERSION=="${JDK_VERSION}" && LABEL=="${LABEL}")')
+                    predefinedProp('MANDREL_BUILD_NUMBER', '${MANDREL_BUILD_NUMBER}')
+                    matrixSubset('(MANDREL_BUILD=="${MANDREL_BUILD} && JDK_VERSION=="${JDK_VERSION}" && JDK_RELEASE=="${JDK_RELEASE}" && LABEL=="${LABEL}")')
                 }
             }
         }

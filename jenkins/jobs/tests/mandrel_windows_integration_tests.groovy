@@ -1,37 +1,49 @@
+final Class Constants = new GroovyClassLoader(getClass().getClassLoader())
+        .parseClass(readFileFromWorkspace("jenkins/jobs/tests/Constants.groovy"))
 matrixJob('mandrel-windows-integration-tests') {
     axes {
         text('JDK_VERSION',
-                'jdk11',
-                'jdk17'
+                '11',
+                '17'
         )
-        text('MANDREL_VERSION',
-                'graal-vm-21.3',
-                '21.3',
-                'master'
+        text('JDK_RELEASE',
+                'ea',
+                'ga'
         )
-        text('QUARKUS_VERSION',
-                '2.2.3.Final',
-                '2.4.1.Final',
-                '2.5.0.CR1'
+        text('MANDREL_BUILD',
+                'mandrel-21-3-windows-build-matrix',
+                'mandrel-22-0-windows-build-matrix',
+                'mandrel-master-windows-build-matrix'
         )
+        text('QUARKUS_VERSION', Constants.QUARKUS_VERSION_RELEASED)
         labelExpression('LABEL', ['w2k19'])
     }
     description('Run Mandrel integration tests')
     displayName('Windows :: Integration tests')
     logRotator {
-        numToKeep(30)
+        numToKeep(300)
     }
     childCustomWorkspace('${SHORT_COMBINATION}')
     wrappers {
         timestamps()
         timeout {
-            absolute(120)
+            absolute(180)
         }
     }
     combinationFilter(
-            '!(JDK_VERSION.contains("17") && QUARKUS_VERSION.contains("2.2"))'
+            '!(' +
+                    'QUARKUS_VERSION.startsWith("2.2") && (' +
+                    '   MANDREL_BUILD.contains("mandrel-master") || ' +
+                    '   MANDREL_BUILD.contains("mandrel-22") || ' +
+                    '   JDK_VERSION.contains("17")' +
+                    '))'
     )
     parameters {
+        stringParam(
+                'MANDREL_BUILD_NUMBER',
+                'lastSuccessfulBuild',
+                'Pick a build number from MANDREL_BUILD or leave the default latest.'
+        )
         stringParam('MANDREL_INTEGRATION_TESTS_REPO', 'https://github.com/Karm/mandrel-integration-tests.git', 'Test suite repository.')
         choiceParam(
                 'MANDREL_INTEGRATION_TESTS_REF_TYPE',
@@ -49,55 +61,14 @@ matrixJob('mandrel-windows-integration-tests') {
         }
     }
     steps {
-        batchFile('echo DESCRIPTION_STRING=Q:%QUARKUS_VERSION%,M:%MANDREL_VERSION%,J:%JDK_VERSION%')
+        batchFile('echo DESCRIPTION_STRING=Q:%QUARKUS_VERSION%,M:%MANDREL_BUILD%,J:%JDK_VERSION%-%JDK_RELEASE%')
         buildDescription(/DESCRIPTION_STRING=([^\s]*)/, '\\1')
-        batchFile('''
-@echo off
-call vcvars64
-IF NOT %ERRORLEVEL% == 0 ( exit 1 )
-
-set downloadCommand= ^
-$c = New-Object System.Net.WebClient; ^
-$url = 'https://ci.modcluster.io/view/Mandrel/job/mandrel-%MANDREL_VERSION%-windows-build-matrix/JDK_VERSION=%JDK_VERSION%,LABEL=%LABEL%/lastSuccessfulBuild/artifact/*zip*/archive.zip'; $file = 'archive.zip'; ^
-$c.DownloadFile($url, $file);
-powershell -Command "%downloadCommand%"
-
-if not exist archive.zip exit 1
-
-powershell -c "Expand-Archive -Path archive.zip -DestinationPath . -Force"
-
-pushd archive
-
-for /f "tokens=5" %%g in ('dir mandrel-*.zip ^| findstr /R mandrel-.*.zip') do set ZIP_NAME=%%g
-
-powershell -c "Expand-Archive -Path %ZIP_NAME% -DestinationPath . -Force"
-echo ZIP_NAME: %ZIP_NAME%
-
-for /f "tokens=5" %%g in ('dir /AD mandrel-* ^| findstr /R mandrel-.*') do set GRAALVM_HOME=%cd%\\%%g
-echo GRAALVM_HOME: %GRAALVM_HOME%
-
-set "JAVA_HOME=%GRAALVM_HOME%"
-set "PATH=%JAVA_HOME%\\bin;%PATH%"
-
-if not exist "%GRAALVM_HOME%\\bin\\native-image.cmd" (
-  echo "Cannot find native-image tool. Quitting..."
-  exit 1
-) else (
-  echo "native-image.cmd is present, good."
-  cmd /C native-image --version
-)
-popd
-
-mvn clean verify -Ptestsuite -Dquarkus.version=%QUARKUS_VERSION%
-                 ''')
+        batchFile {
+            command(Constants.WINDOWS_INTEGRATION_TESTS)
+            unstableReturn(1)
+        }
     }
     publishers {
-        groovyPostBuild('''
-            if(manager.logContains(".*GRAALVM_HOME.*mandrel-java1.*-Final.*")){
-                def build = Thread.currentThread()?.executable
-                build.rootBuild.keepLog(true)
-            }
-        ''', Behavior.DoNothing)
         archiveJunit('**/target/*-reports/*.xml') {
             allowEmptyResults(false)
             retainLongStdout(false)
@@ -129,7 +100,7 @@ mvn clean verify -Ptestsuite -Dquarkus.version=%QUARKUS_VERSION%
                 condition('ALWAYS')
                 parameters {
                     currentBuild()
-                    matrixSubset('(MANDREL_VERSION=="${MANDREL_VERSION}" && JDK_VERSION=="${JDK_VERSION}" && LABEL=="${LABEL}")')
+                    matrixSubset('(MANDREL_BUILD=="${MANDREL_BUILD} && JDK_VERSION=="${JDK_VERSION}" && JDK_RELEASE=="${JDK_RELEASE}" && LABEL=="${LABEL}")')
                 }
             }
         }
