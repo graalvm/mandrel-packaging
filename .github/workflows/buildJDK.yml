@@ -281,6 +281,7 @@ jobs:
         --mandrel-version "${MANDREL_VERSION}" \
         --skip-native \
         --maven-deploy \
+        --maven-version "${MANDREL_VERSION}-mysuffix0001" \
         --maven-repo-id myRepo \
         --maven-url "file:///tmp/myRepo" \
         --mandrel-home temp-build
