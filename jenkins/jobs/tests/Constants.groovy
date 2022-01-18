@@ -47,7 +47,7 @@ class Constants {
     export PATH="${JAVA_HOME}/bin:${PATH}"
     if [[ ! -e "${JAVA_HOME}/bin/native-image" ]]; then
         echo "Cannot find native-image tool. Quitting..."
-    exit 1
+        exit 1
     fi
     native-image --version
     popd
