@@ -97,7 +97,7 @@ matrixJob('mandrel-22-0-linux-build-matrix') {
     }
     publishers {
         buildDescription(/^MANDREL_DESCRIBE=(.*)$/, '\\1')
-        archiveArtifacts('mandrel*.tar.gz,MANDREL.md,mandrel*.sha1,mandrel*.sha256')
+        archiveArtifacts('mandrel*.tar.gz,MANDREL.md,mandrel*.sha1,mandrel*.sha256,jdk*/release')
         wsCleanup()
         postBuildCleanup {
             cleaner {

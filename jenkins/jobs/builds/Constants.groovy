@@ -59,7 +59,7 @@ class Constants {
     );^
     foreach($url in $urls) {;^
         $ProgressPreference = 'SilentlyContinue';^
-        $headers = Invoke-WebRequest -Uri $url -Method HEAD;^
+        $headers = Invoke-WebRequest -Uri $url  -Method HEAD -UseBasicParsing;^
         $fileName = [System.Net.Mime.ContentDisposition]::new($headers.Headers[\\"Content-Disposition\\"]).FileName;^
         $wc.DownloadFile($url, $fileName);^
         Expand-Archive $fileName -DestinationPath '.';^
