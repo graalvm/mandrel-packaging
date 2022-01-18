@@ -96,7 +96,7 @@ matrixJob('mandrel-master-windows-build-matrix') {
         }
     }
     publishers {
-        archiveArtifacts('*.zip,MANDREL.md,*.sha1,*.sha256')
+        archiveArtifacts('mandrel*.zip,MANDREL.md,mandrel*.sha1,mandrel*.sha256,jdk*/release')
         wsCleanup()
         postBuildCleanup {
             cleaner {
