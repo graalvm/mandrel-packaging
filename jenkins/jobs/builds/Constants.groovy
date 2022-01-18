@@ -22,6 +22,10 @@ class Constants {
     curl -OJLs https://api.adoptium.net/v3/binary/latest/${JDK_VERSION}/${JDK_RELEASE}/linux/${JDK_ARCH}/staticlibs/hotspot/normal/eclipse
     tar -xf OpenJDK${JDK_VERSION}U-jdk*
     export JAVA_HOME=$( pwd )/$( echo jdk-${JDK_VERSION}* )
+    if [[ ! -e "${JAVA_HOME}/bin/java" ]]; then
+        echo "Cannot find downloaded JDK. Quitting..."
+        exit 1
+    fi
     tar -xf OpenJDK${JDK_VERSION}U-static-libs* --strip-components=1 -C ${JAVA_HOME}
     pushd mandrel
         echo MANDREL_DESCRIBE="$(git describe --always --long)"
@@ -71,6 +75,10 @@ class Constants {
     powershell -Command "%downloadCmd%"
     for /f "tokens=5" %%g in ('dir .\\jdk-* ^| findstr /R jdk-.* ^| findstr /V static') do set JAVA_HOME=%WORKSPACE:/=\\%\\%%g
     echo JAVA_HOME is %JAVA_HOME%
+    if not exist "%JAVA_HOME%\\bin\\java.exe" (
+        echo "Cannot find downloaded JDK. Quitting..."
+        exit 1
+    )
     pushd mandrel
         for /F "tokens=*" %%i in (\'"git describe --always --long"\') do set M_DESCRIBE=%%i
         powershell -Command "$c=(Select-String -Path \'%JAVA_HOME%\\release\' -Pattern \'^^SOURCE\').Line -replace \'SOURCE=.*:([a-z0-9]*).*\', \'$1\';Write-Host MANDREL_DESCRIBE=%M_DESCRIBE% JDK git: $c"
