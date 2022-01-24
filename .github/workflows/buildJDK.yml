@@ -2,13 +2,11 @@ on:
   push:
     paths:
       - 'build.java'
-      - 'resources/**'
       - '.github/workflows/buildJDK.yml'
   pull_request:
     types: [opened, synchronize, reopened, ready_for_review]
     paths:
       - 'build.java'
-      - 'resources/**'
       - '.github/workflows/buildJDK.yml'
 
 env:
