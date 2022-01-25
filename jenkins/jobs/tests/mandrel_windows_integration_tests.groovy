@@ -100,7 +100,7 @@ matrixJob('mandrel-windows-integration-tests') {
                 condition('ALWAYS')
                 parameters {
                     currentBuild()
-                    matrixSubset('(MANDREL_BUILD=="${MANDREL_BUILD} && JDK_VERSION=="${JDK_VERSION}" && JDK_RELEASE=="${JDK_RELEASE}" && LABEL=="${LABEL}")')
+                    matrixSubset('(MANDREL_BUILD=="${MANDREL_BUILD}" && JDK_VERSION=="${JDK_VERSION}" && JDK_RELEASE=="${JDK_RELEASE}" && LABEL=="${LABEL}")')
                 }
             }
         }

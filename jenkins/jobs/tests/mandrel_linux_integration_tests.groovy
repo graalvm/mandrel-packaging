@@ -99,7 +99,7 @@ matrixJob('mandrel-linux-integration-tests') {
                 condition('ALWAYS')
                 parameters {
                     predefinedProp('MANDREL_BUILD_NUMBER', '${MANDREL_BUILD_NUMBER}')
-                    matrixSubset('(MANDREL_BUILD=="${MANDREL_BUILD} && JDK_VERSION=="${JDK_VERSION}" && JDK_RELEASE=="${JDK_RELEASE}" && LABEL=="${LABEL}")')
+                    matrixSubset('(MANDREL_BUILD=="${MANDREL_BUILD}" && JDK_VERSION=="${JDK_VERSION}" && JDK_RELEASE=="${JDK_RELEASE}" && LABEL=="${LABEL}")')
                 }
             }
         }
