@@ -542,8 +542,13 @@ class MandrelRelease implements Callable<Integer> {
             backportPRs.forEach(pr ->
                     changelogBuilder.append(" * #").append(pr.getNumber()).append(" - ").append(pr.getTitle()).append("\n"));
         }
-        changelogBuilder.append("\nFor a complete list of changes please visit https://github.com/" + REPOSITORY_NAME + "/compare/")
-                .append(latestReleasedTag).append("...mandrel-").append(version).append("\n");
+        if (latestReleasedTag == null) {
+            changelogBuilder.append("\n<!--\nFor a complete list of changes please visit https://github.com/" + REPOSITORY_NAME + "/compare/")
+                    .append("TODO_REPLACE_WITH_UPSTREAM_TAG").append("...mandrel-").append(version).append("\n-->\n");
+        } else {
+            changelogBuilder.append("\nFor a complete list of changes please visit https://github.com/" + REPOSITORY_NAME + "/compare/")
+                    .append(latestReleasedTag).append("...mandrel-").append(version).append("\n");
+        }
         return changelogBuilder.toString();
     }
 
@@ -684,7 +689,8 @@ class MandrelRelease implements Callable<Integer> {
                 // There is no Mandrel release before that major.minor.micro, return upstream graal tag instead
                 final String upstreamTag = "vm-" + majorMinorMicro();
                 if (tags.stream().noneMatch(x -> x.getName().equals(upstreamTag))) {
-                    error("Upstream tag " + upstreamTag + " not found in " + REPOSITORY_NAME + " please push it and try again.");
+                    warn("Upstream tag " + upstreamTag + " not found in " + REPOSITORY_NAME + " please add the upstream tag manually in the release text.");
+                    return null;
                 }
                 return upstreamTag;
             }
