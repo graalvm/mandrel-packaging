@@ -122,7 +122,7 @@ matrixJob('mandrel-21-3-linux-build-matrix') {
                 condition('SUCCESS')
                 parameters {
                     predefinedProp('MANDREL_BUILD_NUMBER', '${BUILD_NUMBER}')
-                    matrixSubset('(MANDREL_BUILD=="${JOB_BASE_NAME} && JDK_VERSION=="${JDK_VERSION}" && JDK_RELEASE=="${JDK_RELEASE}" && LABEL=="${LABEL}")')
+                    matrixSubset('(MANDREL_BUILD=="${JOB_BASE_NAME}" && JDK_VERSION=="${JDK_VERSION}" && JDK_RELEASE=="${JDK_RELEASE}" && LABEL=="${LABEL}")')
                 }
             }
         }
