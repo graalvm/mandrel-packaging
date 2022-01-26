@@ -454,17 +454,19 @@ class MandrelRelease implements Callable<Integer> {
                 "### Prerequisites\n" +
                 "\n" +
                 "Mandrel's `native-image` depends on the following packages:\n" +
-                "* glibc-devel\n" +
-                "* zlib-devel\n" +
                 "* freetype-devel\n" +
                 "* gcc\n" +
+                "* glibc-devel\n" +
+                "* libstdc++-static\n" +
+                "* zlib-devel\n" +
                 "\n" +
                 "On Fedora/CentOS/RHEL they can be installed with:\n" +
                 "```bash\n" +
                 "dnf install glibc-devel zlib-devel gcc freetype-devel libstdc++-static\n" +
                 "```\n" +
                 "\n" +
-                "Note the package might be called `glibc-static` instead of `libstdc++-static`.\n" +
+                "**Note**: The package might be called `glibc-static` or `libstdc++-devel` instead of `libstdc++-static` depending on your system.\n" +
+                "If the system is missing stdc++, `gcc-c++` package is needed too.\n" +
                 "\n" +
                 "On Ubuntu-like systems with:\n" +
                 "```bash\n" +
