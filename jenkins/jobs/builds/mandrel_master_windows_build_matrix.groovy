@@ -15,7 +15,7 @@ matrixJob('mandrel-master-windows-build-matrix') {
     displayName('Windows Build Matrix :: master')
     description('Windows build matrix for master branch.')
     logRotator {
-        numToKeep(15)
+        numToKeep(5)
     }
     parameters {
         choiceParam('REPOSITORY', Constants.REPOSITORY, 'Mandrel repo')

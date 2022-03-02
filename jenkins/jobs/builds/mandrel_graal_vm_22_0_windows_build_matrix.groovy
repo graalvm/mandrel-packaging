@@ -15,7 +15,7 @@ matrixJob('mandrel-graal-vm-22-0-windows-build-matrix') {
     displayName('Windows Build Matrix :: graal-vm-22.0')
     description('Windows build matrix for graal-vm-22.0 branch.')
     logRotator {
-        numToKeep(15)
+        numToKeep(5)
     }
     parameters {
         choiceParam('REPOSITORY', Constants.REPOSITORY, 'Mandrel repo')

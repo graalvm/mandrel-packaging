@@ -21,10 +21,11 @@ matrixJob('mandrel-linux-quarkus-tests') {
     description('Run Quarkus TS with Mandrel distros. Quarkus versions differ according to particular Mandrel versions.')
     displayName('Linux :: Quarkus TS')
     logRotator {
-        numToKeep(300)
+        numToKeep(30)
     }
     childCustomWorkspace('${SHORT_COMBINATION}')
     wrappers {
+        preBuildCleanup()
         timestamps()
         timeout {
             absolute(820)

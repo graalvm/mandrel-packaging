@@ -25,6 +25,7 @@ matrixJob('mandrel-linux-integration-tests') {
     }
     childCustomWorkspace('${SHORT_COMBINATION}')
     wrappers {
+        preBuildCleanup()
         timestamps()
         timeout {
             absolute(120)

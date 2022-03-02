@@ -15,7 +15,7 @@ matrixJob('mandrel-21-3-linux-build-matrix') {
     displayName('Linux Build Matrix :: 21.3')
     description('Linux build for 21.3 branch.')
     logRotator {
-        numToKeep(15)
+        numToKeep(10)
     }
     parameters {
         choiceParam('REPOSITORY', Constants.REPOSITORY, 'Mandrel repo')
