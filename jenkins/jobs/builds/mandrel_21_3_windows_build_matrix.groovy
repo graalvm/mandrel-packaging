@@ -15,7 +15,7 @@ matrixJob('mandrel-21-3-windows-build-matrix') {
     displayName('Windows Build Matrix :: 21.3')
     description('Windows build matrix for 21.3 branch.')
     logRotator {
-        numToKeep(15)
+        numToKeep(10)
     }
     parameters {
         choiceParam('REPOSITORY', Constants.REPOSITORY, 'Mandrel repo')

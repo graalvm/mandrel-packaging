@@ -15,7 +15,7 @@ matrixJob('mandrel-graal-vm-21-3-linux-build-matrix') {
     displayName('Linux Build Matrix :: graal-vm-21.3')
     description('Linux build for graal-vm-21.3 branch.')
     logRotator {
-        numToKeep(15)
+        numToKeep(5)
     }
     parameters {
         choiceParam('REPOSITORY', Constants.REPOSITORY, 'Mandrel repo')

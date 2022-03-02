@@ -18,6 +18,7 @@ matrixJob('mandrel-linux-quarkus-container-tests') {
     }
     childCustomWorkspace('${SHORT_COMBINATION}')
     wrappers {
+        preBuildCleanup()
         timestamps()
         timeout {
             absolute(860)
