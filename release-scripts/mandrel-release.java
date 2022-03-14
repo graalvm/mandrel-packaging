@@ -1,8 +1,8 @@
 //usr/bin/env jbang --ea "$0" "$@" ; exit $?
 //JAVA 11+
-//DEPS org.eclipse.jgit:org.eclipse.jgit:5.9.0.202009080501-r
-//DEPS org.eclipse.jgit:org.eclipse.jgit.pgm:5.9.0.202009080501-r
-//DEPS org.eclipse.jgit:org.eclipse.jgit.gpg.bc:5.9.0.202009080501-r
+//DEPS org.eclipse.jgit:org.eclipse.jgit:5.13.0.202109080827-r
+//DEPS org.eclipse.jgit:org.eclipse.jgit.pgm:5.13.0.202109080827-r
+//DEPS org.eclipse.jgit:org.eclipse.jgit.gpg.bc:5.13.0.202109080827-r
 //DEPS info.picocli:picocli:4.5.0
 //DEPS org.kohsuke:github-api:1.116
 
@@ -31,16 +31,24 @@ import picocli.CommandLine.Help.Ansi;
 
 import java.io.File;
 import java.io.IOException;
+import java.io.InputStream;
 import java.net.URISyntaxException;
+import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Scanner;
+import java.util.Set;
 import java.util.concurrent.Callable;
 import java.util.function.Consumer;
 import java.util.regex.Matcher;
@@ -55,12 +63,25 @@ class MandrelRelease implements Callable<Integer>
 
     public static final String GITFORGE_URL = "git@github.com:";
     public static final String REPOSITORY_NAME = "graalvm/mandrel";
+    public static final int UNDEFINED = -1;
 
     @CommandLine.Parameters(index = "0", description = "The kind of steps to execute, must be one of \"prepare\" or \"release\"")
     private String phase;
 
     @CommandLine.Option(names = {"-m", "--mandrel-repo"}, description = "The path to the mandrel repository", defaultValue = "./")
     private String mandrelRepo;
+
+    @CommandLine.Option(names = {"-d", "--download"}, description = "Download built artifacts")
+    private boolean download;
+
+    @CommandLine.Option(names = {"-O", "--download-dir"}, description = "Directory for artifacts download and upload", defaultValue = "./artifacts")
+    private String downloadDir;
+
+    @CommandLine.Option(names = {"--linux-job-build-number"}, description = "The build number of the complete, tested matrix job run.", defaultValue = "" + UNDEFINED)
+    private int linuxBuildNumber;
+
+    @CommandLine.Option(names = {"--windows-job-build-number"}, description = "The build number of the complete, tested matrix job run.", defaultValue = "" + UNDEFINED)
+    private int windowsBuildNumber;
 
     @CommandLine.Option(names = {"-s", "--suffix"}, description = "The release suffix, e.g, Final, Alpha2, Beta1, etc. (default: \"${DEFAULT-VALUE}\")", defaultValue = "Final")
     private String suffix;
@@ -88,7 +109,7 @@ class MandrelRelease implements Callable<Integer>
     }
 
     @Override
-    public Integer call()
+    public Integer call() throws IOException
     {
         if (!suffix.equals("Final") && !Pattern.compile("^(Alpha|Beta)\\d*$").matcher(suffix).find())
         {
@@ -458,9 +479,26 @@ class MandrelRelease implements Callable<Integer>
         return null;
     }
 
-    private void createGHRelease()
+    private void createGHRelease() throws IOException
     {
-        GitHub github = connectToGitHub();
+        final Set<String> jdkVersionsUsed = new HashSet<>();
+        if (download)
+        {
+            if (windowsBuildNumber != UNDEFINED || linuxBuildNumber != UNDEFINED)
+            {
+                jdkVersionsUsed.addAll(downloadAssets(version));
+            }
+            else
+            {
+                error("At least one of --windows-job-build-number, --linux-job-build-number must be specified. Terminating.");
+            }
+        }
+        if (jdkVersionsUsed.isEmpty())
+        {
+            jdkVersionsUsed.add(System.getProperty("java.runtime.version"));
+        }
+
+        final GitHub github = connectToGitHub();
         try
         {
             final GHRepository repository = github.getRepository(REPOSITORY_NAME);
@@ -473,7 +511,7 @@ class MandrelRelease implements Callable<Integer>
             {
                 warn("Skipping release due to --dry-run");
                 info("Release body would look like");
-                System.out.println(releaseMainBody(version, changelog));
+                System.out.println(releaseMainBody(version, changelog, jdkVersionsUsed));
                 return;
             }
             // Ensure that the tag exists
@@ -485,7 +523,7 @@ class MandrelRelease implements Callable<Integer>
             final GHRelease ghRelease = repository.createRelease(tag)
                 .name("Mandrel " + version)
                 .prerelease(!suffix.equals("Final"))
-                .body(releaseMainBody(version, changelog))
+                .body(releaseMainBody(version, changelog, jdkVersionsUsed))
                 .draft(true)
                 .create();
             uploadAssets(version.toString(), ghRelease);
@@ -500,15 +538,115 @@ class MandrelRelease implements Callable<Integer>
         }
     }
 
+    private void downloadFile(String sourceURL) throws IOException
+    {
+        final URL url = new URL(sourceURL);
+        final Path destPath = Paths.get(downloadDir, url.getPath().substring(url.getPath().lastIndexOf('/') + 1));
+        try (final InputStream inputStream = url.openStream())
+        {
+            info("Downloading " + destPath.getFileName() + "...");
+            Files.copy(inputStream, destPath, StandardCopyOption.REPLACE_EXISTING);
+        }
+    }
+
+    private Set<String> downloadManifest(String sourceURL, Pattern jdkVersionPattern) throws IOException
+    {
+        final Set<String> jdkVersionsUsed = new HashSet<>(2);
+        try (final Scanner scanner = new Scanner(new URL(sourceURL).openConnection().getInputStream(), StandardCharsets.UTF_8.toString()))
+        {
+            scanner.useDelimiter("\\A");
+            if (scanner.hasNext())
+            {
+                final Matcher m = jdkVersionPattern.matcher(scanner.next());
+                if (m.matches())
+                {
+                    jdkVersionsUsed.add(m.group(1).trim());
+                }
+            }
+        }
+        return jdkVersionsUsed;
+    }
+
+    /**
+     * This method is hardwired to the Jenkins instance.
+     *
+     * @return Set of OpenJDKs used to do the upstream Mandrel builds
+     */
+    private Set<String> downloadAssets(MandrelVersion mandrelVersion) throws IOException
+    {
+        final Pattern jdkVersionPattern = Pattern.compile(".*OpenJDK *used: *(.*)", Pattern.DOTALL);
+        final int[] jdkMajorVersions = new int[]{11, 17};
+        final String jenkinsURL = "https://ci.modcluster.io";
+
+        final File df = new File(downloadDir);
+        if (df.exists())
+        {
+            Arrays.stream(Objects.requireNonNull(df.listFiles())).forEach(File::delete);
+        }
+        else
+        {
+            df.mkdir();
+        }
+
+        final Set<String> jdkVersionsUsed = new HashSet<>(2);
+
+        if (linuxBuildNumber != UNDEFINED)
+        {
+            final String[] linuxArchLabels = new String[]{"el8_aarch64", "el8"};
+            final String linuxJobUrl = jenkinsURL + "/job/mandrel-" + mandrelVersion.major + "-" + mandrelVersion.minor + "-linux-build-matrix";
+            for (int jdkMajorVersion : jdkMajorVersions)
+            {
+                for (String linuxArchLabel : linuxArchLabels)
+                {
+                    final String matrixJobCoordinates = linuxJobUrl + "/" + linuxBuildNumber + "/JDK_RELEASE=ga,JDK_VERSION=" + jdkMajorVersion + ",LABEL=" + linuxArchLabel + "/artifact";
+                    final String tarURL = matrixJobCoordinates + "/mandrel-java" + jdkMajorVersion + "-linux-" + (linuxArchLabel.contains("aarch64") ? "aarch64" : "amd64") + "-" + version.toString() + ".tar.gz";
+                    downloadFile(tarURL);
+                    downloadFile(tarURL + ".sha1");
+                    downloadFile(tarURL + ".sha256");
+                    jdkVersionsUsed.addAll(downloadManifest(matrixJobCoordinates + "/MANDREL.md", jdkVersionPattern));
+                }
+            }
+        }
+        if (windowsBuildNumber != UNDEFINED)
+        {
+            final String windowsArchLabel = "w2k19";
+            final String windowsJobUrl = jenkinsURL + "/job/mandrel-" + mandrelVersion.major + "-" + mandrelVersion.minor + "-windows-build-matrix";
+            for (int jdkMajorVersion : jdkMajorVersions)
+            {
+                final String matrixJobCoordinates = windowsJobUrl + "/" + windowsBuildNumber + "/JDK_RELEASE=ga,JDK_VERSION=" + jdkMajorVersion + ",LABEL=" + windowsArchLabel + "/artifact";
+                final String zipURL = matrixJobCoordinates + "/mandrel-java" + jdkMajorVersion + "-windows-amd64-" + version.toString() + ".zip";
+                downloadFile(zipURL);
+                downloadFile(zipURL + ".sha1");
+                downloadFile(zipURL + ".sha256");
+                jdkVersionsUsed.addAll(downloadManifest(matrixJobCoordinates + "/MANDREL.md", jdkVersionPattern));
+            }
+        }
+        return jdkVersionsUsed;
+    }
+
+
     private void uploadAssets(String fullVersion, GHRelease ghRelease) throws IOException
     {
         final File[] assets = {
-            new File("mandrel-java11-linux-amd64-" + fullVersion + ".tar.gz"),
-            new File("mandrel-java11-linux-amd64-" + fullVersion + ".tar.gz.sha1"),
-            new File("mandrel-java11-linux-amd64-" + fullVersion + ".tar.gz.sha256"),
-            new File("mandrel-java11-windows-amd64-" + fullVersion + ".zip"),
-            new File("mandrel-java11-windows-amd64-" + fullVersion + ".zip.sha1"),
-            new File("mandrel-java11-windows-amd64-" + fullVersion + ".zip.sha256")};
+            new File(downloadDir, "mandrel-java11-linux-amd64-" + fullVersion + ".tar.gz"),
+            new File(downloadDir, "mandrel-java11-linux-amd64-" + fullVersion + ".tar.gz.sha1"),
+            new File(downloadDir, "mandrel-java11-linux-amd64-" + fullVersion + ".tar.gz.sha256"),
+            new File(downloadDir, "mandrel-java11-linux-aarch64-" + fullVersion + ".tar.gz"),
+            new File(downloadDir, "mandrel-java11-linux-aarch64-" + fullVersion + ".tar.gz.sha1"),
+            new File(downloadDir, "mandrel-java11-linux-aarch64-" + fullVersion + ".tar.gz.sha256"),
+            new File(downloadDir, "mandrel-java11-windows-amd64-" + fullVersion + ".zip"),
+            new File(downloadDir, "mandrel-java11-windows-amd64-" + fullVersion + ".zip.sha1"),
+            new File(downloadDir, "mandrel-java11-windows-amd64-" + fullVersion + ".zip.sha256"),
+            new File(downloadDir, "mandrel-java17-linux-amd64-" + fullVersion + ".tar.gz"),
+            new File(downloadDir, "mandrel-java17-linux-amd64-" + fullVersion + ".tar.gz.sha1"),
+            new File(downloadDir, "mandrel-java17-linux-amd64-" + fullVersion + ".tar.gz.sha256"),
+            new File(downloadDir, "mandrel-java17-linux-aarch64-" + fullVersion + ".tar.gz"),
+            new File(downloadDir, "mandrel-java17-linux-aarch64-" + fullVersion + ".tar.gz.sha1"),
+            new File(downloadDir, "mandrel-java17-linux-aarch64-" + fullVersion + ".tar.gz.sha256"),
+            new File(downloadDir, "mandrel-java17-windows-amd64-" + fullVersion + ".zip"),
+            new File(downloadDir, "mandrel-java17-windows-amd64-" + fullVersion + ".zip.sha1"),
+            new File(downloadDir, "mandrel-java17-windows-amd64-" + fullVersion + ".zip.sha256")
+        };
 
         for (File f : assets)
         {
@@ -539,7 +677,7 @@ class MandrelRelease implements Callable<Integer>
         }
     }
 
-    private String releaseMainBody(MandrelVersion version, String changelog)
+    private String releaseMainBody(MandrelVersion version, String changelog, Set<String> jdkVersionsUsed)
     {
         return "# Mandrel\n" +
             "\n" +
@@ -625,7 +763,7 @@ class MandrelRelease implements Callable<Integer>
             changelog +
             "\n---\n" +
             "Mandrel " + version + "\n" +
-            "OpenJDK used: " + System.getProperty("java.runtime.version") + "\n";
+            "OpenJDKs used: " + String.join(",", jdkVersionsUsed) + "\n";
     }
 
     private String createChangelog(GHRepository repository, GHMilestone milestone, List<GHTag> tags) throws IOException
@@ -831,9 +969,9 @@ class MandrelRelease implements Callable<Integer>
                 System.out.println(mandrelVersion);
             }
             assert !finalVersions.isEmpty() :
-                "Tag for " + toString() + " is missing, please make sure the tag has been pushed before releasing.";
+                "Tag for " + this + " is missing, please make sure the tag has been pushed before releasing.";
             assert compareTo(finalVersions.get(0)) == 0 :
-                "Latest tag (" + finalVersions.get(0) + ") does not match the version of the current branch (" + toString() + "). " +
+                "Latest tag (" + finalVersions.get(0) + ") does not match the version of the current branch (" + this + "). " +
                     "Please make sure you are on the correct branch and that you have created a tag for the release.";
             if (finalVersions.size() == 1)
             {
@@ -863,7 +1001,6 @@ class MandrelRelease implements Callable<Integer>
         {
             return major + "." + minor + "." + micro + "." + pico;
         }
-
 
         @Override
         public String toString()
