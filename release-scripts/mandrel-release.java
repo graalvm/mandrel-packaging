@@ -492,6 +492,11 @@ class MandrelRelease implements Callable<Integer>
             {
                 error("At least one of --windows-job-build-number, --linux-job-build-number must be specified. Terminating.");
             }
+            if (jdkVersionsUsed.size() != 2)
+            {
+                warn("There are supposed to be 2 distinct JDK versions used, one for JDK 17 and one for JDK 11." +
+                    "This is unexpected: " + String.join(",", jdkVersionsUsed));
+            }
         }
         if (jdkVersionsUsed.isEmpty())
         {
@@ -547,11 +552,14 @@ class MandrelRelease implements Callable<Integer>
             info("Downloading " + destPath.getFileName() + "...");
             Files.copy(inputStream, destPath, StandardCopyOption.REPLACE_EXISTING);
         }
+        catch (IOException e)
+        {
+            error("Failed to download " + destPath.getFileName() + ", Error: " + e.getMessage());
+        }
     }
 
-    private Set<String> downloadManifest(String sourceURL, Pattern jdkVersionPattern) throws IOException
+    private String getVersionFromRemoteManifest(String sourceURL, Pattern jdkVersionPattern) throws IOException
     {
-        final Set<String> jdkVersionsUsed = new HashSet<>(2);
         try (final Scanner scanner = new Scanner(new URL(sourceURL).openConnection().getInputStream(), StandardCharsets.UTF_8.toString()))
         {
             scanner.useDelimiter("\\A");
@@ -560,11 +568,15 @@ class MandrelRelease implements Callable<Integer>
                 final Matcher m = jdkVersionPattern.matcher(scanner.next());
                 if (m.matches())
                 {
-                    jdkVersionsUsed.add(m.group(1).trim());
+                    return m.group(1).trim();
                 }
             }
         }
-        return jdkVersionsUsed;
+        catch (IOException e)
+        {
+            error("Failed to download manifest. Check used JDK versions manually. " + e.getMessage());
+        }
+        return null;
     }
 
     /**
@@ -603,7 +615,11 @@ class MandrelRelease implements Callable<Integer>
                     downloadFile(tarURL);
                     downloadFile(tarURL + ".sha1");
                     downloadFile(tarURL + ".sha256");
-                    jdkVersionsUsed.addAll(downloadManifest(matrixJobCoordinates + "/MANDREL.md", jdkVersionPattern));
+                    final String jdkv = getVersionFromRemoteManifest(matrixJobCoordinates + "/MANDREL.md", jdkVersionPattern);
+                    if (jdkv != null)
+                    {
+                        jdkVersionsUsed.add(jdkv);
+                    }
                 }
             }
         }
@@ -618,7 +634,11 @@ class MandrelRelease implements Callable<Integer>
                 downloadFile(zipURL);
                 downloadFile(zipURL + ".sha1");
                 downloadFile(zipURL + ".sha256");
-                jdkVersionsUsed.addAll(downloadManifest(matrixJobCoordinates + "/MANDREL.md", jdkVersionPattern));
+                final String jdkv = getVersionFromRemoteManifest(matrixJobCoordinates + "/MANDREL.md", jdkVersionPattern);
+                if (jdkv != null)
+                {
+                    jdkVersionsUsed.add(jdkv);
+                }
             }
         }
         return jdkVersionsUsed;
@@ -763,7 +783,7 @@ class MandrelRelease implements Callable<Integer>
             changelog +
             "\n---\n" +
             "Mandrel " + version + "\n" +
-            "OpenJDKs used: " + String.join(",", jdkVersionsUsed) + "\n";
+            "OpenJDK" + (jdkVersionsUsed.size() > 1 ? "s" : "") + " used: " + String.join(",", jdkVersionsUsed) + "\n";
     }
 
     private String createChangelog(GHRepository repository, GHMilestone milestone, List<GHTag> tags) throws IOException
