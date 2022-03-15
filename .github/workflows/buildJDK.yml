@@ -121,7 +121,7 @@ jobs:
 
   build-and-test-on-windows:
     name: Windows Build and test ${{ matrix.mandrel-ref }} branch/tag
-    runs-on: windows-latest
+    runs-on: windows-2019
     strategy:
       fail-fast: false
       matrix:
