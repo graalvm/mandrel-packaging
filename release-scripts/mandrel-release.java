@@ -78,6 +78,9 @@ class MandrelRelease implements Callable<Integer>
     @CommandLine.Option(names = {"-d", "--download"}, description = "Download built artifacts")
     private boolean download;
 
+    @CommandLine.Option(names = {"--sdkman-announce"}, description = "Announce release on SDKMAN Twitter etc.")
+    private boolean announceSDKMan;
+
     @CommandLine.Option(names = {"-O", "--download-dir"}, description = "Directory for artifacts download and upload", defaultValue = "./artifacts")
     private String downloadDir;
 
@@ -98,6 +101,9 @@ class MandrelRelease implements Callable<Integer>
 
     @CommandLine.Option(names = {"-D", "--dry-run"}, description = "Perform a dry run (no remote pushes and PRs)")
     private boolean dryRun;
+
+    @CommandLine.Option(names = {"--verbose"}, description = "Prints verbose debug info")
+    private boolean verbose;
 
     private static final String REMOTE_NAME = "mandrel-release-fork";
     private MandrelVersion version = null;
@@ -501,7 +507,6 @@ class MandrelRelease implements Callable<Integer>
         if (Files.notExists(vendorCredentials) || Files.size(vendorCredentials) < 100)
         {
             error(errMsg);
-            return null;
         }
         final Pattern vendorPattern = Pattern.compile(".*consumerKey\" *: *\"(?<ck>[^\"]+)\".*consumerToken\" *: *\"(?<ct>[^\"]+)\".*", Pattern.DOTALL);
         final Matcher matcher = vendorPattern.matcher(Files.readString(vendorCredentials, StandardCharsets.UTF_8));
@@ -512,8 +517,8 @@ class MandrelRelease implements Callable<Integer>
         else
         {
             error(errMsg);
-            return null;
         }
+        return null;
     }
 
     /**
@@ -534,15 +539,9 @@ class MandrelRelease implements Callable<Integer>
         if (vendorCredentials == null)
         {
             error("Unable to proceed without SDKMAN vendor credentials.");
-            return;
         }
         final Pattern filePattern = Pattern.compile("mandrel-java(?<javaVersion>[\\d]{2})-(?<os>linux|windows)-(?<arch>amd64|aarch64)-(?<version>[^-]+)-.*");
         final File[] assets = assets(version.toString());
-        if (assets.length % 3 != 0)
-        {
-            error("Asset files are expected in triplets: archive, sha1, sha256. Check the list.");
-            return;
-        }
         final Set<String> versionsToPromote = new HashSet<>();
         final String[] headers = new String[]{
             "User-Agent", "Mandrel Release Script",
@@ -555,21 +554,23 @@ class MandrelRelease implements Callable<Integer>
         final URI makeDefaultEndpoint = URI.create("https://vendors.sdkman.io/default");
         final URI announceEndpoint = URI.create("https://vendors.sdkman.io/announce/struct");
         final HttpClient hc = HttpClient.newHttpClient();
-        for (int i = 0; i + 3 <= assets.length; i = i + 3)
+        for (File asset : assets)
         {
-            if (assets[i].exists() && assets[i + 1].exists() && assets[i + 2].exists())
+            final File sha1File = new File(asset.getAbsolutePath() + ".sha1");
+            final File sha256File = new File(asset.getAbsolutePath() + ".sha256");
+            if (asset.exists() && sha1File.exists() && sha256File.exists())
             {
-                final Matcher m = filePattern.matcher(assets[i].getName());
+                final Matcher m = filePattern.matcher(asset.getName());
                 if (m.matches())
                 {
                     final String os = m.group("os").toUpperCase();
                     final String arch = "amd64".equals(m.group("arch")) ? "64" : "ARM64";
                     final String version = m.group("version") + ".r" + m.group("javaVersion").trim();
                     versionsToPromote.add(version);
-                    final String sha1 = Files.readString(assets[i + 1].toPath(), StandardCharsets.UTF_8).split(" ")[0].trim().toLowerCase();
-                    final String sha256 = Files.readString(assets[i + 2].toPath(), StandardCharsets.UTF_8).split(" ")[0].trim().toLowerCase();
-                    final String url = "https://github.com/graalvm/mandrel/releases/download/mandrel-" + m.group("version") + "-" + suffix + "/" + assets[i].getName();
-                    info("Releasing: " + assets[i].getName());
+                    final String sha1 = Files.readString(sha1File.toPath(), StandardCharsets.UTF_8).split(" ")[0].trim().toLowerCase();
+                    final String sha256 = Files.readString(sha256File.toPath(), StandardCharsets.UTF_8).split(" ")[0].trim().toLowerCase();
+                    final String url = "https://github.com/graalvm/mandrel/releases/download/mandrel-" + m.group("version") + "-" + suffix + "/" + asset.getName();
+                    info("Releasing: " + asset.getName());
                     // Release
                     final String releasePayload = "" +
                         "{\n" +
@@ -583,60 +584,78 @@ class MandrelRelease implements Callable<Integer>
                         "        \"SHA-256\": \"" + sha256 + "\"\n" +
                         "    }\n" +
                         "}";
-                    final HttpRequest releaseRequest = HttpRequest.newBuilder()
-                        .POST(HttpRequest.BodyPublishers.ofString(releasePayload))
-                        .uri(releaseEndpoint)
-                        .headers(headers)
-                        .build();
-                    final HttpResponse<String> releaseResponse = hc.send(releaseRequest, HttpResponse.BodyHandlers.ofString());
-                    info("Released Response Code : " + releaseResponse.statusCode());
-                    info("Released Response Body : " + releaseResponse.body());
+                    debug(releasePayload, verbose);
+                    if (!dryRun)
+                    {
+                        final HttpRequest releaseRequest = HttpRequest.newBuilder()
+                            .POST(HttpRequest.BodyPublishers.ofString(releasePayload))
+                            .uri(releaseEndpoint)
+                            .headers(headers)
+                            .build();
+                        final HttpResponse<String> releaseResponse = hc.send(releaseRequest, HttpResponse.BodyHandlers.ofString());
+                        info("Released Response Code : " + releaseResponse.statusCode());
+                        info("Released Response Body : " + releaseResponse.body());
+                    }
                 }
                 else
                 {
-                    error("File name " + assets[i].getName() + " does not match regexp " + filePattern.pattern() + " and that is unexpected. Skipping asset.");
+                    warn("File name " + asset.getName() + " does not match regexp " + filePattern.pattern() + " and that is unexpected. Skipping asset.");
                 }
             }
             else
             {
-                warn("Skipping an incomplete asset " + assets[1].getName() + ". Make sure there are three files: archive, sha1 and sha256.");
+                warn("Skipping an incomplete asset " + asset.getName() + ". Make sure there are three files: archive, sha1 and sha256.");
             }
         }
         for (String versionToPromote : versionsToPromote)
         {
             // Set released version as the new default
-            info("Promoting version "+versionToPromote);
+            info("Promoting version " + versionToPromote);
             final String makeDefaultPayload = "" +
                 "{\n" +
                 "    \"candidate\": \"java\",\n" +
                 "    \"version\": \"" + versionToPromote + "-mandrel\",\n" +
                 "    \"vendor\": \"mandrel\"\n" +
                 "}";
-            final HttpRequest makeDefaultRequest = HttpRequest.newBuilder()
-                .PUT(HttpRequest.BodyPublishers.ofString(makeDefaultPayload))
-                .uri(makeDefaultEndpoint)
-                .headers(headers)
-                .build();
-            final HttpResponse<String> makeDefaultResponse = hc.send(makeDefaultRequest, HttpResponse.BodyHandlers.ofString());
-            info("Promoted Response Code : " + makeDefaultResponse.statusCode());
-            info("Promoted Response Body : " + makeDefaultResponse.body());
-
+            debug(makeDefaultPayload, verbose);
+            if (!dryRun)
+            {
+                final HttpRequest makeDefaultRequest = HttpRequest.newBuilder()
+                    .PUT(HttpRequest.BodyPublishers.ofString(makeDefaultPayload))
+                    .uri(makeDefaultEndpoint)
+                    .headers(headers)
+                    .build();
+                final HttpResponse<String> makeDefaultResponse = hc.send(makeDefaultRequest, HttpResponse.BodyHandlers.ofString());
+                info("Promoted Response Code : " + makeDefaultResponse.statusCode());
+                info("Promoted Response Body : " + makeDefaultResponse.body());
+            }
             // Announce the released version
-            info("Annoncing version "+versionToPromote);
-            final String announcePayload = "" +
-                "{\n" +
-                "    \"candidate\": \"java\",\n" +
-                "    \"version\": \"" + versionToPromote + "-mandrel\",\n" +
-                "    \"url\": \"https://github.com/graalvm/mandrel/releases/\"\n" +
-                "}";
-            final HttpRequest annonceRequest = HttpRequest.newBuilder()
-                .POST(HttpRequest.BodyPublishers.ofString(announcePayload))
-                .uri(announceEndpoint)
-                .headers(headers)
-                .build();
-            final HttpResponse<String> annonceResponse = hc.send(annonceRequest, HttpResponse.BodyHandlers.ofString());
-            info("Annonce Response Code : " + annonceResponse.statusCode());
-            info("Annonce Response Body : " + annonceResponse.body());
+            if (announceSDKMan)
+            {
+                info("Announcing version " + versionToPromote);
+                final String announcePayload = "" +
+                    "{\n" +
+                    "    \"candidate\": \"java\",\n" +
+                    "    \"version\": \"" + versionToPromote + "-mandrel\",\n" +
+                    "    \"url\": \"https://github.com/graalvm/mandrel/releases/\"\n" +
+                    "}";
+                debug(announcePayload, verbose);
+                if (!dryRun)
+                {
+                    final HttpRequest announceRequest = HttpRequest.newBuilder()
+                        .POST(HttpRequest.BodyPublishers.ofString(announcePayload))
+                        .uri(announceEndpoint)
+                        .headers(headers)
+                        .build();
+                    final HttpResponse<String> announceResponse = hc.send(announceRequest, HttpResponse.BodyHandlers.ofString());
+                    info("Announce Response Code : " + announceResponse.statusCode());
+                    info("Announce Response Body : " + announceResponse.body());
+                }
+            }
+            else
+            {
+                info("The release version " + versionToPromote + "-mandrel won't be announced on SDKMAN Twitter Feed. Use --sdkman-announce=true to do it.");
+            }
         }
     }
 
@@ -735,7 +754,7 @@ class MandrelRelease implements Callable<Integer>
         }
         catch (IOException e)
         {
-            error("Failed to download manifest. Check used JDK versions manually. " + e.getMessage());
+            warn("Failed to download manifest. Check used JDK versions manually. " + e.getMessage());
         }
         return null;
     }
@@ -743,25 +762,12 @@ class MandrelRelease implements Callable<Integer>
     private File[] assets(String fullVersion)
     {
         return new File[]{
-            // The order archive, sha1, sha256, matters.
             new File(downloadDir, "mandrel-java11-linux-amd64-" + fullVersion + ".tar.gz"),
-            new File(downloadDir, "mandrel-java11-linux-amd64-" + fullVersion + ".tar.gz.sha1"),
-            new File(downloadDir, "mandrel-java11-linux-amd64-" + fullVersion + ".tar.gz.sha256"),
             new File(downloadDir, "mandrel-java11-linux-aarch64-" + fullVersion + ".tar.gz"),
-            new File(downloadDir, "mandrel-java11-linux-aarch64-" + fullVersion + ".tar.gz.sha1"),
-            new File(downloadDir, "mandrel-java11-linux-aarch64-" + fullVersion + ".tar.gz.sha256"),
             new File(downloadDir, "mandrel-java11-windows-amd64-" + fullVersion + ".zip"),
-            new File(downloadDir, "mandrel-java11-windows-amd64-" + fullVersion + ".zip.sha1"),
-            new File(downloadDir, "mandrel-java11-windows-amd64-" + fullVersion + ".zip.sha256"),
             new File(downloadDir, "mandrel-java17-linux-amd64-" + fullVersion + ".tar.gz"),
-            new File(downloadDir, "mandrel-java17-linux-amd64-" + fullVersion + ".tar.gz.sha1"),
-            new File(downloadDir, "mandrel-java17-linux-amd64-" + fullVersion + ".tar.gz.sha256"),
             new File(downloadDir, "mandrel-java17-linux-aarch64-" + fullVersion + ".tar.gz"),
-            new File(downloadDir, "mandrel-java17-linux-aarch64-" + fullVersion + ".tar.gz.sha1"),
-            new File(downloadDir, "mandrel-java17-linux-aarch64-" + fullVersion + ".tar.gz.sha256"),
             new File(downloadDir, "mandrel-java17-windows-amd64-" + fullVersion + ".zip"),
-            new File(downloadDir, "mandrel-java17-windows-amd64-" + fullVersion + ".zip.sha1"),
-            new File(downloadDir, "mandrel-java17-windows-amd64-" + fullVersion + ".zip.sha256")
         };
     }
 
@@ -1072,6 +1078,14 @@ class MandrelRelease implements Callable<Integer>
             }
         }
         return github;
+    }
+
+    private static void debug(String message, boolean verbose)
+    {
+        if (verbose)
+        {
+            System.err.println(Ansi.AUTO.string("[@|bold,green DEBUG|@] ") + message);
+        }
     }
 
     private static void info(String message)
