@@ -1,8 +1,8 @@
 final Class Constants = new GroovyClassLoader(getClass().getClassLoader())
         .parseClass(readFileFromWorkspace("jenkins/jobs/builds/Constants.groovy"))
-matrixJob('mandrel-graal-vm-22-0-linux-build-matrix') {
+matrixJob('mandrel-graal-vm-22-1-windows-build-matrix') {
     axes {
-        labelExpression('LABEL', ['el8_aarch64', 'el8'])
+        labelExpression('LABEL', ['w2k19'])
         text('JDK_VERSION',
                 '11',
                 '17'
@@ -12,8 +12,8 @@ matrixJob('mandrel-graal-vm-22-0-linux-build-matrix') {
                 'ga'
         )
     }
-    displayName('Linux Build Matrix :: graal-vm-22.0')
-    description('Linux build for graal-vm-22.0 branch.')
+    displayName('Windows Build Matrix :: graal-vm-22.1')
+    description('Windows build matrix for graal-vm-22.1 branch.')
     logRotator {
         numToKeep(5)
     }
@@ -29,11 +29,11 @@ matrixJob('mandrel-graal-vm-22-0-linux-build-matrix') {
         )
         stringParam(
                 'BRANCH_OR_TAG',
-                'mandrel/22.0',
+                'mandrel/22.1',
                 'e.g. your PR branch or a specific tag.'
         )
         stringParam('GRAALVM_REPO', 'https://github.com/oracle/graal.git')
-        stringParam('GRAALVM_BRANCH', 'release/graal-vm/22.0')
+        stringParam('GRAALVM_BRANCH', 'release/graal-vm/22.1')
         choiceParam('PACKAGING_REPOSITORY', Constants.PACKAGING_REPOSITORY, 'Mandrel packaging scripts.')
         choiceParam(
                 'PACKAGING_REPOSITORY_HEADS_OR_TAGS',
@@ -45,12 +45,12 @@ matrixJob('mandrel-graal-vm-22-0-linux-build-matrix') {
         )
         stringParam(
                 'PACKAGING_REPOSITORY_BRANCH_OR_TAG',
-                '22.0',
+                '22.1',
                 'e.g. master if you use heads or some tag if you use tags.'
         )
         stringParam(
                 'MANDREL_VERSION_SUBSTRING',
-                '22.0-SNAPSHOT',
+                '22.1-SNAPSHOT',
                 'It must not contain spaces as it is used in tarball name too.'
         )
     }
@@ -88,18 +88,17 @@ matrixJob('mandrel-graal-vm-22-0-linux-build-matrix') {
     triggers {
         scm('H H/2 * * *')
         cron {
-            spec('0 2 * * 2,5')
+            spec('0 2 * * 5')
         }
     }
     steps {
-        shell {
-            command(Constants.LINUX_GRAAL_VM_BRANCH_BUILD_CMD)
+        batchFile {
+            command(Constants.WINDOWS_GRAAL_VM_BRANCH_BUILD_CMD)
             unstableReturn(1)
         }
     }
     publishers {
-        buildDescription(/^MANDREL_DESCRIBE=(.*)$/, '\\1')
-        archiveArtifacts('mandrel*.tar.gz,MANDREL.md,mandrel*.sha1,mandrel*.sha256,jdk*/release')
+        archiveArtifacts('mandrel*.zip,MANDREL.md,mandrel*.sha1,mandrel*.sha256,jdk*/release')
         wsCleanup()
         postBuildCleanup {
             cleaner {

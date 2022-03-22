@@ -1,6 +1,6 @@
 final Class Constants = new GroovyClassLoader(getClass().getClassLoader())
         .parseClass(readFileFromWorkspace("jenkins/jobs/builds/Constants.groovy"))
-matrixJob('mandrel-22-0-linux-build-matrix') {
+matrixJob('mandrel-22-1-linux-build-matrix') {
     axes {
         labelExpression('LABEL', ['el8_aarch64', 'el8'])
         text('JDK_VERSION',
@@ -12,8 +12,8 @@ matrixJob('mandrel-22-0-linux-build-matrix') {
                 'ga'
         )
     }
-    displayName('Linux Build Matrix :: 22.0')
-    description('Linux build for 22.0 branch.')
+    displayName('Linux Build Matrix :: 22.1')
+    description('Linux build for 22.1 branch.')
     logRotator {
         numToKeep(10)
     }
@@ -29,7 +29,7 @@ matrixJob('mandrel-22-0-linux-build-matrix') {
         )
         stringParam(
                 'BRANCH_OR_TAG',
-                'mandrel/22.0',
+                'mandrel/22.1',
                 'e.g. your PR branch or a specific tag.'
         )
         choiceParam('PACKAGING_REPOSITORY', Constants.PACKAGING_REPOSITORY, 'Mandrel packaging scripts.')
@@ -43,12 +43,12 @@ matrixJob('mandrel-22-0-linux-build-matrix') {
         )
         stringParam(
                 'PACKAGING_REPOSITORY_BRANCH_OR_TAG',
-                '22.0',
+                '22.1',
                 'e.g. master if you use heads or some tag if you use tags.'
         )
         stringParam(
                 'MANDREL_VERSION_SUBSTRING',
-                '22.0-SNAPSHOT',
+                '22.1-SNAPSHOT',
                 'It must not contain spaces as it is used in tarball name too.'
         )
     }
