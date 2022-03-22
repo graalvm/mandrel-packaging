@@ -12,7 +12,7 @@ matrixJob('mandrel-linux-integration-tests') {
         )
         text('MANDREL_BUILD',
                 'mandrel-21-3-linux-build-matrix',
-                'mandrel-22-0-linux-build-matrix',
+                'mandrel-22-1-linux-build-matrix',
                 'mandrel-master-linux-build-matrix'
         )
         text('QUARKUS_VERSION', Constants.QUARKUS_VERSION_RELEASED)
