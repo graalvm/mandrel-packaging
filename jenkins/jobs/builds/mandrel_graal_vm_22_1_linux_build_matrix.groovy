@@ -78,9 +78,9 @@ matrixJob('mandrel-graal-vm-22-1-linux-build-matrix') {
             remote {
                 url('https://github.com/graalvm/mx.git')
             }
-            branches('refs/tags/5.317.3')
+            branches('refs/tags/5.318.0')
             extensions {
-                localBranch('5.317.3')
+                localBranch('5.318.0')
                 relativeTargetDirectory('mx')
             }
         }
