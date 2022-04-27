@@ -870,22 +870,30 @@ class MandrelRelease implements Callable<Integer>
             }
         }
 
-        for (File f : assets)
+        for (File a : assets)
         {
-            info("Uploading " + f.getName());
-            if (f.getName().endsWith("tar.gz"))
+            final File[] files = new File[]{
+                a,
+                new File(a.getParent(), a.getName() + ".sha1"),
+                new File(a.getParent(), a.getName() + ".sha256")
+            };
+            for (File f : files)
             {
-                ghRelease.uploadAsset(f, "application/gzip");
+                info("Uploading " + f.getName());
+                if (f.getName().endsWith("tar.gz"))
+                {
+                    ghRelease.uploadAsset(f, "application/gzip");
+                }
+                else if (f.getName().endsWith("zip"))
+                {
+                    ghRelease.uploadAsset(f, "application/zip");
+                }
+                else
+                {
+                    ghRelease.uploadAsset(f, "text/plain");
+                }
+                info("Uploaded " + f.getName());
             }
-            else if (f.getName().endsWith("zip"))
-            {
-                ghRelease.uploadAsset(f, "application/zip");
-            }
-            else
-            {
-                ghRelease.uploadAsset(f, "text/plain");
-            }
-            info("Uploaded " + f.getName());
         }
     }
 
