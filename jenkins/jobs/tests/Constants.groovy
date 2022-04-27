@@ -2,7 +2,7 @@ class Constants {
     static final ArrayList<String> QUARKUS_VERSION_RELEASED =
             [
                     '2.2.5.Final',
-                    '2.6.3.Final',
+                    '2.8.1.Final',
                     '2.7.5.Final'
             ]
 
@@ -14,7 +14,7 @@ class Constants {
 
     static final ArrayList<String> QUARKUS_VERSION_BUILDER_IMAGE =
             [
-                    '2.6.3.Final',
+                    '2.8.1.Final',
                     '2.7.5.Final'
             ]
 
@@ -24,7 +24,8 @@ class Constants {
             '!devtools,' +
             '!google-cloud-functions,' +
             '!google-cloud-functions-http,' +
-            '!gradle,!kubernetes-client,' +
+            '!gradle,' +
+            '!kubernetes-client,' +
             '!kubernetes/maven-invoker-way,' +
             '!maven,' +
             '!mongodb-rest-data-panache,' +
@@ -61,16 +62,20 @@ class Constants {
     git clone --depth 1 --branch ${QUARKUS_VERSION} ${QUARKUS_REPO}
     cd quarkus
     ./mvnw install -Dquickly
-    ./mvnw verify -f integration-tests/pom.xml --fail-at-end --batch-mode -Dno-format -DfailIfNoTests=false -Dnative -pl ${QUARKUS_MODULES}
+    ./mvnw verify -f integration-tests/pom.xml --fail-at-end --batch-mode -Dno-format \\
+                  -DfailIfNoTests=false -Dnative -Dquarkus.native.native-image-xmx=10g -pl ${QUARKUS_MODULES}
     '''
 
     static final String LINUX_CONTAINER_INTEGRATION_TESTS = '''
     export CONTAINER_RUNTIME=podman
     source /etc/profile.d/jdks.sh
     set +e
-    sudo ${CONTAINER_RUNTIME} stop $(sudo ${CONTAINER_RUNTIME} ps -a -q)
-    sudo ${CONTAINER_RUNTIME} rm -f $(sudo ${CONTAINER_RUNTIME} ps -a -f "status=exited" -q)
-    yes | sudo ${CONTAINER_RUNTIME} volume prune
+       sudo ${CONTAINER_RUNTIME} stop $(sudo ${CONTAINER_RUNTIME} ps -a -q)
+       sudo ${CONTAINER_RUNTIME} rm $(sudo ${CONTAINER_RUNTIME} ps -a -q)
+       yes | sudo ${CONTAINER_RUNTIME} volume prune
+       ${CONTAINER_RUNTIME} stop $(${CONTAINER_RUNTIME} ps -a -q)
+       ${CONTAINER_RUNTIME} rm $(${CONTAINER_RUNTIME} ps -a -q)
+       yes | ${CONTAINER_RUNTIME} volume prune
     set -e
     sudo ${CONTAINER_RUNTIME} pull ${BUILDER_IMAGE}
     if [ "$?" -ne 0 ]; then
@@ -79,7 +84,8 @@ class Constants {
     fi
     export JAVA_HOME="/usr/java/openjdk-11"
     export PATH="${JAVA_HOME}/bin:${PATH}"
-    mvn clean verify -Ptestsuite-builder-image -Dquarkus.version=${QUARKUS_VERSION} -Dquarkus.native.container-runtime=${CONTAINER_RUNTIME} -Dquarkus.native.builder-image=${BUILDER_IMAGE}
+    mvn clean verify -Ptestsuite-builder-image -Dquarkus.version=${QUARKUS_VERSION} \\
+        -Dquarkus.native.container-runtime=${CONTAINER_RUNTIME} -Dquarkus.native.builder-image=${BUILDER_IMAGE}
     '''
 
     static final String LINUX_CONTAINER_QUARKUS_TESTS = '''
@@ -87,9 +93,12 @@ class Constants {
     cd quarkus
     source /etc/profile.d/jdks.sh
     set +e
-    sudo ${CONTAINER_RUNTIME} stop $(sudo ${CONTAINER_RUNTIME} ps -a -q)
-    sudo ${CONTAINER_RUNTIME} rm -f $(sudo ${CONTAINER_RUNTIME} ps -a -f "status=exited" -q)
-    yes | sudo ${CONTAINER_RUNTIME} volume prune
+       sudo ${CONTAINER_RUNTIME} stop $(sudo ${CONTAINER_RUNTIME} ps -a -q)
+       sudo ${CONTAINER_RUNTIME} rm $(sudo ${CONTAINER_RUNTIME} ps -a -q)
+       yes | sudo ${CONTAINER_RUNTIME} volume prune
+       ${CONTAINER_RUNTIME} stop $(${CONTAINER_RUNTIME} ps -a -q)
+       ${CONTAINER_RUNTIME} rm $(${CONTAINER_RUNTIME} ps -a -q)
+       yes | ${CONTAINER_RUNTIME} volume prune
     set -e
     sudo ${CONTAINER_RUNTIME} pull ${BUILDER_IMAGE}
     if [ "$?" -ne 0 ]; then
@@ -103,7 +112,8 @@ class Constants {
         -pl ${QUARKUS_MODULES} -Dno-format -Ddocker -Dnative -Dnative.surefire.skip \\
         -Dquarkus.native.container-build=true \\
         -Dquarkus.native.builder-image="${BUILDER_IMAGE}" \\
-        -Dquarkus.native.container-runtime=${CONTAINER_RUNTIME}
+        -Dquarkus.native.container-runtime=${CONTAINER_RUNTIME} \\
+        -Dquarkus.native.native-image-xmx=10g
     '''
 
     static final String WINDOWS_PREPARE_MANDREL = '''
@@ -142,6 +152,7 @@ class Constants {
     static final String WINDOWS_QUARKUS_TESTS = WINDOWS_PREPARE_MANDREL + '''
     git clone --depth 1 --branch %QUARKUS_VERSION% %QUARKUS_REPO%
     cd quarkus
-    mvnw install -Dquickly & mvnw verify -f integration-tests/pom.xml --fail-at-end --batch-mode -Dno-format -DfailIfNoTests=false -Dnative -pl %QUARKUS_MODULES%
+    mvnw install -Dquickly & mvnw verify -f integration-tests/pom.xml --fail-at-end \\
+        --batch-mode -Dno-format -DfailIfNoTests=false -Dnative -Dquarkus.native.native-image-xmx=10g -pl %QUARKUS_MODULES%
     '''
 }
