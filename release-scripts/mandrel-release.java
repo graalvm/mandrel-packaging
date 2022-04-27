@@ -125,12 +125,9 @@ class MandrelRelease implements Callable<Integer>
     public Integer call() throws IOException, InterruptedException
     {
         // Make a particular SDKMAN published version invisible
-        if (phase.equals("sdkman"))
+        if (phase.equals("sdkman") && (sdkmanVersionInvisible != null && !sdkmanVersionInvisible.isBlank()))
         {
-            if (sdkmanVersionInvisible != null && !sdkmanVersionInvisible.isBlank())
-            {
-                makeSDKManVersionInvisible();
-            }
+            makeSDKManVersionInvisible();
             return 0;
         }
 
