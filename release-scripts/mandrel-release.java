@@ -684,7 +684,10 @@ class MandrelRelease implements Callable<Integer>
             final String finalVersion = version.majorMinorMicroPico() + "-Final";
             final GHMilestone milestone = ghMilestones.toList().stream().filter(m -> m.getTitle().equals(finalVersion)).findAny().orElse(null);
             final List<GHTag> tags = repository.listTags().toList();
-            String changelog = createChangelog(repository, milestone, tags);
+            final String changelog = createChangelog(repository, milestone, tags);
+
+            manageMilestones(repository, ghMilestones, milestone);
+
             if (dryRun)
             {
                 warn("Skipping release due to --dry-run");
@@ -707,7 +710,6 @@ class MandrelRelease implements Callable<Integer>
             uploadAssets(version.toString(), ghRelease);
             info("Created new draft release: " + ghRelease.getHtmlUrl());
             info("Please review and publish!");
-            manageMilestones(repository, ghMilestones, milestone);
         }
         catch (IOException e)
         {
