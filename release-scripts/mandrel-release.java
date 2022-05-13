@@ -945,7 +945,7 @@ class MandrelRelease implements Callable<Integer>
             "$ export JAVA_HOME=\"$( pwd )/mandrel-java11-" + version + "\"\n" +
             "$ export GRAALVM_HOME=\"${JAVA_HOME}\"\n" +
             "$ export PATH=\"${JAVA_HOME}/bin:${PATH}\"\n" +
-            "$ curl -O -J https://code.quarkus.io/d?e=io.quarkus:quarkus-resteasy\n" +
+            "$ curl -O -J https://code.quarkus.io/d?e=io.quarkus:quarkus-resteasy-reactive\n" +
             "$ unzip code-with-quarkus.zip\n" +
             "$ cd code-with-quarkus/\n" +
             "$ ./mvnw package -Pnative\n" +
@@ -959,7 +959,7 @@ class MandrelRelease implements Callable<Integer>
             "Mandrel Quarkus builder image can be used to build a Quarkus native Linux executable right away without any GRAALVM_HOME setup.\n" +
             "\n" +
             "```bash\n" +
-            "curl -O -J  https://code.quarkus.io/d?e=io.quarkus:quarkus-resteasy\n" +
+            "curl -O -J  https://code.quarkus.io/d?e=io.quarkus:quarkus-resteasy-reactive\n" +
             "unzip code-with-quarkus.zip\n" +
             "cd code-with-quarkus\n" +
             "        ./mvnw package -Pnative -Dquarkus.native.container-build=true -Dquarkus.native.builder-image=quay.io/quarkus/ubi-quarkus-mandrel:" + version + "-java11\n" +
@@ -969,7 +969,7 @@ class MandrelRelease implements Callable<Integer>
             "One can use the builder image on Windows with Docker Desktop (mind `Resources-> File sharing` settings so as Quarkus project directory is mountable).\n" +
             "\n" +
             "```batchfile\n" +
-            "powershell -c \"Invoke-WebRequest -OutFile quarkus.zip -Uri https://code.quarkus.io/d?e=io.quarkus:quarkus-resteasy\"\n" +
+            "powershell -c \"Invoke-WebRequest -OutFile quarkus.zip -Uri https://code.quarkus.io/d?e=io.quarkus:quarkus-resteasy-reactive\"\n" +
             "powershell -c \"Expand-Archive -Path quarkus.zip -DestinationPath . -Force\n" +
             "cd code-with-quarkus\n" +
             "mvnw package -Pnative -Dquarkus.native.container-build=true -Dquarkus.native.builder-image=quay.io/quarkus/ubi-quarkus-mandrel:" + version + "-java11\n" +
