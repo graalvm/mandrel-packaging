@@ -2,7 +2,7 @@ class Constants {
     static final ArrayList<String> QUARKUS_VERSION_RELEASED =
             [
                     '2.2.5.Final',
-                    '2.8.2.Final',
+                    '2.9.1.Final',
                     '2.7.5.Final'
             ]
 
@@ -14,7 +14,7 @@ class Constants {
 
     static final ArrayList<String> QUARKUS_VERSION_BUILDER_IMAGE =
             [
-                    '2.8.2.Final',
+                    '2.9.1.Final',
                     '2.7.5.Final'
             ]
 
@@ -68,6 +68,8 @@ class Constants {
     '''
 
     static final String LINUX_CONTAINER_INTEGRATION_TESTS = '''
+    free -h
+    df -h
     export CONTAINER_RUNTIME=podman
     source /etc/profile.d/jdks.sh
     set +e
@@ -90,6 +92,8 @@ class Constants {
     '''
 
     static final String LINUX_CONTAINER_QUARKUS_TESTS = '''
+    free -h
+    df -h
     git clone --depth 1 --branch ${QUARKUS_VERSION} ${QUARKUS_REPO}
     cd quarkus
     source /etc/profile.d/jdks.sh
