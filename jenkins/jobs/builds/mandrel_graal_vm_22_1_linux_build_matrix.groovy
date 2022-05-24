@@ -1,6 +1,7 @@
 final Class Constants = new GroovyClassLoader(getClass().getClassLoader())
         .parseClass(readFileFromWorkspace("jenkins/jobs/builds/Constants.groovy"))
 matrixJob('mandrel-graal-vm-22-1-linux-build-matrix') {
+    disabled()
     axes {
         labelExpression('LABEL', ['el8_aarch64', 'el8'])
         text('JDK_VERSION',
