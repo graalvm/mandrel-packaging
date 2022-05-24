@@ -684,6 +684,14 @@ class MandrelRelease implements Callable<Integer>
             final String finalVersion = version.majorMinorMicroPico() + "-Final";
             final GHMilestone milestone = ghMilestones.toList().stream().filter(m -> m.getTitle().equals(finalVersion)).findAny().orElse(null);
             final List<GHTag> tags = repository.listTags().toList();
+
+            // Ensure that the tag exists
+            final String tag = "mandrel-" + version;
+            if (tags.stream().noneMatch(x -> x.getName().equals(tag)))
+            {
+                error("Please create tag " + tag + " and try again");
+            }
+
             final String changelog = createChangelog(repository, milestone, tags);
 
             manageMilestones(repository, ghMilestones, milestone);
@@ -694,12 +702,6 @@ class MandrelRelease implements Callable<Integer>
                 info("Release body would look like");
                 System.out.println(releaseMainBody(version, changelog, jdkVersionsUsed));
                 return;
-            }
-            // Ensure that the tag exists
-            final String tag = "mandrel-" + version;
-            if (tags.stream().noneMatch(x -> x.getName().equals(tag)))
-            {
-                error("Please create tag " + tag + " and try again");
             }
             final GHRelease ghRelease = repository.createRelease(tag)
                 .name("Mandrel " + version)
