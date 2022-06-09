@@ -1051,7 +1051,7 @@ class Mx
             "\"org.graalvm.compiler.truffle.runtime.hotspot\",",
             "\"org.graalvm.compiler.truffle.runtime.hotspot.java\",",
             "\"org.graalvm.compiler.truffle.runtime.hotspot.libgraal\",",
-            "\"org.graalvm.compiler.truffle.compiler.hotspot.amd64\",",
+            // "\"org.graalvm.compiler.truffle.compiler.hotspot.amd64\",", required by com.oracle.svm.core.meta.ObjectConstantEquality
             "\"org.graalvm.compiler.truffle.compiler.hotspot.aarch64\",",
             "\"org.graalvm.compiler.truffle.jfr\",",
             // "\"truffle:TRUFFLE_API\"", Keep this as there are deps on it
