@@ -3,6 +3,7 @@ import java.io.File;
 import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.FileSystems;
 import java.nio.file.FileVisitOption;
@@ -1008,7 +1009,7 @@ class Mx
     private static Tasks.Exec execTask(List<String> args, Path directory, EnvVar... envVars)
     {
         final EnvVar[] mxEnvVars = new EnvVar[envVars.length + 1];
-        mxEnvVars[0] = new EnvVar("MX_PYTHON", "python3");
+        mxEnvVars[0] = new EnvVar("MX_PYTHON", "python");
         System.arraycopy(envVars, 0, mxEnvVars, 1, envVars.length);
         return Tasks.Exec.of(args, directory, mxEnvVars);
     }
@@ -1756,14 +1757,20 @@ final class Lists
 
 final class Check
 {
-    public static void main(String... args)
+    public static void main(String... args) throws IOException
     {
         shouldEnableAssertions();
         checkMx();
     }
 
-    static void checkMx()
+    static void checkMx() throws IOException
     {
+        final Process p = new ProcessBuilder("python", "--version").redirectErrorStream(true).start();
+        try (InputStream is = p.getInputStream()) {
+            if(!(new String(is.readAllBytes(), StandardCharsets.UTF_8)).contains("Python 3")) {
+                throw new RuntimeException("python command must point to Python 3");
+            }
+        }
         final Options options = Options.from(Args.read("--maven-version-suffix", ".redhat-00001"));
         final RecordingOperatingSystem os = new RecordingOperatingSystem();
         final Tasks.Exec.Effects exec = new Tasks.Exec.Effects(os::record);
