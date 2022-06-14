@@ -7,7 +7,7 @@ index d1f573c5567..5c0e64f570a 100644
    # ------------- Distributions -------------
    "distributions" : {
 +    "MANDREL_PACKAGING_WRAPPER" : {
-+        "description" : "Mandrel's SubstrateVM macros and native-image launcher wrapped in a jar for 2-step build purposes",
++        "description" : "Mandrel SubstrateVM macros and native-image launcher wrapped in a jar for 2-step build purposes",
 +        "native": True,
 +        "platformDependent" : True,
 +        "type": "jar",
