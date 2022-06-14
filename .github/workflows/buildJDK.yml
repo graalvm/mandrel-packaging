@@ -65,8 +65,8 @@ jobs:
           ${{ runner.os }}-${{ matrix.quarkus-name }}-maven-
     - name: Get latest openJDK11 with static libs
       run: |
-        curl -sL https://api.adoptopenjdk.net/v3/binary/latest/11/ga/linux/x64/jdk/hotspot/normal/openjdk -o jdk.tar.gz
-        curl -sL https://api.adoptopenjdk.net/v3/binary/latest/11/ga/linux/x64/staticlibs/hotspot/normal/openjdk -o jdk-static-libs.tar.gz
+        curl -sL https://api.adoptium.net/v3/binary/latest/11/ea/linux/x64/jdk/hotspot/normal/eclipse -o jdk.tar.gz
+        curl -sL https://api.adoptium.net/v3/binary/latest/11/ea/linux/x64/staticlibs/hotspot/normal/eclipse -o jdk-static-libs.tar.gz
         mkdir -p ${JAVA_HOME}
         tar xf jdk.tar.gz -C ${JAVA_HOME} --strip-components=1
         tar xf jdk-static-libs.tar.gz -C ${JAVA_HOME} --strip-components=1
@@ -154,17 +154,14 @@ jobs:
           ${{ runner.os }}-${{ matrix.quarkus-name }}-maven-
     - name: Get latest openJDK11 with static libs
       run: |
-        $files = @{
-            "https://api.adoptopenjdk.net/v3/binary/latest/11/ga/windows/x64/jdk/hotspot/normal/openjdk" = "jdk.zip"
-            "https://api.adoptopenjdk.net/v3/binary/latest/11/ga/windows/x64/staticlibs/hotspot/normal/openjdk" = "jdk-static-libs.zip"
-        }
         $wc = New-Object System.Net.WebClient
-        foreach ($h in $files.GetEnumerator()) {
-            Write-Host "Processing $($h.Name) -> $($h.Value)"
-            $wc.DownloadFile($($h.Name), "$Env:temp\$($h.Value)")
-            Expand-Archive "$Env:temp\$($h.Value)" -DestinationPath "$Env:temp"
-        }
-        Move-Item -Path "$Env:temp\openjdk*" -Destination $Env:JAVA_HOME
+        $wc.DownloadFile("https://api.adoptium.net/v3/binary/latest/11/ea/windows/x64/jdk/hotspot/normal/eclipse", "$Env:temp\jdk.zip")
+        Expand-Archive "$Env:temp\jdk.zip" -DestinationPath "$Env:temp"
+        Move-Item -Path "$Env:temp\jdk-*" -Destination $Env:JAVA_HOME
+        $wc.DownloadFile("https://api.adoptium.net/v3/binary/latest/11/ea/windows/x64/staticlibs/hotspot/normal/eclipse", "$Env:temp\jdk-staticlibs.zip")
+        Expand-Archive "$Env:temp\jdk-staticlibs.zip" -DestinationPath "$Env:temp"
+        Move-Item -Path "$Env:temp\jdk-*\lib\static" -Destination $Env:JAVA_HOME\lib\
+        Remove-Item -Recurse "$Env:temp\jdk-*"
         & $Env:JAVA_HOME\bin\java -version
     - name: Build Mandrel
       run: |
@@ -264,8 +261,8 @@ jobs:
           ${{ runner.os }}-${{ matrix.quarkus-name }}-maven-
     - name: Get latest openJDK11 with static libs
       run: |
-        curl -sL https://api.adoptopenjdk.net/v3/binary/latest/11/ga/linux/x64/jdk/hotspot/normal/openjdk -o jdk.tar.gz
-        curl -sL https://api.adoptopenjdk.net/v3/binary/latest/11/ga/linux/x64/staticlibs/hotspot/normal/openjdk -o jdk-static-libs.tar.gz
+        curl -sL https://api.adoptium.net/v3/binary/latest/11/ea/linux/x64/jdk/hotspot/normal/eclipse -o jdk.tar.gz
+        curl -sL https://api.adoptium.net/v3/binary/latest/11/ea/linux/x64/staticlibs/hotspot/normal/eclipse -o jdk-static-libs.tar.gz
         mkdir -p ${JAVA_HOME}
         tar xf jdk.tar.gz -C ${JAVA_HOME} --strip-components=1
         tar xf jdk-static-libs.tar.gz -C ${JAVA_HOME} --strip-components=1
