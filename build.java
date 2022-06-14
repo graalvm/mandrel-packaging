@@ -912,7 +912,7 @@ class Mx
                     , "--all-suites"
                     , "--all-distribution-types"
                     , "--validate"
-                    , "full"
+                    , "compat"
                     , "--licenses"
                     , "GPLv2-CPE,UPL"
                     , "--suppress-javadoc"
