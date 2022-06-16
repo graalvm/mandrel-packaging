@@ -1,5 +1,0 @@
-mx_version: "5.270.0"
-mandrel_version: "mandrel/20.1"
-jdk_urls:
-  - https://github.com/AdoptOpenJDK/openjdk11-upstream-binaries/releases/download/jdk-11.0.8%2B10/OpenJDK11U-jdk_x64_linux_11.0.8_10.tar.gz
-  - https://github.com/AdoptOpenJDK/openjdk11-upstream-binaries/releases/download/jdk-11.0.8%2B10/OpenJDK11U-static-libs_x64_linux_11.0.8_10.tar.gz
