@@ -993,7 +993,7 @@ class Mx
                     , javaHome.toString()
                     , "--native-images=lib:native-image-agent,lib:native-image-diagnostics-agent"
                     , "--components=ni"
-                    , "--exclude-components=nju,svmnfi,tflm"
+                    , "--exclude-components=nju,svmnfi,svml,tflm"
                     , "build"
                 )
                 , buildArgs.args
@@ -1039,6 +1039,15 @@ class Mx
             new Tasks.FileReplace(path, patchSuites(dependenciesToPatch))
             , effects
         );
+
+        Path svmPy = Path.of("substratevm", "mx.substratevm", "mx_substratevm.py");
+        path = mandrelRepo.resolve(svmPy);
+        dependenciesToPatch = Map.of("^llvm_supported =.*", "llvm_supported = False");
+        Tasks.FileReplace.replace(
+            new Tasks.FileReplace(path, patchSuites(dependenciesToPatch))
+            , effects
+        );
+
         suitePy = Path.of("compiler", "mx.compiler", "suite.py");
         path = mandrelRepo.resolve(suitePy);
         dependenciesToPatch = Map.ofEntries(
