@@ -1063,7 +1063,8 @@ class Mx
             new SimpleEntry<>("^ +\"org.graalvm.compiler.truffle.compiler.substitutions.GraphBuilderInvocationPluginProvider\",", ""),
             new SimpleEntry<>("^ +\"org.graalvm.compiler.truffle.runtime.LoopNodeFactory\",", ""),
             new SimpleEntry<>("^ +\"org.graalvm.compiler.truffle.runtime.TruffleTypes\",", ""),
-            new SimpleEntry<>("^ +\"org.graalvm.compiler.truffle.runtime.EngineCacheSupport\",", ""));
+            new SimpleEntry<>("^ +\"org.graalvm.compiler.truffle.runtime.EngineCacheSupport\",", ""),
+            new SimpleEntry<>(",org.graalvm.nativeimage.llvm", ""));
         Tasks.FileReplace.replace(
             new Tasks.FileReplace(path, patchSuites(dependenciesToPatch))
             , effects
