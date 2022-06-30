@@ -12,7 +12,7 @@ matrixJob('mandrel-windows-integration-tests') {
         )
         text('MANDREL_BUILD',
                 'mandrel-21-3-windows-build-matrix',
-                'mandrel-22-1-windows-build-matrix',
+                'mandrel-22-2-windows-build-matrix',
                 'mandrel-master-windows-build-matrix'
         )
         text('QUARKUS_VERSION', Constants.QUARKUS_VERSION_RELEASED)

@@ -1,6 +1,7 @@
 final Class Constants = new GroovyClassLoader(getClass().getClassLoader())
         .parseClass(readFileFromWorkspace("jenkins/jobs/builds/Constants.groovy"))
 matrixJob('mandrel-22-1-windows-build-matrix') {
+    disabled()
     axes {
         labelExpression('LABEL', ['w2k19'])
         text('JDK_VERSION',

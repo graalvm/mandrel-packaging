@@ -1,7 +1,8 @@
+package jenkins.jobs.builds
+
 final Class Constants = new GroovyClassLoader(getClass().getClassLoader())
         .parseClass(readFileFromWorkspace("jenkins/jobs/builds/Constants.groovy"))
-matrixJob('mandrel-22-1-linux-build-matrix') {
-    disabled()
+matrixJob('mandrel-22-2-linux-build-matrix') {
     axes {
         labelExpression('LABEL', ['el8_aarch64', 'el8'])
         text('JDK_VERSION',
@@ -13,8 +14,8 @@ matrixJob('mandrel-22-1-linux-build-matrix') {
                 'ga'
         )
     }
-    displayName('Linux Build Matrix :: 22.1')
-    description('Linux build for 22.1 branch.')
+    displayName('Linux Build Matrix :: 22.2')
+    description('Linux build for 22.2 branch.')
     logRotator {
         numToKeep(10)
     }
@@ -30,7 +31,7 @@ matrixJob('mandrel-22-1-linux-build-matrix') {
         )
         stringParam(
                 'BRANCH_OR_TAG',
-                'mandrel/22.1',
+                'mandrel/22.2',
                 'e.g. your PR branch or a specific tag.'
         )
         choiceParam('PACKAGING_REPOSITORY', Constants.PACKAGING_REPOSITORY, 'Mandrel packaging scripts.')
@@ -44,12 +45,12 @@ matrixJob('mandrel-22-1-linux-build-matrix') {
         )
         stringParam(
                 'PACKAGING_REPOSITORY_BRANCH_OR_TAG',
-                '22.1',
+                '22.2',
                 'e.g. master if you use heads or some tag if you use tags.'
         )
         stringParam(
                 'MANDREL_VERSION_SUBSTRING',
-                '22.1-SNAPSHOT',
+                '22.2-SNAPSHOT',
                 'It must not contain spaces as it is used in tarball name too.'
         )
     }
@@ -77,9 +78,9 @@ matrixJob('mandrel-22-1-linux-build-matrix') {
             remote {
                 url('https://github.com/graalvm/mx.git')
             }
-            branches('refs/tags/5.318.0')
+            branches('refs/tags/6.0.1')
             extensions {
-                localBranch('5.318.0')
+                localBranch('6.0.1')
                 relativeTargetDirectory('mx')
             }
         }

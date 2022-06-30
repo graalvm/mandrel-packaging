@@ -1,21 +1,20 @@
 class Constants {
     static final ArrayList<String> QUARKUS_VERSION_RELEASED =
             [
-                    '2.2.5.Final',
-                    '2.9.1.Final',
-                    '2.7.5.Final'
+                    '2.10.0.Final',
+                    '2.7.6.Final'
             ]
 
     static final ArrayList<String> QUARKUS_VERSION_SHORT =
             [
-                    '2.7.5.Final',
+                    '2.7.6.Final',
                     'main'
             ]
 
     static final ArrayList<String> QUARKUS_VERSION_BUILDER_IMAGE =
             [
-                    '2.9.1.Final',
-                    '2.7.5.Final'
+                    '2.10.0.Final',
+                    '2.7.6.Final'
             ]
 
     static final String QUARKUS_MODULES_TESTS = '' +
@@ -61,10 +60,11 @@ class Constants {
     static final String LINUX_QUARKUS_TESTS = LINUX_PREPARE_MANDREL + '''
     git clone --depth 1 --branch ${QUARKUS_VERSION} ${QUARKUS_REPO}
     cd quarkus
-    export MAVEN_OPTS="-Xmx5g -XX:MaxMetaspaceSize=1g"
+    export MAVEN_OPTS="-Xmx5g -XX:MaxMetaspaceSize=3g"
     ./mvnw install -Dquickly
-    ./mvnw verify -f integration-tests/pom.xml --fail-at-end --batch-mode -Dno-format \\
-                  -DfailIfNoTests=false -Dnative -Dquarkus.native.native-image-xmx=8g -pl ${QUARKUS_MODULES}
+    ./mvnw verify -fae -f integration-tests/pom.xml -Dmaven.test.failure.ignore=true --batch-mode -Dno-format \\
+        -DfailIfNoTests=false -Dnative -pl ${QUARKUS_MODULES} \\
+        -Dquarkus.native.native-image-xmx=6g
     '''
 
     static final String LINUX_CONTAINER_INTEGRATION_TESTS = '''
@@ -112,14 +112,14 @@ class Constants {
     fi
     export JAVA_HOME="/usr/java/openjdk-11"
     export PATH="${JAVA_HOME}/bin:${PATH}"
-    export MAVEN_OPTS="-Xmx5g -XX:MaxMetaspaceSize=1g"
+    export MAVEN_OPTS="-Xmx5g -XX:MaxMetaspaceSize=3g"
     ./mvnw install -Dquickly
     ./mvnw verify -f integration-tests/pom.xml --fail-at-end \\
         -pl ${QUARKUS_MODULES} -Dno-format -Ddocker -Dnative -Dnative.surefire.skip \\
         -Dquarkus.native.container-build=true \\
         -Dquarkus.native.builder-image="${BUILDER_IMAGE}" \\
         -Dquarkus.native.container-runtime=${CONTAINER_RUNTIME} \\
-        -Dquarkus.native.native-image-xmx=8g
+        -Dquarkus.native.native-image-xmx=6g
     '''
 
     static final String WINDOWS_PREPARE_MANDREL = '''
@@ -158,8 +158,8 @@ class Constants {
     static final String WINDOWS_QUARKUS_TESTS = WINDOWS_PREPARE_MANDREL + '''
     git clone --depth 1 --branch %QUARKUS_VERSION% %QUARKUS_REPO%
     cd quarkus
-    set "MAVEN_OPTS=-Xmx5g -XX:MaxMetaspaceSize=1g"
+    set "MAVEN_OPTS=-Xmx5g -XX:MaxMetaspaceSize=3g"
     mvnw install -Dquickly & mvnw verify -f integration-tests/pom.xml --fail-at-end \\
-        --batch-mode -Dno-format -DfailIfNoTests=false -Dnative -Dquarkus.native.native-image-xmx=8g -pl %QUARKUS_MODULES%
+        --batch-mode -Dno-format -DfailIfNoTests=false -Dnative -Dquarkus.native.native-image-xmx=6g -pl %QUARKUS_MODULES%
     '''
 }
