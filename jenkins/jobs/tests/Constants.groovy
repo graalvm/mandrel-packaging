@@ -159,7 +159,7 @@ class Constants {
     git clone --depth 1 --branch %QUARKUS_VERSION% %QUARKUS_REPO%
     cd quarkus
     set "MAVEN_OPTS=-Xmx5g -XX:MaxMetaspaceSize=3g"
-    mvnw install -Dquickly & mvnw verify -f integration-tests/pom.xml --fail-at-end \\
+    mvnw install -Dquickly & mvnw verify -f integration-tests/pom.xml --fail-at-end ^
         --batch-mode -Dno-format -DfailIfNoTests=false -Dnative -Dquarkus.native.native-image-xmx=6g -pl %QUARKUS_MODULES%
     '''
 }
