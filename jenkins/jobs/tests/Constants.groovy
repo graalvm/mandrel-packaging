@@ -28,6 +28,8 @@ class Constants {
             '!kubernetes/maven-invoker-way,' +
             '!maven,' +
             '!mongodb-rest-data-panache,' +
+            '!liquibase-mongodb,' +
+            '!mongodb-client,' +
             '!smallrye-opentracing'
 
     static final String LINUX_PREPARE_MANDREL = '''
