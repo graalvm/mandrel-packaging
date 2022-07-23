@@ -1,7 +1,7 @@
 class Constants {
     static final ArrayList<String> QUARKUS_VERSION_RELEASED =
             [
-                    '2.10.0.Final',
+                    '2.11.0.Final',
                     '2.7.6.Final'
             ]
 
@@ -13,7 +13,7 @@ class Constants {
 
     static final ArrayList<String> QUARKUS_VERSION_BUILDER_IMAGE =
             [
-                    '2.10.0.Final',
+                    '2.11.0.Final',
                     '2.7.6.Final'
             ]
 
@@ -56,10 +56,16 @@ class Constants {
     '''
 
     static final String LINUX_INTEGRATION_TESTS = LINUX_PREPARE_MANDREL + '''
+    free -h
+    df -h
+    ps aux | grep java
     mvn clean verify -Ptestsuite -Dquarkus.version=${QUARKUS_VERSION}
     '''
 
     static final String LINUX_QUARKUS_TESTS = LINUX_PREPARE_MANDREL + '''
+    free -h
+    df -h
+    ps aux | grep java
     git clone --depth 1 --branch ${QUARKUS_VERSION} ${QUARKUS_REPO}
     cd quarkus
     export MAVEN_OPTS="-Xmx5g -XX:MaxMetaspaceSize=3g"
@@ -72,6 +78,7 @@ class Constants {
     static final String LINUX_CONTAINER_INTEGRATION_TESTS = '''
     free -h
     df -h
+    ps aux | grep java
     export CONTAINER_RUNTIME=podman
     source /etc/profile.d/jdks.sh
     set +e
@@ -96,6 +103,7 @@ class Constants {
     static final String LINUX_CONTAINER_QUARKUS_TESTS = '''
     free -h
     df -h
+    ps aux | grep java
     git clone --depth 1 --branch ${QUARKUS_VERSION} ${QUARKUS_REPO}
     cd quarkus
     source /etc/profile.d/jdks.sh
