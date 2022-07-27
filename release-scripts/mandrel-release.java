@@ -4,7 +4,7 @@
 //DEPS org.eclipse.jgit:org.eclipse.jgit.pgm:5.13.0.202109080827-r
 //DEPS org.eclipse.jgit:org.eclipse.jgit.gpg.bc:5.13.0.202109080827-r
 //DEPS info.picocli:picocli:4.5.0
-//DEPS org.kohsuke:github-api:1.116
+//DEPS org.kohsuke:github-api:1.307
 
 import org.apache.http.HttpStatus;
 import org.eclipse.jgit.api.Git;
@@ -913,7 +913,7 @@ class MandrelRelease implements Callable<Integer>
             "They do not include support for Polyglot programming via the Truffle interpreter and compiler framework.\n" +
             "In consequence, it is not possible to extend Mandrel by downloading languages from the Truffle language catalogue.\n" +
             "\n" +
-            "Mandrel is also built slightly differently to GraalVM, using the standard OpenJDK project release of jdk11u.\n" +
+            "Mandrel is also built slightly differently to GraalVM, using the standard OpenJDK project release of jdk11u and jdk17u.\n" +
             "This means it does not profit from a few small enhancements that Oracle have added to the version of OpenJDK used to build their own GraalVM downloads.\n" +
             "Most of these enhancements are to the JVMCI module that allows the Graal compiler to be run inside OpenJDK.\n" +
             "The others are small cosmetic changes to behaviour.\n" +
@@ -945,8 +945,8 @@ class MandrelRelease implements Callable<Integer>
             "## Quick start\n" +
             "\n" +
             "```\n" +
-            "$ tar -xf mandrel-java11-linux-amd64-" + version + ".tar.gz\n" +
-            "$ export JAVA_HOME=\"$( pwd )/mandrel-java11-" + version + "\"\n" +
+            "$ tar -xf mandrel-java17-linux-amd64-" + version + ".tar.gz\n" +
+            "$ export JAVA_HOME=\"$( pwd )/mandrel-java17-" + version + "\"\n" +
             "$ export GRAALVM_HOME=\"${JAVA_HOME}\"\n" +
             "$ export PATH=\"${JAVA_HOME}/bin:${PATH}\"\n" +
             "$ curl -O -J https://code.quarkus.io/d?e=io.quarkus:quarkus-resteasy-reactive\n" +
@@ -966,7 +966,7 @@ class MandrelRelease implements Callable<Integer>
             "curl -O -J  https://code.quarkus.io/d?e=io.quarkus:quarkus-resteasy-reactive\n" +
             "unzip code-with-quarkus.zip\n" +
             "cd code-with-quarkus\n" +
-            "        ./mvnw package -Pnative -Dquarkus.native.container-build=true -Dquarkus.native.builder-image=quay.io/quarkus/ubi-quarkus-mandrel:" + version + "-java11\n" +
+            "        ./mvnw package -Pnative -Dquarkus.native.container-build=true -Dquarkus.native.builder-image=quay.io/quarkus/ubi-quarkus-mandrel:" + version + "-java17\n" +
             "        ./target/code-with-quarkus-1.0.0-SNAPSHOT-runner\n" +
             "```\n" +
             "\n" +
@@ -976,7 +976,7 @@ class MandrelRelease implements Callable<Integer>
             "powershell -c \"Invoke-WebRequest -OutFile quarkus.zip -Uri https://code.quarkus.io/d?e=io.quarkus:quarkus-resteasy-reactive\"\n" +
             "powershell -c \"Expand-Archive -Path quarkus.zip -DestinationPath . -Force\n" +
             "cd code-with-quarkus\n" +
-            "mvnw package -Pnative -Dquarkus.native.container-build=true -Dquarkus.native.builder-image=quay.io/quarkus/ubi-quarkus-mandrel:" + version + "-java11\n" +
+            "mvnw package -Pnative -Dquarkus.native.container-build=true -Dquarkus.native.builder-image=quay.io/quarkus/ubi-quarkus-mandrel:" + version + "-java17\n" +
             "docker build -f src/main/docker/Dockerfile.native -t my-quarkus-mandrel-app .\n" +
             "        docker run -i --rm -p 8080:8080 my-quarkus-mandrel-app\n" +
             "```\n" +
@@ -1078,7 +1078,7 @@ class MandrelRelease implements Callable<Integer>
                 return 1;
             }
         }
-        catch (IOException e)
+        catch (Exception e)
         {
             e.printStackTrace();
             error(e.getMessage());
