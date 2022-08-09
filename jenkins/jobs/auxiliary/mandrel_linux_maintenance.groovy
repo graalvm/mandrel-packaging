@@ -29,6 +29,7 @@ matrixJob('mandrel-linux-maintenance') {
             sudo podman stop $(sudo podman ps -a -q)
             sudo podman rm $(sudo podman ps -a -q)
             yes | sudo podman system prune
+            rm -rf /tmp/run-1000/libpod/tmp/pause.pid
             podman stop $(podman ps -a -q)
             podman rm $(podman ps -a -q)
             yes | podman system prune
