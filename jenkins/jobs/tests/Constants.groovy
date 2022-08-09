@@ -85,6 +85,7 @@ class Constants {
        sudo ${CONTAINER_RUNTIME} stop $(sudo ${CONTAINER_RUNTIME} ps -a -q)
        sudo ${CONTAINER_RUNTIME} rm $(sudo ${CONTAINER_RUNTIME} ps -a -q)
        yes | sudo ${CONTAINER_RUNTIME} volume prune
+       rm -rf /tmp/run-1000/libpod/tmp/pause.pid
        ${CONTAINER_RUNTIME} stop $(${CONTAINER_RUNTIME} ps -a -q)
        ${CONTAINER_RUNTIME} rm $(${CONTAINER_RUNTIME} ps -a -q)
        yes | ${CONTAINER_RUNTIME} volume prune
@@ -111,6 +112,7 @@ class Constants {
        sudo ${CONTAINER_RUNTIME} stop $(sudo ${CONTAINER_RUNTIME} ps -a -q)
        sudo ${CONTAINER_RUNTIME} rm $(sudo ${CONTAINER_RUNTIME} ps -a -q)
        yes | sudo ${CONTAINER_RUNTIME} volume prune
+       rm -rf /tmp/run-1000/libpod/tmp/pause.pid
        ${CONTAINER_RUNTIME} stop $(${CONTAINER_RUNTIME} ps -a -q)
        ${CONTAINER_RUNTIME} rm $(${CONTAINER_RUNTIME} ps -a -q)
        yes | ${CONTAINER_RUNTIME} volume prune
