@@ -309,12 +309,16 @@ public class build
                 logger.debugf("Launcher line BEFORE: %s", lines.get(i));
                 logger.debugf("launcherMatcher.group(1): %s", launcherMatcher.group(1));
                 logger.debugf("launcherMatcher.group(2): %s", launcherMatcher.group(2));
-                final String launcherLine = launcherMatcher.group(1) +
+                String launcherLine = launcherMatcher.group(1) +
                     " -Dorg.graalvm.version=\"" + mandrelVersion + "\"" +
                     " -Dorg.graalvm.vendorversion=\"Mandrel-" + mandrelVersion + "\"" +
                     " -Dorg.graalvm.vendor=\"" + (vendor != null ? vendor : defaultVendor) + "\"" +
                     " -Dorg.graalvm.vendorurl=\"" + (vendorUrl != null ? vendorUrl : defaultVendorUrl ) + "\"" +
                     launcherMatcher.group(2);
+                // Drop truffle module related parts
+                launcherLine = launcherLine.replace("org.graalvm.truffle,", "")
+                    .replace("%location%\\..\\..\\truffle\\truffle-api.jar:", "")
+                    .replace("${location}/../../truffle/truffle-api.jar:", "");
                 lines.set(i, launcherLine);
                 logger.debugf("Launcher line AFTER: %s", lines.get(i));
                 break;
@@ -546,12 +550,15 @@ class SequentialBuild
     {
         final Tasks.Exec.Effects exec = new Tasks.Exec.Effects(task -> os.exec(task, false));
         final Tasks.FileReplace.Effects replace = Tasks.FileReplace.Effects.ofSystem();
+        LOG.debugf("Patch sources to remove dependency on truffle-api.jar ...");
+        String patchPath = fs.workingDir().resolve(Path.of("resources", "truffle-api-removal.patch")).toString();
+        exec.exec.accept(Tasks.Exec.of(List.of("git", "apply", patchPath), fs.mandrelRepo()));
         Mx.build(options, exec, replace, fs.mxHome(), fs.mandrelRepo(), os.javaHome());
         if (options.mavenDeploy && !options.skipJava)
         {
             // Create wrapper jar file for archiving resources (e.g. native image launcher script)
             LOG.debugf("Patch sdk suite.py ...");
-            String patchPath = fs.workingDir().resolve(Path.of("resources", "mandrel-packaging-wrapper.patch")).toString();
+            patchPath = fs.workingDir().resolve(Path.of("resources", "mandrel-packaging-wrapper.patch")).toString();
             exec.exec.accept(Tasks.Exec.of(List.of("git", "apply", patchPath), fs.mandrelRepo()));
             try
             {
@@ -834,9 +841,7 @@ class Mx
                 new Path[]{substrateDistPath.resolve("pointsto.jar"), Path.of("lib", "svm", "builder", "pointsto.jar")}),
             new SimpleEntry<>("org.graalvm.nativeimage:library-support.jar",
                 new Path[]{substrateDistPath.resolve("library-support.jar"), Path.of("lib", "svm", "library-support.jar")}),
-            new SimpleEntry<>("org.graalvm.truffle:truffle-api.jar",
-                new Path[]{truffleDistPath.resolve("truffle-api.jar"), Path.of("lib", "truffle", "truffle-api.jar")}),
-            new SimpleEntry<>("org.graalvm.compiler:compiler.jar",
+            new  SimpleEntry<>("org.graalvm.compiler:compiler.jar",
                 new Path[]{compilerDistPath.resolve("graal.jar"), Path.of("lib", "jvmci", "graal.jar")}),
             new SimpleEntry<>("org.graalvm.nativeimage:objectfile.jar",
                 new Path[]{substrateDistPath.resolve("objectfile.jar"), Path.of("lib", "svm", "builder", "objectfile.jar")}),
@@ -866,7 +871,6 @@ class Mx
                 "NATIVE_IMAGE_BASE," +
                 "POINTSTO," +
                 "LIBRARY_SUPPORT," +
-                "TRUFFLE_API," +
                 "GRAAL," +
                 "OBJECTFILE," +
                 "SVM_DRIVER," +
@@ -1070,19 +1074,13 @@ class Mx
         Path suitePy = Path.of("substratevm", "mx.substratevm", "suite.py");
         Path path = mandrelRepo.resolve(suitePy);
         Map<String, String> dependenciesToPatch = Map.ofEntries(
+            // Mandrel doesn't use Graal at runtime but requires some stubs declared in the package
+            // new SimpleEntry<>("^ +\"com.oracle.svm.graal\",", ""),
             // Mandrel doesn't use truffle
             new SimpleEntry<>("^ +\"com.oracle.svm.truffle\",", ""),
-            new SimpleEntry<>("^ +\"com.oracle.svm.truffle.api                   to org.graalvm.truffle\",", ""),
+            new SimpleEntry<>("^ +\"com.oracle.svm.truffle.api +to org.graalvm.truffle\",", ""),
             new SimpleEntry<>("^ +\"com.oracle.truffle.api.TruffleLanguage.Provider\",", ""),
             new SimpleEntry<>("^ +\"com.oracle.truffle.api.instrumentation.TruffleInstrument.Provider\",", ""),
-            new SimpleEntry<>("^ +\"com.oracle.svm.truffle.nfi\",", ""),
-            new SimpleEntry<>("^ +\"com.oracle.svm.truffle.nfi.posix\",", ""),
-            new SimpleEntry<>("^ +\"com.oracle.svm.truffle.nfi.windows\",", ""),
-            // new SimpleEntry<>("^ +com.oracle.svm.truffle.tck\",", ""),
-            // new SimpleEntry<>("^ +\"truffle:TRUFFLE_API\"", ""), // Keep this as there are deps on it
-            new SimpleEntry<>("^ +\"extracted-dependency:truffle:LIBFFI_DIST\"", ""),
-            new SimpleEntry<>("^ +\"extracted-dependency:truffle:TRUFFLE_NFI_GRAALVM_SUPPORT/include/trufflenfi.h\",", ""),
-            new SimpleEntry<>("^ +\"file:src/com.oracle.svm.libffi/include/svm_libffi.h\",", ""),
             // Mandrel doesn't use polyglot
             new SimpleEntry<>("^ +\"com.oracle.svm.polyglot\",", ""));
         Tasks.FileReplace.replace(
@@ -1102,20 +1100,12 @@ class Mx
         path = mandrelRepo.resolve(suitePy);
         dependenciesToPatch = Map.ofEntries(
             // Mandrel doesn't use libgraal
+            new SimpleEntry<>("^ +\"org.graalvm.libgraal +to jdk.internal.vm.compiler.management\",", ""),
             new SimpleEntry<>("^ +\"org.graalvm.libgraal\",", ""),
             new SimpleEntry<>("^ +\"org.graalvm.libgraal.jni\",", ""),
-            new SimpleEntry<>("^ +\"org.graalvm.libgraal                        to jdk.internal.vm.compiler.management\",", ""),
             // Mandrel doesn't use truffle
-            // new SimpleEntry<>("^ +\"org.graalvm.compiler.truffle.compiler.amd64\",", ""), // Keep as it's needed by com.oracle.svm.core
-            new SimpleEntry<>("^ +\"org.graalvm.compiler.truffle.runtime.serviceprovider\",", ""),
-            new SimpleEntry<>("^ +\"org.graalvm.compiler.truffle.runtime.hotspot\",", ""),
-            new SimpleEntry<>("^ +\"org.graalvm.compiler.truffle.runtime.hotspot.java\",", ""),
-            new SimpleEntry<>("^ +\"org.graalvm.compiler.truffle.runtime.hotspot.libgraal\",", ""),
-            // new SimpleEntry<>("^ +\"org.graalvm.compiler.truffle.compiler.hotspot.amd64\",", ""), // required by com.oracle.svm.core.meta.ObjectConstantEquality
-            new SimpleEntry<>("^ +\"org.graalvm.compiler.truffle.compiler.hotspot.aarch64\",", ""),
-            new SimpleEntry<>("^ +\"org.graalvm.compiler.truffle.jfr\",", ""),
-            // new SimpleEntry<>("^ +\"truffle:TRUFFLE_API\"", ""), // Keep this as there are deps on it
-            new SimpleEntry<>("^ +\"org.graalvm.compiler.truffle.jfr            to jdk.internal.vm.compiler.truffle.jfr\",", ""),
+            new SimpleEntry<>("^ +\"truffle:TRUFFLE_API\",?", ""),
+            new SimpleEntry<>("^ +\"org.graalvm.compiler.truffle.jfr +to jdk.internal.vm.compiler.truffle.jfr\",", ""),
             new SimpleEntry<>("^ +\"com.oracle.truffle.api.impl.TruffleLocator\",", ""),
             new SimpleEntry<>("^ +\"com.oracle.truffle.api.object.LayoutFactory\",", ""),
             new SimpleEntry<>("^ +\"org.graalvm.compiler.truffle.compiler.hotspot.TruffleCallBoundaryInstrumentationFactory\",", ""),
@@ -1123,6 +1113,15 @@ class Mx
             new SimpleEntry<>("^ +\"org.graalvm.compiler.truffle.runtime.LoopNodeFactory\",", ""),
             new SimpleEntry<>("^ +\"org.graalvm.compiler.truffle.runtime.TruffleTypes\",", ""),
             new SimpleEntry<>("^ +\"org.graalvm.compiler.truffle.runtime.EngineCacheSupport\",", ""),
+            new SimpleEntry<>("^ +\"org.graalvm.compiler.truffle.jfr\",", ""),
+            new SimpleEntry<>("^ +\"org.graalvm.compiler.truffle.compiler.amd64\",", ""),
+            new SimpleEntry<>("^ +\"org.graalvm.compiler.truffle.runtime.serviceprovider\",", ""),
+            new SimpleEntry<>("^ +\"org.graalvm.compiler.truffle.runtime.hotspot\",", ""),
+            new SimpleEntry<>("^ +\"org.graalvm.compiler.truffle.runtime.hotspot.java\",", ""),
+            new SimpleEntry<>("^ +\"org.graalvm.compiler.truffle.runtime.hotspot.libgraal\",", ""),
+            new SimpleEntry<>("^ +\"org.graalvm.compiler.truffle.compiler.hotspot.amd64\",", ""),
+            new SimpleEntry<>("^ +\"org.graalvm.compiler.truffle.compiler.hotspot.aarch64\",", ""),
+            // Mandrel doesn't use LLVM
             new SimpleEntry<>(",org.graalvm.nativeimage.llvm", ""));
         Tasks.FileReplace.replace(
             new Tasks.FileReplace(path, patchSuites(dependenciesToPatch))
@@ -1133,49 +1132,18 @@ class Mx
         path = mandrelRepo.resolve(suitePy);
         dependenciesToPatch = Map.of(
             // Mandrel doesn't use polyglot
-            // "^ +\"org.graalvm.polyglot\",", Keep as it's needed by TRUFFLE_API
+            // "^ +\"org.graalvm.polyglot\",", "", // Required by org.graalvm.nativebridge
             "^ +\"org.graalvm.polyglot.proxy\",", "",
-            // "^ +\"org.graalvm.polyglot.io\",", Keep as it's needed by TRUFFLE_API
+            "^ +\"org.graalvm.polyglot.io\",", "",
             "^ +\"org.graalvm.polyglot.management\",", "",
-            // "^ +\"org.graalvm.polyglot.impl to org.graalvm.truffle\",", Keep as it's needed by TRUFFLE_API
+            "^ +\"org.graalvm.polyglot.impl +to org.graalvm.truffle, com.oracle.graal.graal_enterprise\",", "",
             "^ +\"org.graalvm.polyglot.impl.AbstractPolyglotImpl\"", "",
-            "^ +\"org.graalvm.polyglot to org.graalvm.truffle\"", "");
+            "^ +\"org.graalvm.polyglot +to org.graalvm.truffle\"", "");
         Tasks.FileReplace.replace(
             new Tasks.FileReplace(path, patchSuites(dependenciesToPatch))
             , effects
         );
 
-        suitePy = Path.of("truffle", "mx.truffle", "suite.py");
-        path = mandrelRepo.resolve(suitePy);
-        dependenciesToPatch = Map.ofEntries(
-            // Mandrel doesn't use the full TRUFFLE_API
-            new SimpleEntry<>("^ +\"com.oracle.truffle.object to jdk.internal.vm.compiler, com.oracle.graal.graal_enterprise\",", ""),
-            new SimpleEntry<>("^ +\"com.oracle.truffle.api.library to com.oracle.truffle.truffle_nfi_libffi, com.oracle.truffle.truffle_nfi\",", ""),
-            new SimpleEntry<>("^ +\"com.oracle.truffle.api.instrumentation.TruffleInstrument.Provider\",", ""),
-            new SimpleEntry<>("^ +\"com.oracle.truffle.api.library.DefaultExportProvider\",", ""),
-            // new SimpleEntry<>("^ +\"com.oracle.truffle.api.library.EagerExportProvider\",", " ),// Keep as it's needed by TRUFFLE_API
-            new SimpleEntry<>("^ +\"com.oracle.truffle.api.source\",", ""),
-            new SimpleEntry<>("^ +\"com.oracle.truffle.api.memory\",", ""),
-            new SimpleEntry<>("^ +\"com.oracle.truffle.api.io\",", ""),
-            new SimpleEntry<>("^ +\"com.oracle.truffle.api.frame\",", ""),
-            // new SimpleEntry<>("^ +\"com.oracle.truffle.api.object\",", " ),// Keep as it brings com.oracle.truffle.api.interop
-            new SimpleEntry<>("^ +\"com.oracle.truffle.api.instrumentation\",", ""),
-            new SimpleEntry<>("^ +\"com.oracle.truffle.api.exception\",", ""), // alternative that brings com.oracle.truffle.api.interop
-            // new SimpleEntry<>("^ +\"com.oracle.truffle.api.dsl\",", " ),// Keep as it's needed by com.oracle.truffle.api.library
-            // new SimpleEntry<>("^ +\"com.oracle.truffle.api.profiles\",", " ),// Keep as it's needed by com.oracle.truffle.api.interop
-            // new SimpleEntry<>("^ +\"com.oracle.truffle.api.interop\",", " ),// Keep as it brings com.oracle.truffle.api.library
-            new SimpleEntry<>("^ +\"com.oracle.truffle.api.debug\",", ""),
-            new SimpleEntry<>("^ +\"com.oracle.truffle.utilities\",", ""),
-            // new SimpleEntry<>("^ +\"com.oracle.truffle.object\",", " ),// Keep as it brings com.oracle.truffle.api.object
-            new SimpleEntry<>("^ +\"com.oracle.truffle.api.object.dsl\",", ""), // alternative that brings com.oracle.truffle.api.object
-            new SimpleEntry<>("^ +\"com.oracle.truffle.polyglot\",", ""),
-            new SimpleEntry<>("^ +\"com.oracle.truffle.host\",", ""),
-            // new SimpleEntry<>("^ +\"com.oracle.truffle.api.library\",", " ),// Keep as it provides EagerExportProvider and is also needed by TRUFFLE_DSL_PROCESSOR which is needed by org.graalvm.compiler.truffle.options
-            new SimpleEntry<>("^ +\"com.oracle.truffle.api.staticobject\",", ""));
-        Tasks.FileReplace.replace(
-            new Tasks.FileReplace(path, patchSuites(dependenciesToPatch))
-            , effects
-        );
     }
 
     private static Function<Stream<String>, List<String>> patchSuites(Map<String, String> patches)
