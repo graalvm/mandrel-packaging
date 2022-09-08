@@ -1,0 +1,154 @@
+diff --git a/sdk/mx.sdk/mx_sdk_vm_impl.py b/sdk/mx.sdk/mx_sdk_vm_impl.py
+index a2f42b52eba..def5534233c 100644
+--- a/sdk/mx.sdk/mx_sdk_vm_impl.py
++++ b/sdk/mx.sdk/mx_sdk_vm_impl.py
+@@ -1302,7 +1302,6 @@ class NativePropertiesBuildTask(mx.ProjectBuildTask):
+                 '--no-fallback',
+                 '-march=compatibility',  # Target maximum portability of all GraalVM images.
+                 '-H:+AssertInitializationSpecifiedForAllClasses',
+-                '-H:+EnforceMaxRuntimeCompileMethods',
+                 '-Dorg.graalvm.version={}'.format(_suite.release_version()),
+             ]
+             if _debug_images():
+diff --git a/substratevm/mx.substratevm/mx_substratevm.py b/substratevm/mx.substratevm/mx_substratevm.py
+index 5d462184b5c..a38a774744f 100644
+--- a/substratevm/mx.substratevm/mx_substratevm.py
++++ b/substratevm/mx.substratevm/mx_substratevm.py
+@@ -236,7 +236,7 @@ def vm_executable_path(executable, config=None):
+ @contextmanager
+ def native_image_context(common_args=None, hosted_assertions=True, native_image_cmd='', config=None, build_if_missing=False):
+     common_args = [] if common_args is None else common_args
+-    base_args = ['--no-fallback', '-H:+EnforceMaxRuntimeCompileMethods', '-H:+ReportExceptionStackTraces']
++    base_args = ['--no-fallback', '-H:+ReportExceptionStackTraces']
+     base_args += ['-H:Path=' + svmbuild_dir()]
+     if mx.get_opts().verbose:
+         base_args += ['--verbose']
+@@ -1054,7 +1054,7 @@ ce_llvm_backend = mx_sdk_vm.GraalVmJreComponent(
+     jlink=False,
+ )
+ # GR-34811
+-llvm_supported = not (mx.is_windows() or (mx.is_darwin() and mx.get_arch() == "aarch64"))
++llvm_supported = False
+ if llvm_supported:
+     mx_sdk_vm.register_graalvm_component(ce_llvm_backend)
+ 
+diff --git a/substratevm/src/com.oracle.svm.driver/src/com/oracle/svm/driver/NativeImage.java b/substratevm/src/com.oracle.svm.driver/src/com/oracle/svm/driver/NativeImage.java
+index a1fe78af6f9..0143d8136f5 100644
+--- a/substratevm/src/com.oracle.svm.driver/src/com/oracle/svm/driver/NativeImage.java
++++ b/substratevm/src/com.oracle.svm.driver/src/com/oracle/svm/driver/NativeImage.java
+@@ -538,7 +538,6 @@ public class NativeImage {
+             if (libJvmciDir != null) {
+                 result.addAll(getJars(libJvmciDir, "graal-sdk", "enterprise-graal"));
+             }
+-            result.addAll(getJars(rootDir.resolve(Paths.get("lib", "truffle")), "truffle-api"));
+             if (modulePathBuild) {
+                 result.addAll(getJars(rootDir.resolve(Paths.get("lib", "svm", "builder"))));
+             }
+diff --git a/substratevm/src/com.oracle.svm.graal/src/com/oracle/svm/graal/hosted/LegacyRuntimeCompilationFeature.java b/substratevm/src/com.oracle.svm.graal/src/com/oracle/svm/graal/hosted/LegacyRuntimeCompilationFeature.java
+index 718ab062135..49b68d94f92 100644
+--- a/substratevm/src/com.oracle.svm.graal/src/com/oracle/svm/graal/hosted/LegacyRuntimeCompilationFeature.java
++++ b/substratevm/src/com.oracle.svm.graal/src/com/oracle/svm/graal/hosted/LegacyRuntimeCompilationFeature.java
+@@ -63,7 +63,6 @@ import org.graalvm.compiler.phases.common.CanonicalizerPhase;
+ import org.graalvm.compiler.phases.common.IterativeConditionalEliminationPhase;
+ import org.graalvm.compiler.phases.common.inlining.InliningUtil;
+ import org.graalvm.compiler.phases.util.Providers;
+-import org.graalvm.compiler.truffle.compiler.phases.DeoptimizeOnExceptionPhase;
+ import org.graalvm.compiler.word.WordTypes;
+ import org.graalvm.nativeimage.ImageSingletons;
+ import org.graalvm.nativeimage.hosted.Feature;
+@@ -288,9 +287,6 @@ public class LegacyRuntimeCompilationFeature extends RuntimeCompilationFeature i
+ 
+                 CanonicalizerPhase canonicalizer = CanonicalizerPhase.create();
+                 canonicalizer.apply(graph, hostedProviders);
+-                if (deoptimizeOnExceptionPredicate != null) {
+-                    new DeoptimizeOnExceptionPhase(deoptimizeOnExceptionPredicate).apply(graph);
+-                }
+                 new ConvertDeoptimizeToGuardPhase(canonicalizer).apply(graph, hostedProviders);
+ 
+                 graphEncoder.prepare(graph);
+diff --git a/substratevm/src/com.oracle.svm.graal/src/com/oracle/svm/graal/meta/RuntimeCodeInstaller.java b/substratevm/src/com.oracle.svm.graal/src/com/oracle/svm/graal/meta/RuntimeCodeInstaller.java
+index 292e18f7c64..737072594bd 100644
+--- a/substratevm/src/com.oracle.svm.graal/src/com/oracle/svm/graal/meta/RuntimeCodeInstaller.java
++++ b/substratevm/src/com.oracle.svm.graal/src/com/oracle/svm/graal/meta/RuntimeCodeInstaller.java
+@@ -34,7 +34,6 @@ import org.graalvm.compiler.code.CompilationResult.CodeAnnotation;
+ import org.graalvm.compiler.core.common.NumUtil;
+ import org.graalvm.compiler.debug.DebugContext;
+ import org.graalvm.compiler.debug.Indent;
+-import org.graalvm.compiler.truffle.common.TruffleCompiler;
+ import org.graalvm.nativeimage.ImageSingletons;
+ import org.graalvm.nativeimage.c.type.CTypeConversion;
+ import org.graalvm.word.Pointer;
+@@ -108,7 +107,7 @@ public class RuntimeCodeInstaller extends AbstractRuntimeCodeInstaller {
+     protected RuntimeCodeInstaller(SharedRuntimeMethod method, CompilationResult compilation) {
+         this.method = method;
+         this.compilation = (SubstrateCompilationResult) compilation;
+-        this.tier = compilation.getName().endsWith(TruffleCompiler.FIRST_TIER_COMPILATION_SUFFIX) ? TruffleCompiler.FIRST_TIER_INDEX : TruffleCompiler.LAST_TIER_INDEX;
++        this.tier = 1;
+         this.debug = new DebugContext.Builder(RuntimeOptionValues.singleton()).build();
+     }
+ 
+diff --git a/substratevm/src/com.oracle.svm.graal/src/com/oracle/svm/graal/isolated/IsolatedCodeInstallBridge.java b/substratevm/src/com.oracle.svm.graal/src/com/oracle/svm/graal/isolated/IsolatedCodeInstallBridge.java
+index d14344c4aba..b2b382bb4ae 100644
+--- a/substratevm/src/com.oracle.svm.graal/src/com/oracle/svm/graal/isolated/IsolatedCodeInstallBridge.java
++++ b/substratevm/src/com.oracle.svm.graal/src/com/oracle/svm/graal/isolated/IsolatedCodeInstallBridge.java
+@@ -24,9 +24,6 @@
+  */
+ package com.oracle.svm.graal.isolated;
+ 
+-import org.graalvm.compiler.truffle.common.CompilableTruffleAST;
+-import org.graalvm.compiler.truffle.common.OptimizedAssumptionDependency;
+-
+ import com.oracle.svm.core.deopt.SubstrateInstalledCode;
+ import com.oracle.svm.core.util.VMError;
+ 
+@@ -37,7 +34,7 @@ import jdk.vm.ci.code.InstalledCode;
+  * compilation. It does not implement {@link InstalledCode} or {@link OptimizedAssumptionDependency}
+  * in any meaningful way.
+  */
+-public final class IsolatedCodeInstallBridge extends InstalledCode implements OptimizedAssumptionDependency {
++public final class IsolatedCodeInstallBridge extends InstalledCode {
+     private final ClientHandle<? extends SubstrateInstalledCode.Factory> factoryHandle;
+     private ClientHandle<? extends SubstrateInstalledCode> installedCodeHandle;
+ 
+@@ -87,19 +84,9 @@ public final class IsolatedCodeInstallBridge extends InstalledCode implements Op
+         throw VMError.shouldNotReachHere(DO_NOT_CALL_REASON);
+     }
+ 
+-    @Override
+-    public void onAssumptionInvalidated(Object source, CharSequence reason) {
+-        throw VMError.shouldNotReachHere(DO_NOT_CALL_REASON);
+-    }
+-
+     @Override
+     public Object executeVarargs(Object... args) {
+         throw VMError.shouldNotReachHere(DO_NOT_CALL_REASON);
+     }
+ 
+-    @Override
+-    public CompilableTruffleAST getCompilable() {
+-        throw VMError.shouldNotReachHere(DO_NOT_CALL_REASON);
+-    }
+-
+ }
+diff --git a/substratevm/src/com.oracle.svm.graal/src/com/oracle/svm/graal/hosted/ParseOnceRuntimeCompilationFeature.java b/substratevm/src/com.oracle.svm.graal/src/com/oracle/svm/graal/hosted/ParseOnceRuntimeCompilationFeature.java
+index 2511aeb2366..08562ac74fa 100644
+--- a/substratevm/src/com.oracle.svm.graal/src/com/oracle/svm/graal/hosted/ParseOnceRuntimeCompilationFeature.java
++++ b/substratevm/src/com.oracle.svm.graal/src/com/oracle/svm/graal/hosted/ParseOnceRuntimeCompilationFeature.java
+@@ -70,7 +70,6 @@ import org.graalvm.compiler.phases.common.IterativeConditionalEliminationPhase;
+ import org.graalvm.compiler.phases.tiers.HighTierContext;
+ import org.graalvm.compiler.phases.util.Providers;
+ import org.graalvm.compiler.printer.GraalDebugHandlersFactory;
+-import org.graalvm.compiler.truffle.compiler.phases.DeoptimizeOnExceptionPhase;
+ import org.graalvm.compiler.word.WordTypes;
+ import org.graalvm.nativeimage.ImageSingletons;
+ import org.graalvm.nativeimage.hosted.Feature;
+@@ -764,9 +763,6 @@ public class ParseOnceRuntimeCompilationFeature extends RuntimeCompilationFeatur
+ 
+                 CanonicalizerPhase canonicalizer = CanonicalizerPhase.create();
+                 canonicalizer.apply(graph, analysisProviders);
+-                if (deoptimizeOnExceptionPredicate != null) {
+-                    new DeoptimizeOnExceptionPhase(deoptimizeOnExceptionPredicate).apply(graph);
+-                }
+                 new ConvertDeoptimizeToGuardPhase(canonicalizer).apply(graph, analysisProviders);
+ 
+             } catch (Throwable ex) {

@@ -109,6 +109,7 @@ jobs:
         path: mandrel-java17-linux-amd64.tar.gz
     - name: Build Mandrel JDK with tarxz suffix
       run: |
+        git -C ${MANDREL_REPO} checkout .
         ${JAVA_HOME}/bin/java -ea build.java --mx-home ${MX_HOME} --mandrel-repo ${MANDREL_REPO} --mandrel-version "${MANDREL_VERSION}" --archive-suffix tarxz --skip-clean --skip-java --skip-native
         export MANDREL_VERSION_UNTIL_SPACE="$( echo ${MANDREL_VERSION} | sed -e 's/\([^ ]*\).*/\1/;t' )"
         export ARCHIVE_NAME="mandrel-java17-linux-amd64-${MANDREL_VERSION_UNTIL_SPACE}.tarxz"
@@ -283,6 +284,7 @@ jobs:
         --maven-repo-id myRepo \
         --maven-url "file:///tmp/myRepo" \
         --mandrel-home temp-build
+        git -C ${MANDREL_REPO} checkout .
         # Build the native bits
         ./temp-build/bin/java -ea build.java \
         --verbose \
