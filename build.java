@@ -1009,7 +1009,7 @@ class Mx
     private static Tasks.Exec execTask(List<String> args, Path directory, EnvVar... envVars)
     {
         final EnvVar[] mxEnvVars = new EnvVar[envVars.length + 1];
-        mxEnvVars[0] = new EnvVar("MX_PYTHON", "python");
+        mxEnvVars[0] = new EnvVar("MX_PYTHON", Python.get());
         System.arraycopy(envVars, 0, mxEnvVars, 1, envVars.length);
         return Tasks.Exec.of(args, directory, mxEnvVars);
     }
@@ -1780,12 +1780,6 @@ final class Check
 
     static void checkMx() throws IOException
     {
-        final Process p = new ProcessBuilder("python", "--version").redirectErrorStream(true).start();
-        try (InputStream is = p.getInputStream()) {
-            if(!(new String(is.readAllBytes(), StandardCharsets.UTF_8)).contains("Python 3")) {
-                throw new RuntimeException("python command must point to Python 3");
-            }
-        }
         final Options options = Options.from(Args.read("--maven-version-suffix", ".redhat-00001"));
         final RecordingOperatingSystem os = new RecordingOperatingSystem();
         final Tasks.Exec.Effects exec = new Tasks.Exec.Effects(os::record);
@@ -1850,4 +1844,15 @@ final class Check
             tasks.remove();
         }
     }
+}
+
+final class Python {
+
+    static String get()
+    {
+        // Use MX_PYTHON if set, otherwise use 'python'
+        String mxPython = System.getenv("MX_PYTHON");
+        return mxPython == null ? "python" : mxPython;
+    }
+
 }
