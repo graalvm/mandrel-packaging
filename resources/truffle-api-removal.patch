@@ -23,15 +23,7 @@ index cd1a158934c..bb2d31a7569 100644
      base_args += ['-H:Path=' + svmbuild_dir()]
      if mx.get_opts().verbose:
          base_args += ['--verbose']
-@@ -1057,7 +1057,7 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
- ))
- 
- # GR-34811
--llvm_supported = not (mx.is_windows() or (mx.is_darwin() and mx.get_arch() == "aarch64"))
-+llvm_supported = False
- if llvm_supported:
-     mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
-         suite=suite,
+
 diff --git a/substratevm/src/com.oracle.svm.driver/src/com/oracle/svm/driver/NativeImage.java b/substratevm/src/com.oracle.svm.driver/src/com/oracle/svm/driver/NativeImage.java
 index c10b42d7da8..23932800490 100644
 --- a/substratevm/src/com.oracle.svm.driver/src/com/oracle/svm/driver/NativeImage.java
