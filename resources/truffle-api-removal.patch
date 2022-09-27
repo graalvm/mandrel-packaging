@@ -49,14 +49,14 @@ index 17cab5d9d6b..8ceba282e2c 100644
  import org.graalvm.nativeimage.ImageSingletons;
  import org.graalvm.nativeimage.hosted.Feature;
 @@ -557,9 +556,6 @@ public final class GraalFeature implements Feature {
-
+ 
                  CanonicalizerPhase canonicalizer = CanonicalizerPhase.create();
                  canonicalizer.apply(graph, hostedProviders);
 -                if (deoptimizeOnExceptionPredicate != null) {
 -                    new DeoptimizeOnExceptionPhase(deoptimizeOnExceptionPredicate).apply(graph);
 -                }
                  new ConvertDeoptimizeToGuardPhase(canonicalizer).apply(graph, hostedProviders);
-
+ 
                  graphEncoder.prepare(graph);
 diff --git a/substratevm/src/com.oracle.svm.graal/src/com/oracle/svm/graal/meta/RuntimeCodeInstaller.java b/substratevm/src/com.oracle.svm.graal/src/com/oracle/svm/graal/meta/RuntimeCodeInstaller.java
 index 292e18f7c64..737072594bd 100644
@@ -78,7 +78,7 @@ index 292e18f7c64..737072594bd 100644
 +        this.tier = 1;
          this.debug = new DebugContext.Builder(RuntimeOptionValues.singleton()).build();
      }
-
+ 
 diff --git a/substratevm/src/com.oracle.svm.graal/src/com/oracle/svm/graal/isolated/IsolatedCodeInstallBridge.java b/substratevm/src/com.oracle.svm.graal/src/com/oracle/svm/graal/isolated/IsolatedCodeInstallBridge.java
 index e1bacdbc940..81ad2533f74 100644
 --- a/substratevm/src/com.oracle.svm.graal/src/com/oracle/svm/graal/isolated/IsolatedCodeInstallBridge.java
@@ -86,13 +86,13 @@ index e1bacdbc940..81ad2533f74 100644
 @@ -24,9 +24,6 @@
   */
  package com.oracle.svm.graal.isolated;
-
+ 
 -import org.graalvm.compiler.truffle.common.CompilableTruffleAST;
 -import org.graalvm.compiler.truffle.common.OptimizedAssumptionDependency;
 -
  import com.oracle.svm.core.deopt.SubstrateInstalledCode;
  import com.oracle.svm.core.util.VMError;
-
+ 
 @@ -37,7 +34,7 @@ import jdk.vm.ci.code.InstalledCode;
   * compilation. It does not implement {@link InstalledCode} or {@link OptimizedAssumptionDependency}
   * in any meaningful way.
@@ -101,11 +101,11 @@ index e1bacdbc940..81ad2533f74 100644
 +public final class IsolatedCodeInstallBridge extends InstalledCode {
      private final ClientHandle<? extends SubstrateInstalledCode.Factory> factoryHandle;
      private ClientHandle<? extends SubstrateInstalledCode> installedCodeHandle;
-
+ 
 @@ -87,23 +84,8 @@ public final class IsolatedCodeInstallBridge extends InstalledCode implements Op
          throw VMError.shouldNotReachHere(DO_NOT_CALL_REASON);
      }
-
+ 
 -    @Override
 -    public void onAssumptionInvalidated(Object source, CharSequence reason) {
 -        throw VMError.shouldNotReachHere(DO_NOT_CALL_REASON);
