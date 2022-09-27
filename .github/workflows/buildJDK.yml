@@ -3,11 +3,15 @@ on:
     paths:
       - 'build.java'
       - '.github/workflows/buildJDK.yml'
+      - 'resources/truffle-api-removal.patch'
+      - 'resources/mandrel-packaging-wrapper.patch'
   pull_request:
     types: [opened, synchronize, reopened, ready_for_review]
     paths:
       - 'build.java'
       - '.github/workflows/buildJDK.yml'
+      - 'resources/truffle-api-removal.patch'
+      - 'resources/mandrel-packaging-wrapper.patch'
 
 env:
   MX_GIT_CACHE: refcache
