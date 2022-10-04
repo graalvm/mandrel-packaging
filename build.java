@@ -104,8 +104,8 @@ public class build
 
             logger.debugf("Copy native-image...");
             FileSystem.copy(mandrelRepo.resolve(
-                    Path.of("sdk", "mxbuild", PLATFORM, IS_WINDOWS ? "native-image.exe.image-bash" : "native-image.image-bash",
-                            IS_WINDOWS ? "native-image.cmd" : "native-image")), nativeImage);
+                Path.of("sdk", "mxbuild", PLATFORM, IS_WINDOWS ? "native-image.exe.image-bash" : "native-image.image-bash",
+                    IS_WINDOWS ? "native-image.cmd" : "native-image")), nativeImage);
         }
 
         if (!options.skipNative)
@@ -152,11 +152,11 @@ public class build
                     reporterchelperSource = Path.of("substratevm", "mxbuild", platformAndJDK, "com.oracle.svm.native.reporterchelper", ARCH, "reporterchelper.dll");
                 }
                 FileSystem.copy(mandrelRepo.resolve(libchelperSource),
-                        mandrelHome.resolve(Path.of("lib", "svm", "clibraries", PLATFORM, "libchelper.lib")));
+                    mandrelHome.resolve(Path.of("lib", "svm", "clibraries", PLATFORM, "libchelper.lib")));
                 FileSystem.copy(mandrelRepo.resolve(jvmlibSource),
-                        mandrelHome.resolve(Path.of("lib", "svm", "clibraries", PLATFORM, "jvm.lib")));
+                    mandrelHome.resolve(Path.of("lib", "svm", "clibraries", PLATFORM, "jvm.lib")));
                 FileSystem.copy(mandrelRepo.resolve(reporterchelperSource),
-                        mandrelHome.resolve(Path.of("lib", "svm", "builder", "lib", "reporterchelper.dll")));
+                    mandrelHome.resolve(Path.of("lib", "svm", "builder", "lib", "reporterchelper.dll")));
             }
             else
             {
@@ -176,18 +176,18 @@ public class build
                     reporterchelperSource = Path.of("substratevm", "mxbuild", platformAndJDK, "com.oracle.svm.native.reporterchelper", ARCH, "libreporterchelper.so");
                 }
                 FileSystem.copy(mandrelRepo.resolve(libchelperSource),
-                        mandrelHome.resolve(Path.of("lib", "svm", "clibraries", PLATFORM, "liblibchelper.a")));
+                    mandrelHome.resolve(Path.of("lib", "svm", "clibraries", PLATFORM, "liblibchelper.a")));
                 FileSystem.copy(mandrelRepo.resolve(libjvmSource),
-                        mandrelHome.resolve(Path.of("lib", "svm", "clibraries", PLATFORM, "libjvm.a")));
+                    mandrelHome.resolve(Path.of("lib", "svm", "clibraries", PLATFORM, "libjvm.a")));
                 FileSystem.copy(mandrelRepo.resolve(reporterchelperSource),
-                        mandrelHome.resolve(Path.of("lib", "svm", "builder", "lib", "libreporterchelper.so")));
+                    mandrelHome.resolve(Path.of("lib", "svm", "builder", "lib", "libreporterchelper.so")));
             }
             // We don't create symlink on Windows, See https://github.com/graalvm/mandrel-packaging/pull/71#discussion_r517268470
             if (IS_WINDOWS)
             {
                 // exe_link_template.cmd: DOS batch file, ASCII text, with CRLF line terminators
                 final String nativeImageCmd = Files.readString(mandrelRepo.resolve(
-                    Path.of("sdk", "mx.sdk", "vm", "exe_link_template.cmd")), StandardCharsets.US_ASCII)
+                        Path.of("sdk", "mx.sdk", "vm", "exe_link_template.cmd")), StandardCharsets.US_ASCII)
                     .replace("<target>", "..\\lib\\svm\\bin\\native-image.cmd");
                 Files.writeString(mandrelHome.resolve(
                     Path.of("bin", "native-image.cmd")), nativeImageCmd, StandardCharsets.US_ASCII, StandardOpenOption.CREATE_NEW);
@@ -304,9 +304,9 @@ public class build
                 logger.debugf("launcherMatcher.group(1): %s", launcherMatcher.group(1));
                 logger.debugf("launcherMatcher.group(2): %s", launcherMatcher.group(2));
                 String launcherLine = launcherMatcher.group(1) +
-                        " -Dorg.graalvm.version=\"" + mandrelVersion + "\"" +
-                        " -Dorg.graalvm.config=\"Mandrel Distribution\"" +
-                        launcherMatcher.group(2);
+                    " -Dorg.graalvm.version=\"" + mandrelVersion + "\"" +
+                    " -Dorg.graalvm.config=\"Mandrel Distribution\"" +
+                    launcherMatcher.group(2);
                 // Drop truffle module related parts
                 launcherLine = launcherLine.replace("org.graalvm.truffle,", "")
                     .replace("%location%\\..\\..\\truffle\\truffle-api.jar:", "")
@@ -541,10 +541,11 @@ class SequentialBuild
         final Path resourcesPath;
         if (options.mandrelPackagingHome == null)
         {
-            resourcesPath = fs.workingDir().resolve(Path.of("resources" ));
-        } else
+            resourcesPath = fs.workingDir().resolve(Path.of("resources"));
+        }
+        else
         {
-            resourcesPath = Path.of(options.mandrelPackagingHome,"resources");
+            resourcesPath = Path.of(options.mandrelPackagingHome, "resources");
         }
         exec.exec.accept(Tasks.Exec.of(List.of("git", "apply", resourcesPath.resolve("truffle-api-removal.patch").toString()), fs.mandrelRepo()));
         Mx.build(options, exec, replace, fs.mxHome(), fs.mandrelRepo(), os.javaHome());
@@ -745,16 +746,16 @@ class Mx
     static final List<BuildArgs> BUILD_JAVA_STEPS = List.of(
         BuildArgs.of("--no-native", "--dependencies", "SVM,SVM_DRIVER,SVM_AGENT,SVM_DIAGNOSTICS_AGENT")
         , BuildArgs.of("--only",
-                build.IS_WINDOWS ?
-                        "native-image.exe.image-bash," +
-                                "native-image-agent-library_native-image.properties," +
-                                "native-image-launcher_native-image.properties," +
-                                "native-image-diagnostics-agent-library_native-image.properties"
-                        :
-                        "native-image.image-bash," +
-                                "native-image-agent-library_native-image.properties," +
-                                "native-image-launcher_native-image.properties," +
-                                "native-image-diagnostics-agent-library_native-image.properties")
+            build.IS_WINDOWS ?
+                "native-image.exe.image-bash," +
+                    "native-image-agent-library_native-image.properties," +
+                    "native-image-launcher_native-image.properties," +
+                    "native-image-diagnostics-agent-library_native-image.properties"
+                :
+                "native-image.image-bash," +
+                    "native-image-agent-library_native-image.properties," +
+                    "native-image-launcher_native-image.properties," +
+                    "native-image-diagnostics-agent-library_native-image.properties")
     );
 
     static final List<BuildArgs> BUILD_NATIVE_STEPS = List.of(
@@ -773,7 +774,8 @@ class Mx
     {
         version = new MxVersion(os.exec(Mx.mxversion(fs.mxHome()), true).get(0));
 
-        if (MxVersion.mx5_313_0.compareTo(version) > 0 ) {
+        if (MxVersion.mx5_313_0.compareTo(version) > 0)
+        {
             mxDistDir = new String[]{"mxbuild", "dists", PathFinder.JDK_NUMBER_DIRECTORY};
             mxbuildDir = new String[]{"mxbuild"};
         }
@@ -791,36 +793,36 @@ class Mx
 
 
         artifacts = Map.ofEntries(
-                new SimpleEntry<>("org.graalvm.sdk:graal-sdk.jar",
-                        new Path[]{sdkDistPath.resolve("graal-sdk.jar"), Path.of("lib", "jvmci", "graal-sdk.jar")}),
-                new SimpleEntry<>("org.graalvm.nativeimage:svm.jar",
-                        new Path[]{substrateDistPath.resolve("svm.jar"), Path.of("lib", "svm", "builder", "svm.jar")}),
-                new SimpleEntry<>("org.graalvm.nativeimage:native-image-base.jar",
-                        new Path[]{substrateDistPath.resolve("native-image-base.jar"), Path.of("lib", "svm", "builder", "native-image-base.jar")}),
-                new SimpleEntry<>("org.graalvm.nativeimage:pointsto.jar",
-                        new Path[]{substrateDistPath.resolve("pointsto.jar"), Path.of("lib", "svm", "builder", "pointsto.jar")}),
-                new SimpleEntry<>("org.graalvm.nativeimage:library-support.jar",
-                        new Path[]{substrateDistPath.resolve("library-support.jar"), Path.of("lib", "svm", "library-support.jar")}),
-                new SimpleEntry<>("org.graalvm.compiler:compiler.jar",
-                        new Path[]{compilerDistPath.resolve("graal.jar"), Path.of("lib", "jvmci", "graal.jar")}),
-                new SimpleEntry<>("org.graalvm.nativeimage:objectfile.jar",
-                        new Path[]{substrateDistPath.resolve("objectfile.jar"), Path.of("lib", "svm", "builder", "objectfile.jar")}),
-                new SimpleEntry<>("org.graalvm.nativeimage:svm-driver.jar",
-                        new Path[]{substrateDistPath.resolve("svm-driver.jar"), Path.of("lib", "graalvm", "svm-driver.jar")}),
-                new SimpleEntry<>("org.graalvm.nativeimage:jvmti-agent-base.jar",
-                        new Path[]{substrateDistPath.resolve("jvmti-agent-base.jar"), Path.of("lib", "graalvm", "jvmti-agent-base.jar")}),
-                new SimpleEntry<>("org.graalvm.nativeimage:svm-agent.jar",
-                        new Path[]{substrateDistPath.resolve("svm-agent.jar"), Path.of("lib", "graalvm", "svm-agent.jar")}),
-                new SimpleEntry<>("org.graalvm.nativeimage:svm-diagnostics-agent.jar",
-                        new Path[]{substrateDistPath.resolve("svm-diagnostics-agent.jar"), Path.of("lib", "graalvm", "svm-diagnostics-agent.jar")}),
-                new SimpleEntry<>("org.graalvm.nativeimage:svm-configure.jar",
-                        new Path[]{substrateDistPath.resolve("svm-configure.jar"), Path.of("lib", "graalvm", "svm-configure.jar")})
+            new SimpleEntry<>("org.graalvm.sdk:graal-sdk.jar",
+                new Path[]{sdkDistPath.resolve("graal-sdk.jar"), Path.of("lib", "jvmci", "graal-sdk.jar")}),
+            new SimpleEntry<>("org.graalvm.nativeimage:svm.jar",
+                new Path[]{substrateDistPath.resolve("svm.jar"), Path.of("lib", "svm", "builder", "svm.jar")}),
+            new SimpleEntry<>("org.graalvm.nativeimage:native-image-base.jar",
+                new Path[]{substrateDistPath.resolve("native-image-base.jar"), Path.of("lib", "svm", "builder", "native-image-base.jar")}),
+            new SimpleEntry<>("org.graalvm.nativeimage:pointsto.jar",
+                new Path[]{substrateDistPath.resolve("pointsto.jar"), Path.of("lib", "svm", "builder", "pointsto.jar")}),
+            new SimpleEntry<>("org.graalvm.nativeimage:library-support.jar",
+                new Path[]{substrateDistPath.resolve("library-support.jar"), Path.of("lib", "svm", "library-support.jar")}),
+            new SimpleEntry<>("org.graalvm.compiler:compiler.jar",
+                new Path[]{compilerDistPath.resolve("graal.jar"), Path.of("lib", "jvmci", "graal.jar")}),
+            new SimpleEntry<>("org.graalvm.nativeimage:objectfile.jar",
+                new Path[]{substrateDistPath.resolve("objectfile.jar"), Path.of("lib", "svm", "builder", "objectfile.jar")}),
+            new SimpleEntry<>("org.graalvm.nativeimage:svm-driver.jar",
+                new Path[]{substrateDistPath.resolve("svm-driver.jar"), Path.of("lib", "graalvm", "svm-driver.jar")}),
+            new SimpleEntry<>("org.graalvm.nativeimage:jvmti-agent-base.jar",
+                new Path[]{substrateDistPath.resolve("jvmti-agent-base.jar"), Path.of("lib", "graalvm", "jvmti-agent-base.jar")}),
+            new SimpleEntry<>("org.graalvm.nativeimage:svm-agent.jar",
+                new Path[]{substrateDistPath.resolve("svm-agent.jar"), Path.of("lib", "graalvm", "svm-agent.jar")}),
+            new SimpleEntry<>("org.graalvm.nativeimage:svm-diagnostics-agent.jar",
+                new Path[]{substrateDistPath.resolve("svm-diagnostics-agent.jar"), Path.of("lib", "graalvm", "svm-diagnostics-agent.jar")}),
+            new SimpleEntry<>("org.graalvm.nativeimage:svm-configure.jar",
+                new Path[]{substrateDistPath.resolve("svm-configure.jar"), Path.of("lib", "graalvm", "svm-configure.jar")})
         );
 
         macroPaths = Map.ofEntries(
-                new SimpleEntry<>("native-image-agent-library", sdkBuildPath.resolve(Path.of("native-image.properties", "native-image-agent-library"))),
-                new SimpleEntry<>("native-image-launcher", sdkBuildPath.resolve(Path.of("native-image.properties", "native-image-launcher"))),
-                new SimpleEntry<>("native-image-diagnostics-agent-library", sdkBuildPath.resolve(Path.of("native-image.properties", "native-image-diagnostics-agent-library")))
+            new SimpleEntry<>("native-image-agent-library", sdkBuildPath.resolve(Path.of("native-image.properties", "native-image-agent-library"))),
+            new SimpleEntry<>("native-image-launcher", sdkBuildPath.resolve(Path.of("native-image.properties", "native-image-launcher"))),
+            new SimpleEntry<>("native-image-diagnostics-agent-library", sdkBuildPath.resolve(Path.of("native-image.properties", "native-image-diagnostics-agent-library")))
         );
     }
 
@@ -1345,7 +1347,7 @@ class MxVersion implements Comparable<MxVersion>
     final int patch;
     static final MxVersion mx5_313_0 = new MxVersion("5.313.0");
 
-    MxVersion (String version)
+    MxVersion(String version)
     {
         String[] split = version.split("\\.");
         if (split.length != 3)
@@ -1824,7 +1826,8 @@ final class Check
     }
 }
 
-final class Python {
+final class Python
+{
 
     static String get()
     {
