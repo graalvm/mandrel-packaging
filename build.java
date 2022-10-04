@@ -3,7 +3,6 @@ import java.io.File;
 import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
-import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.FileSystems;
 import java.nio.file.FileVisitOption;
@@ -372,6 +371,7 @@ class Options
     final String mavenURL;
     final String mandrelRepo;
     final String mandrelHome;
+    final String mandrelPackagingHome;
     final String mxHome;
     final List<Dependency> dependencies;
     final boolean skipClean;
@@ -391,6 +391,7 @@ class Options
         , String mavenURL
         , String mandrelRepo
         , String mandrelHome
+        , String mandrelPackagingHome
         , String mxHome
         , List<Dependency> dependencies
         , boolean skipClean
@@ -410,6 +411,7 @@ class Options
         this.mavenURL = mavenURL;
         this.mandrelRepo = mandrelRepo;
         this.mandrelHome = mandrelHome;
+        this.mandrelPackagingHome = mandrelPackagingHome;
         this.mxHome = mxHome;
         this.dependencies = dependencies;
         this.skipClean = skipClean;
@@ -433,6 +435,7 @@ class Options
         // Mandrel related
         final String mandrelVersion = optional("mandrel-version", args);
         final String mandrelHome = optional("mandrel-home", args);
+        final String mandrelPackagingHome = optional("mandrel-packaging-home", args);
         final String mandrelRepo = optional("mandrel-repo", args);
 
         final boolean verbose = args.containsKey("verbose");
@@ -462,6 +465,7 @@ class Options
             , mavenURL
             , mandrelRepo
             , mandrelHome
+            , mandrelPackagingHome
             , mxHome
             , dependencies
             , skipClean
@@ -534,15 +538,21 @@ class SequentialBuild
         final Tasks.Exec.Effects exec = new Tasks.Exec.Effects(task -> os.exec(task, false));
         final Tasks.FileReplace.Effects replace = Tasks.FileReplace.Effects.ofSystem();
         LOG.debugf("Patch sources to remove dependency on truffle-api.jar ...");
-        String patchPath = fs.workingDir().resolve(Path.of("resources", "truffle-api-removal.patch")).toString();
-        exec.exec.accept(Tasks.Exec.of(List.of("git", "apply", patchPath), fs.mandrelRepo()));
+        final Path resourcesPath;
+        if (options.mandrelPackagingHome == null)
+        {
+            resourcesPath = fs.workingDir().resolve(Path.of("resources" ));
+        } else
+        {
+            resourcesPath = Path.of(options.mandrelPackagingHome,"resources");
+        }
+        exec.exec.accept(Tasks.Exec.of(List.of("git", "apply", resourcesPath.resolve("truffle-api-removal.patch").toString()), fs.mandrelRepo()));
         Mx.build(options, exec, replace, fs.mxHome(), fs.mandrelRepo(), os.javaHome());
         if (options.mavenDeploy && !options.skipJava)
         {
             // Create wrapper jar file for archiving resources (e.g. native image launcher script)
             LOG.debugf("Patch sdk suite.py ...");
-            patchPath = fs.workingDir().resolve(Path.of("resources", "mandrel-packaging-wrapper.patch")).toString();
-            exec.exec.accept(Tasks.Exec.of(List.of("git", "apply", patchPath), fs.mandrelRepo()));
+            exec.exec.accept(Tasks.Exec.of(List.of("git", "apply", resourcesPath.resolve("mandrel-packaging-wrapper.patch").toString()), fs.mandrelRepo()));
             LOG.debugf("Build Mandrel's wrapper jar...");
             Mx.BuildArgs buildArgs = Mx.BuildArgs.of("--only", "MANDREL_PACKAGING_WRAPPER");
             exec.exec.accept(Mx.mxbuild(options, fs.mxHome(), fs.mandrelRepo(), os.javaHome()).apply(buildArgs));
