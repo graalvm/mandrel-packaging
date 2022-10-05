@@ -1,6 +1,4 @@
-import java.io.BufferedReader;
 import java.io.File;
-import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -27,6 +25,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Queue;
+import java.util.Scanner;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 import java.util.function.Function;
@@ -37,6 +36,7 @@ import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
+import static java.nio.charset.StandardCharsets.UTF_8;
 import static java.nio.file.StandardCopyOption.REPLACE_EXISTING;
 
 public class build
@@ -312,7 +312,7 @@ public class build
                 break;
             }
         }
-        Files.write(nativeImage, lines, StandardCharsets.UTF_8);
+        Files.write(nativeImage, lines, UTF_8);
     }
 }
 
@@ -1630,6 +1630,7 @@ class OperatingSystem
     List<String> exec(Tasks.Exec task, boolean getOutput)
     {
         LOG.debugf("Execute %s in %s with environment variables %s", task.args, task.directory, task.envVars);
+        File outputFile = null;
         try
         {
             List<String> s = new ArrayList<>();
@@ -1648,28 +1649,37 @@ class OperatingSystem
                     .put(envVar.name, envVar.value)
             );
 
-            File outputFile = null;
             if (getOutput)
             {
                 outputFile = File.createTempFile("mandrel-builder-exec-output", "txt");
                 outputFile.deleteOnExit();
+                processBuilder.redirectErrorStream(true);
                 processBuilder.redirectOutput(outputFile);
             }
-            Process process = processBuilder.start();
-
+            final Process process = processBuilder.start();
             if (process.waitFor() != 0)
             {
+                if (outputFile != null && outputFile.exists() && Logger.debug)
+                {
+                    try (Scanner sc = new Scanner(outputFile.toPath(), UTF_8))
+                    {
+                        while (sc.hasNextLine())
+                        {
+                            LOG.debugf(sc.nextLine());
+                        }
+                    }
+                    catch (IOException ex)
+                    {
+                        throw new RuntimeException(ex);
+                    }
+                }
                 throw new RuntimeException(
                     "Failed, exit code: " + process.exitValue()
                 );
             }
-
             if (getOutput)
             {
-                final BufferedReader bufferedReader = new BufferedReader(new FileReader(outputFile));
-                List<String> result = bufferedReader.lines().collect(Collectors.toList());
-                bufferedReader.close();
-                return result;
+                return Files.readAllLines(outputFile.toPath());
             }
             return null;
         }
