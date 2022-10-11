@@ -102,7 +102,7 @@ index e1bacdbc940..81ad2533f74 100644
      private final ClientHandle<? extends SubstrateInstalledCode.Factory> factoryHandle;
      private ClientHandle<? extends SubstrateInstalledCode> installedCodeHandle;
  
-@@ -87,23 +84,8 @@ public final class IsolatedCodeInstallBridge extends InstalledCode implements Op
+@@ -87,19 +84,9 @@ public final class IsolatedCodeInstallBridge extends InstalledCode implements Op
          throw VMError.shouldNotReachHere(DO_NOT_CALL_REASON);
      }
  
@@ -115,14 +115,10 @@ index e1bacdbc940..81ad2533f74 100644
      public Object executeVarargs(Object... args) {
          throw VMError.shouldNotReachHere(DO_NOT_CALL_REASON);
      }
--
+ 
 -    @Override
 -    public CompilableTruffleAST getCompilable() {
 -        throw VMError.shouldNotReachHere(DO_NOT_CALL_REASON);
 -    }
 -
--    @Override
--    public boolean soleExecutionEntryPoint() {
--        throw VMError.shouldNotReachHere(DO_NOT_CALL_REASON);
--    }
  }
