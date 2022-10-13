@@ -2,10 +2,9 @@ package jenkins.jobs.builds
 
 final Class Constants = new GroovyClassLoader(getClass().getClassLoader())
         .parseClass(readFileFromWorkspace("jenkins/jobs/builds/Constants.groovy"))
-matrixJob('mandrel-22-2-windows-build-matrix') {
-    disabled()
+matrixJob('mandrel-22-3-linux-build-matrix') {
     axes {
-        labelExpression('LABEL', ['w2k19'])
+        labelExpression('LABEL', ['el8_aarch64', 'el8'])
         text('JDK_VERSION',
                 '11',
                 '17'
@@ -15,8 +14,8 @@ matrixJob('mandrel-22-2-windows-build-matrix') {
                 'ga'
         )
     }
-    displayName('Windows Build Matrix :: 22.2')
-    description('Windows build matrix for 22.2 branch.')
+    displayName('Linux Build Matrix :: 22.3')
+    description('Linux build for 22.3 branch.')
     logRotator {
         numToKeep(10)
     }
@@ -32,7 +31,7 @@ matrixJob('mandrel-22-2-windows-build-matrix') {
         )
         stringParam(
                 'BRANCH_OR_TAG',
-                'mandrel/22.2',
+                'mandrel/22.3',
                 'e.g. your PR branch or a specific tag.'
         )
         choiceParam('PACKAGING_REPOSITORY', Constants.PACKAGING_REPOSITORY, 'Mandrel packaging scripts.')
@@ -46,12 +45,12 @@ matrixJob('mandrel-22-2-windows-build-matrix') {
         )
         stringParam(
                 'PACKAGING_REPOSITORY_BRANCH_OR_TAG',
-                '22.2',
+                '22.3',
                 'e.g. master if you use heads or some tag if you use tags.'
         )
         stringParam(
                 'MANDREL_VERSION_SUBSTRING',
-                '22.2-SNAPSHOT',
+                '22.3-SNAPSHOT',
                 'It must not contain spaces as it is used in tarball name too.'
         )
     }
@@ -79,9 +78,9 @@ matrixJob('mandrel-22-2-windows-build-matrix') {
             remote {
                 url('https://github.com/graalvm/mx.git')
             }
-            branches('refs/tags/6.0.1')
+            branches('refs/tags/6.9.7')
             extensions {
-                localBranch('6.0.1')
+                localBranch('6.9.7')
                 relativeTargetDirectory('mx')
             }
         }
@@ -89,17 +88,18 @@ matrixJob('mandrel-22-2-windows-build-matrix') {
     triggers {
         scm('H H/2 * * *')
         cron {
-            spec('0 2 * * 5')
+            spec('0 2 * * 2,5')
         }
     }
     steps {
-        batchFile {
-            command(Constants.WINDOWS_BUILD_CMD)
+        shell {
+            command(Constants.LINUX_BUILD_CMD)
             unstableReturn(1)
         }
     }
     publishers {
-        archiveArtifacts('mandrel*.zip,MANDREL.md,mandrel*.sha1,mandrel*.sha256,jdk*/release')
+        buildDescription(/^MANDREL_DESCRIBE=(.*)$/, '\\1')
+        archiveArtifacts('mandrel*.tar.gz,MANDREL.md,mandrel*.sha1,mandrel*.sha256,jdk*/release')
         wsCleanup()
         postBuildCleanup {
             cleaner {
@@ -120,7 +120,7 @@ matrixJob('mandrel-22-2-windows-build-matrix') {
             }
         }
         downstreamParameterized {
-            trigger(['mandrel-windows-integration-tests']) {
+            trigger(['mandrel-linux-integration-tests']) {
                 condition('SUCCESS')
                 parameters {
                     predefinedProp('MANDREL_BUILD_NUMBER', '${BUILD_NUMBER}')
