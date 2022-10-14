@@ -51,10 +51,8 @@ class Constants {
     ''' + LINUX_BUILD_CMD
 
     static final String WINDOWS_BUILD_CMD = '''
-    setx MX_PYTHON C:\\Python39\\python.exe
-    set MX_PYTHON=C:\\Python39\\python.exe
-    REM https://github.com/graalvm/mandrel-packaging/pull/210#issuecomment-1003631204
-    mklink C:\\Python39\\python3.exe C:\\Python39\\python.exe
+    setx MX_PYTHON C:\\Python310\\python.exe
+    set MX_PYTHON=C:\\Python310\\python.exe
     set downloadCmd=^
     $wc = New-Object System.Net.WebClient;^
     $urls = @(;^
