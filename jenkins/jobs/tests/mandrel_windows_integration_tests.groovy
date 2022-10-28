@@ -33,10 +33,9 @@ matrixJob('mandrel-windows-integration-tests') {
     }
     combinationFilter(
             '!(' +
-                    'QUARKUS_VERSION.startsWith("2.2") && (' +
+                    'QUARKUS_VERSION.startsWith("2.7") && (' +
                     '   MANDREL_BUILD.contains("mandrel-master") || ' +
-                    '   MANDREL_BUILD.contains("mandrel-22") || ' +
-                    '   JDK_VERSION.contains("17")' +
+                    '   MANDREL_BUILD.contains("mandrel-22")' +
                     '))'
     )
     parameters {
