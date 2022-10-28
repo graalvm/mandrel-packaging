@@ -32,7 +32,7 @@ matrixJob('mandrel-linux-quarkus-tests') {
         }
     }
     combinationFilter(
-            '!(JDK_VERSION.contains("17") && QUARKUS_VERSION.contains("2.2"))'
+            '!(QUARKUS_VERSION.equals("main) && (MANDREL_BUILD.contains("mandrel-21") || JDK_VERSION.contains("11")))'
     )
     parameters {
         stringParam('QUARKUS_REPO', 'https://github.com/quarkusio/quarkus.git', 'Quarkus repository.')
