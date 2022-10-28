@@ -32,7 +32,7 @@ matrixJob('mandrel-windows-quarkus-tests') {
         }
     }
     combinationFilter(
-            '!(QUARKUS_VERSION.equals("main) && (MANDREL_BUILD.contains("mandrel-21") || JDK_VERSION.contains("11")))'
+            '!(QUARKUS_VERSION.equals("main") && (MANDREL_BUILD.contains("mandrel-21") || JDK_VERSION.contains("11")))'
     )
     parameters {
         stringParam('QUARKUS_REPO', 'https://github.com/quarkusio/quarkus.git', 'Quarkus repository.')
