@@ -1,13 +1,13 @@
 package jenkins.jobs.auxiliary
 
-final Class Constants = new GroovyClassLoader(getClass().getClassLoader())
-        .parseClass(readFileFromWorkspace("jenkins/jobs/builds/Constants.groovy"))
 matrixJob('mandrel-linux-maintenance') {
     axes {
         labelExpression('LABEL', [
             'karm-rhel8-x86-64',
             'rhel8-aarch64-vm-1',
             'rhel8-aarch64-vm-2',
+            'rhel8-aarch64-1',
+            'rhel8-aarch64-2',
             'rhel8-upstream-1',
             'rhel8-upstream-2',
             'rhel8-upstream-3',
@@ -22,6 +22,11 @@ matrixJob('mandrel-linux-maintenance') {
             spec('H H * * *')
         }
     }
+    wrappers {
+        timeout {
+            absolute(180)
+        }
+    }
     steps {
         shell {
             command('''
@@ -33,10 +38,9 @@ matrixJob('mandrel-linux-maintenance') {
             podman stop $(podman ps -a -q)
             podman rm $(podman ps -a -q)
             yes | podman system prune
-            set -e
-            sudo shutdown -r now
+            rm -rf /home/tester/jenkins/workspace/*
             ''')
-            unstableReturn(1)
+            unstableReturn(0)
         }
     }
 }
