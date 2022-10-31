@@ -140,6 +140,7 @@ class Constants {
     set downloadCommand= ^
         $c = New-Object System.Net.WebClient; ^
         $url = 'https://ci.modcluster.io/view/Mandrel/job/%MANDREL_BUILD%/JDK_VERSION=%JDK_VERSION%,JDK_RELEASE=%JDK_RELEASE%,LABEL=%LABEL%/%MANDREL_BUILD_NUMBER%/artifact/*zip*/archive.zip'; $file = 'archive.zip'; ^
+        Write-Host $url; ^
         $c.DownloadFile($url, $file);
     
     powershell -Command "%downloadCommand%"
