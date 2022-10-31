@@ -32,6 +32,10 @@ class Constants {
             '!mongodb-client,' +
             '!smallrye-opentracing'
 
+    static final String QUARKUS_MODULES_SUBSET_TESTS = '' +
+            'bouncycastle-jsse,' +
+            'bouncycastle'
+
     static final String LINUX_PREPARE_MANDREL = '''
     # Prepare Mandrel
     wget --quiet "https://ci.modcluster.io/view/Mandrel/job/${MANDREL_BUILD}/JDK_VERSION=${JDK_VERSION},JDK_RELEASE=${JDK_RELEASE},LABEL=${LABEL}/${MANDREL_BUILD_NUMBER}/artifact/*zip*/archive.zip"
