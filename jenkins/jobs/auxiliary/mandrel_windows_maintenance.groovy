@@ -26,8 +26,8 @@ matrixJob('mandrel-windows-maintenance') {
     steps {
         batchFile {
             command('''
-            powershell -c 'Remove-Item -Recurse -Force "C:\\Users\\Administrator\\AppData\\Local\\Temp\\*"'
-            powershell -c 'Remove-Item -Recurse -Force "C:\\workspace\\workspace\\*"'
+            powershell -c Remove-Item -Recurse -Force "C:\\Users\\Administrator\\AppData\\Local\\Temp\\*"
+            powershell -c Remove-Item -Recurse -Force "C:\\workspace\\workspace\\*"
             ''')
             unstableReturn(1)
         }
