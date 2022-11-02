@@ -508,7 +508,18 @@ class MandrelRelease implements Callable<Integer>
             final GHRepository repository = github.getRepository(REPOSITORY_NAME);
             final PagedIterable<GHMilestone> ghMilestones = repository.listMilestones(GHIssueState.OPEN);
             final String finalVersion = version.majorMinorMicroPico() + "-Final";
+
             final GHMilestone milestone = ghMilestones.toList().stream().filter(m -> m.getTitle().equals(finalVersion)).findAny().orElse(null);
+
+            if (milestone == null)
+            {
+                Log.error("No milestone titled " + version.majorMinorMicroPico() + "-Final! Can't produce changelog without it!");
+            }
+            if (suffix.equals("Final") && milestone.getOpenIssues() != 0)
+            {
+                Log.error("There are still open issues in milestone " + milestone.getTitle() + ". Please take care of them and try again.");
+            }
+
             final List<GHTag> tags = repository.listTags().toList();
 
             // Ensure that the tag exists
@@ -520,8 +531,6 @@ class MandrelRelease implements Callable<Integer>
 
             final String changelog = createChangelog(repository, milestone, tags);
 
-            manageMilestones(repository, ghMilestones, milestone);
-
             if (dryRun)
             {
                 Log.warn("Skipping release due to --dry-run");
@@ -529,6 +538,9 @@ class MandrelRelease implements Callable<Integer>
                 System.out.println(releaseMainBody(version, changelog, jdkVersionsUsed));
                 return;
             }
+
+            manageMilestones(repository, ghMilestones, milestone);
+
             final GHRelease ghRelease = repository.createRelease(tag)
                 .name("Mandrel " + version)
                 .prerelease(!suffix.equals("Final"))
@@ -798,14 +810,7 @@ class MandrelRelease implements Callable<Integer>
 
     private String createChangelog(GHRepository repository, GHMilestone milestone, List<GHTag> tags) throws IOException
     {
-        if (milestone == null)
-        {
-            Log.error("No milestone titled " + version.majorMinorMicroPico() + "-Final! Can't produce changelog without it!");
-        }
-        if (suffix.equals("Final") && milestone.getOpenIssues() != 0)
-        {
-            Log.error("There are still open issues in milestone " + milestone.getTitle() + ". Please take care of them and try again.");
-        }
+        assert milestone != null;
         Log.info("Getting merged PRs for " + milestone.getTitle() + " (" + milestone.getNumber() + ")");
         final Stream<GHPullRequest> mergedPRsInMilestone = repository.getPullRequests(GHIssueState.CLOSED).stream()
             .filter(pr -> includeInChangelog(pr, milestone));
@@ -840,7 +845,8 @@ class MandrelRelease implements Callable<Integer>
 
     private void manageMilestones(GHRepository repository, PagedIterable<GHMilestone> ghMilestones, GHMilestone milestone) throws IOException
     {
-        if (dryRun || !suffix.equals("Final"))
+        assert !dryRun : "Milestones should not be touched in dry runs";
+        if (!suffix.equals("Final"))
         {
             return;
         }
