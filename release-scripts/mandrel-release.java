@@ -117,22 +117,22 @@ class MandrelRelease implements Callable<Integer>
         // Prepare version
         if (!suffix.equals("Final") && !Pattern.compile("^(Alpha|Beta)\\d*$").matcher(suffix).find())
         {
-            error("Invalid version suffix : " + suffix);
+            Log.error("Invalid version suffix : " + suffix);
         }
 
         if (!Path.of(mandrelRepo).toFile().exists())
         {
-            error("Path " + mandrelRepo + " does not exist");
+            Log.error("Path " + mandrelRepo + " does not exist");
         }
 
         version = getCurrentVersion();
-        info("Current version is " + version);
+        Log.info("Current version is " + version);
         version.suffix = suffix; // TODO: if Alpha/Beta autobump suffix number?
 
         if (suffix.equals("Final"))
         {
             newVersion = version.getNewVersion();
-            info("New version will be " + newVersion.majorMinorMicroPico());
+            Log.info("New version will be " + newVersion.majorMinorMicroPico());
             developBranch = "develop/mandrel-" + newVersion;
         }
         releaseBranch = "release/mandrel-" + version;
@@ -170,12 +170,12 @@ class MandrelRelease implements Callable<Integer>
         {
             if (!git.getRepository().getBranch().equals(baseBranch))
             {
-                error("Please checkout " + baseBranch + " and try again!");
+                Log.error("Please checkout " + baseBranch + " and try again!");
             }
             final Status status = git.status().call();
             if (status.hasUncommittedChanges() || !status.getChanged().isEmpty())
             {
-                error("Status of branch " + baseBranch + " is not clean, aborting!");
+                Log.error("Status of branch " + baseBranch + " is not clean, aborting!");
             }
 
             maybeCreateRemote(git);
@@ -183,20 +183,20 @@ class MandrelRelease implements Callable<Integer>
             try
             {
                 git.checkout().setCreateBranch(true).setName(newBranch).setStartPoint(baseBranch).call();
-                info("Created new branch " + newBranch + " based on " + baseBranch);
+                Log.info("Created new branch " + newBranch + " based on " + baseBranch);
             }
             catch (RefAlreadyExistsException e)
             {
-                warn(e.getMessage());
+                Log.warn(e.getMessage());
                 gitCheckout(git, newBranch);
                 git.reset().setRef(baseBranch).setMode(ResetCommand.ResetType.HARD).call();
-                warn(newBranch + " reset (hard) to " + baseBranch);
+                Log.warn(newBranch + " reset (hard) to " + baseBranch);
             }
         }
         catch (IOException | GitAPIException | URISyntaxException e)
         {
             e.printStackTrace();
-            error(e.getMessage());
+            Log.error(e.getMessage());
         }
     }
 
@@ -207,18 +207,18 @@ class MandrelRelease implements Callable<Integer>
         RemoteConfig remote = getRemoteConfig(git);
         if (remote != null && remote.getURIs().stream().noneMatch(forkURI::equals))
         {
-            error("Remote " + REMOTE_NAME + " already exists and does not point to " + forkURL +
+            Log.error("Remote " + REMOTE_NAME + " already exists and does not point to " + forkURL +
                 "\nPlease remove with `git remote remove " + REMOTE_NAME + "` and try again.");
         }
         git.remoteAdd().setName(REMOTE_NAME).setUri(forkURI).call();
         remote = getRemoteConfig(git);
         if (remote != null && remote.getURIs().stream().anyMatch(forkURI::equals))
         {
-            info("Git remote " + REMOTE_NAME + " points to " + forkURL);
+            Log.info("Git remote " + REMOTE_NAME + " points to " + forkURL);
         }
         else
         {
-            error("Failed to add remote " + REMOTE_NAME + " pointing to " + forkURL);
+            Log.error("Failed to add remote " + REMOTE_NAME + " pointing to " + forkURL);
         }
     }
 
@@ -245,7 +245,7 @@ class MandrelRelease implements Callable<Integer>
             .map(path -> new File(path, "suite.py"))
             .filter(File::exists)
             .forEach(updater);
-        info("Updated suites");
+        Log.info("Updated suites");
     }
 
     /**
@@ -257,7 +257,7 @@ class MandrelRelease implements Callable<Integer>
     {
         try
         {
-            info("Marking " + suite.getPath());
+            Log.info("Marking " + suite.getPath());
             List<String> lines = Files.readAllLines(suite.toPath());
             final String pattern = "(.*\"release\" : )False(.*)";
             final Pattern releasePattern = Pattern.compile(pattern);
@@ -276,7 +276,7 @@ class MandrelRelease implements Callable<Integer>
         catch (IOException e)
         {
             e.printStackTrace();
-            error(e.getMessage());
+            Log.error(e.getMessage());
         }
     }
 
@@ -284,7 +284,7 @@ class MandrelRelease implements Callable<Integer>
     {
         try
         {
-            info("Updating " + suite.getPath());
+            Log.info("Updating " + suite.getPath());
             List<String> lines = Files.readAllLines(suite.toPath());
             final Pattern releasePattern = Pattern.compile("(.*\"release\" : )True(.*)");
             final Pattern versionPattern = Pattern.compile("(.*\"version\" : \")" + version.majorMinorMicroPico() + "(\".*)");
@@ -308,7 +308,7 @@ class MandrelRelease implements Callable<Integer>
         catch (IOException e)
         {
             e.printStackTrace();
-            error(e.getMessage());
+            Log.error(e.getMessage());
         }
     }
 
@@ -328,15 +328,15 @@ class MandrelRelease implements Callable<Integer>
             }
             final RevCommit commit = git.commit().setAll(true).setMessage(message).setSign(signCommits).call();
             final String author = commit.getAuthorIdent().getEmailAddress();
-            info("Changes commited");
+            Log.info("Changes commited");
             git.push().setForce(true).setRemote(REMOTE_NAME).setDryRun(dryRun).call();
             if (dryRun)
             {
-                warn("Changes not pushed to remote due to --dry-run being present");
+                Log.warn("Changes not pushed to remote due to --dry-run being present");
             }
             else
             {
-                info("Changes pushed to remote " + REMOTE_NAME);
+                Log.info("Changes pushed to remote " + REMOTE_NAME);
             }
             gitCheckout(git, baseBranch);
             return author;
@@ -344,7 +344,7 @@ class MandrelRelease implements Callable<Integer>
         catch (IOException | GitAPIException e)
         {
             e.printStackTrace();
-            error(e.getMessage());
+            Log.error(e.getMessage());
         }
         return null;
     }
@@ -352,7 +352,7 @@ class MandrelRelease implements Callable<Integer>
     private void gitCheckout(Git git, String baseBranch) throws GitAPIException
     {
         git.checkout().setName(baseBranch).call();
-        info("Checked out " + baseBranch);
+        Log.info("Checked out " + baseBranch);
     }
 
     private void openPR(String authorEmail)
@@ -364,7 +364,7 @@ class MandrelRelease implements Callable<Integer>
             final GHRepository repository = github.getRepository(REPOSITORY_NAME);
             if (dryRun)
             {
-                warn("Pull request creation skipped due to --dry-run being present");
+                Log.warn("Pull request creation skipped due to --dry-run being present");
                 return;
             }
 
@@ -439,12 +439,12 @@ class MandrelRelease implements Callable<Integer>
             }
             pullRequest.requestReviewers(reviewers);
 
-            info("Pull request " + pullRequest.getHtmlUrl() + " created");
+            Log.info("Pull request " + pullRequest.getHtmlUrl() + " created");
         }
         catch (IOException e)
         {
             e.printStackTrace();
-            error(e.getMessage());
+            Log.error(e.getMessage());
         }
     }
 
@@ -473,7 +473,7 @@ class MandrelRelease implements Callable<Integer>
         catch (IOException e)
         {
             e.printStackTrace();
-            error(e.getMessage());
+            Log.error(e.getMessage());
         }
         return null;
     }
@@ -489,11 +489,11 @@ class MandrelRelease implements Callable<Integer>
             }
             else
             {
-                error("At least one of --windows-job-build-number, --linux-job-build-number must be specified. Terminating.");
+                Log.error("At least one of --windows-job-build-number, --linux-job-build-number must be specified. Terminating.");
             }
             if (jdkVersionsUsed.size() != 2)
             {
-                warn("There are supposed to be 2 distinct JDK versions used, one for JDK 17 and one for JDK 11." +
+                Log.warn("There are supposed to be 2 distinct JDK versions used, one for JDK 17 and one for JDK 11." +
                     "This is unexpected: " + String.join(",", jdkVersionsUsed));
             }
         }
@@ -515,7 +515,7 @@ class MandrelRelease implements Callable<Integer>
             final String tag = "mandrel-" + version;
             if (tags.stream().noneMatch(x -> x.getName().equals(tag)))
             {
-                error("Please create tag " + tag + " and try again");
+                Log.error("Please create tag " + tag + " and try again");
             }
 
             final String changelog = createChangelog(repository, milestone, tags);
@@ -524,8 +524,8 @@ class MandrelRelease implements Callable<Integer>
 
             if (dryRun)
             {
-                warn("Skipping release due to --dry-run");
-                info("Release body would look like");
+                Log.warn("Skipping release due to --dry-run");
+                Log.info("Release body would look like");
                 System.out.println(releaseMainBody(version, changelog, jdkVersionsUsed));
                 return;
             }
@@ -536,13 +536,13 @@ class MandrelRelease implements Callable<Integer>
                 .draft(true)
                 .create();
             uploadAssets(version.toString(), ghRelease);
-            info("Created new draft release: " + ghRelease.getHtmlUrl());
-            info("Please review and publish!");
+            Log.info("Created new draft release: " + ghRelease.getHtmlUrl());
+            Log.info("Please review and publish!");
         }
         catch (IOException e)
         {
             e.printStackTrace();
-            error(e.getMessage());
+            Log.error(e.getMessage());
         }
     }
 
@@ -552,12 +552,12 @@ class MandrelRelease implements Callable<Integer>
         final Path destPath = Paths.get(downloadDir, url.getPath().substring(url.getPath().lastIndexOf('/') + 1));
         try (final InputStream inputStream = url.openStream())
         {
-            info("Downloading " + destPath.getFileName() + "...");
+            Log.info("Downloading " + destPath.getFileName() + "...");
             Files.copy(inputStream, destPath, StandardCopyOption.REPLACE_EXISTING);
         }
         catch (IOException e)
         {
-            error("Failed to download " + destPath.getFileName() + ", Error: " + e.getMessage());
+            Log.error("Failed to download " + destPath.getFileName() + ", Error: " + e.getMessage());
         }
     }
 
@@ -569,7 +569,7 @@ class MandrelRelease implements Callable<Integer>
             if (scanner.hasNext())
             {
                 final String c = scanner.next();
-                debug("URL: " + sourceURL + " file contents: " + c, verbose);
+                Log.debug("URL: " + sourceURL + " file contents: " + c, verbose);
                 final Matcher m = pattern.matcher(c);
                 if (m.matches())
                 {
@@ -577,13 +577,13 @@ class MandrelRelease implements Callable<Integer>
                 }
                 else
                 {
-                    warn("No match for pattern " + pattern + " found on " + sourceURL + ". This is likely an error.");
+                    Log.warn("No match for pattern " + pattern + " found on " + sourceURL + ". This is likely an error.");
                 }
             }
         }
         catch (IOException e)
         {
-            error("Failed to download " + sourceURL + ". Terminating." + e.getMessage());
+            Log.error("Failed to download " + sourceURL + ". Terminating." + e.getMessage());
         }
         return null;
     }
@@ -674,8 +674,8 @@ class MandrelRelease implements Callable<Integer>
         {
             if (!f.exists())
             {
-                warn("Archive \"" + f.getName() + "\" was not found. Skipping asset upload.");
-                warn("Please upload assets manually.");
+                Log.warn("Archive \"" + f.getName() + "\" was not found. Skipping asset upload.");
+                Log.warn("Please upload assets manually.");
                 return;
             }
         }
@@ -689,7 +689,7 @@ class MandrelRelease implements Callable<Integer>
             };
             for (File f : files)
             {
-                info("Uploading " + f.getName());
+                Log.info("Uploading " + f.getName());
                 if (f.getName().endsWith("tar.gz"))
                 {
                     ghRelease.uploadAsset(f, "application/gzip");
@@ -702,7 +702,7 @@ class MandrelRelease implements Callable<Integer>
                 {
                     ghRelease.uploadAsset(f, "text/plain");
                 }
-                info("Uploaded " + f.getName());
+                Log.info("Uploaded " + f.getName());
             }
         }
     }
@@ -800,13 +800,13 @@ class MandrelRelease implements Callable<Integer>
     {
         if (milestone == null)
         {
-            error("No milestone titled " + version.majorMinorMicroPico() + "-Final! Can't produce changelog without it!");
+            Log.error("No milestone titled " + version.majorMinorMicroPico() + "-Final! Can't produce changelog without it!");
         }
         if (suffix.equals("Final") && milestone.getOpenIssues() != 0)
         {
-            error("There are still open issues in milestone " + milestone.getTitle() + ". Please take care of them and try again.");
+            Log.error("There are still open issues in milestone " + milestone.getTitle() + ". Please take care of them and try again.");
         }
-        info("Getting merged PRs for " + milestone.getTitle() + " (" + milestone.getNumber() + ")");
+        Log.info("Getting merged PRs for " + milestone.getTitle() + " (" + milestone.getNumber() + ")");
         final Stream<GHPullRequest> mergedPRsInMilestone = repository.getPullRequests(GHIssueState.CLOSED).stream()
             .filter(pr -> includeInChangelog(pr, milestone));
         final Map<Integer, List<GHPullRequest>> collect = mergedPRsInMilestone.collect(Collectors.groupingBy(this::getGroup));
@@ -847,13 +847,13 @@ class MandrelRelease implements Callable<Integer>
         if (milestone != null)
         {
             milestone.close();
-            info("Closed milestone " + milestone.getTitle() + " (" + milestone.getNumber() + ")");
+            Log.info("Closed milestone " + milestone.getTitle() + " (" + milestone.getNumber() + ")");
         }
         GHMilestone newMilestone = ghMilestones.toList().stream().filter(m -> m.getTitle().equals(newVersion.toString())).findAny().orElse(null);
         if (newMilestone == null)
         {
             newMilestone = repository.createMilestone(newVersion.toString(), "");
-            info("Created milestone " + newMilestone.getTitle() + " (" + newMilestone.getNumber() + ")");
+            Log.info("Created milestone " + newMilestone.getTitle() + " (" + newMilestone.getNumber() + ")");
         }
     }
 
@@ -890,7 +890,7 @@ class MandrelRelease implements Callable<Integer>
         catch (Exception e)
         {
             e.printStackTrace();
-            error(e.getMessage());
+            Log.error(e.getMessage());
         }
         return 2;
     }
@@ -911,34 +911,10 @@ class MandrelRelease implements Callable<Integer>
             catch (IOException ioException)
             {
                 ioException.printStackTrace();
-                error(ioException.getMessage());
+                Log.error(ioException.getMessage());
             }
         }
         return github;
-    }
-
-    private static void debug(String message, boolean verbose)
-    {
-        if (verbose)
-        {
-            System.err.println(Ansi.AUTO.string("[@|bold,green DEBUG|@] ") + message);
-        }
-    }
-
-    private static void info(String message)
-    {
-        System.err.println(Ansi.AUTO.string("[@|bold INFO|@] ") + message);
-    }
-
-    private static void warn(String message)
-    {
-        System.err.println(Ansi.AUTO.string("[@|bold,yellow WARN|@] ") + message);
-    }
-
-    private static void error(String message)
-    {
-        System.err.println(Ansi.AUTO.string("[@|bold,red ERROR|@] ") + message);
-        System.exit(1);
     }
 
     class MandrelVersion implements Comparable<MandrelVersion>
@@ -967,7 +943,7 @@ class MandrelRelease implements Callable<Integer>
             boolean found = versionMatcher.find();
             if (!found)
             {
-                error("Wrong version format! " + version + " does not match pattern: " + MandrelVersion.MANDREL_VERSION_REGEX);
+                Log.error("Wrong version format! " + version + " does not match pattern: " + MandrelVersion.MANDREL_VERSION_REGEX);
             }
             major = Integer.parseInt(versionMatcher.group(1));
             minor = Integer.parseInt(versionMatcher.group(2));
@@ -1017,7 +993,7 @@ class MandrelRelease implements Callable<Integer>
                 final String upstreamTag = "vm-" + majorMinorMicro();
                 if (tags.stream().noneMatch(x -> x.getName().equals(upstreamTag)))
                 {
-                    warn("Upstream tag " + upstreamTag + " not found in " + REPOSITORY_NAME + " please add the upstream tag manually in the release text.");
+                    Log.warn("Upstream tag " + upstreamTag + " not found in " + REPOSITORY_NAME + " please add the upstream tag manually in the release text.");
                     return null;
                 }
                 return upstreamTag;
@@ -1086,5 +1062,32 @@ class MandrelRelease implements Callable<Integer>
             }
             return -1;
         }
+    }
+}
+
+class Log
+{
+    static void debug(String message, boolean verbose)
+    {
+        if (verbose)
+        {
+            System.err.println(Ansi.AUTO.string("[@|bold,green DEBUG|@] ") + message);
+        }
+    }
+
+    static void info(String message)
+    {
+        System.err.println(Ansi.AUTO.string("[@|bold INFO|@] ") + message);
+    }
+
+    static void warn(String message)
+    {
+        System.err.println(Ansi.AUTO.string("[@|bold,yellow WARN|@] ") + message);
+    }
+
+    static void error(String message)
+    {
+        System.err.println(Ansi.AUTO.string("[@|bold,red ERROR|@] ") + message);
+        System.exit(1);
     }
 }
