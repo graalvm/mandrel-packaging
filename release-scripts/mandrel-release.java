@@ -6,7 +6,6 @@
 //DEPS info.picocli:picocli:4.5.0
 //DEPS org.kohsuke:github-api:1.307
 
-import org.apache.http.HttpStatus;
 import org.eclipse.jgit.api.Git;
 import org.eclipse.jgit.api.ResetCommand;
 import org.eclipse.jgit.api.Status;
@@ -33,12 +32,8 @@ import picocli.CommandLine.Help.Ansi;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
-import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.URL;
-import java.net.http.HttpClient;
-import java.net.http.HttpRequest;
-import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -69,10 +64,9 @@ class MandrelRelease implements Callable<Integer>
     public static final String GITFORGE_URL = "git@github.com:";
     public static final String REPOSITORY_NAME = "graalvm/mandrel";
     public static final int UNDEFINED = -1;
-    public static final URI SDKMAN_ENDPOINT = URI.create("https://vendors.sdkman.io/release");
 
 
-    @CommandLine.Parameters(index = "0", description = "The kind of steps to execute, must be one of \"prepare\" or \"release\" or \"sdkman\"")
+    @CommandLine.Parameters(index = "0", description = "The kind of steps to execute, must be one of \"prepare\" or \"release\"")
     private String phase;
 
     @CommandLine.Option(names = {"-m", "--mandrel-repo"}, description = "The path to the mandrel repository", defaultValue = "./")
@@ -92,9 +86,6 @@ class MandrelRelease implements Callable<Integer>
 
     @CommandLine.Option(names = {"-s", "--suffix"}, description = "The release suffix, e.g, Final, Alpha2, Beta1, etc. (default: \"${DEFAULT-VALUE}\")", defaultValue = "Final")
     private String suffix;
-
-    @CommandLine.Option(names = {"--sdkman-version-invisible"}, description = "Makes a particular version on SDKMAN invisible.")
-    private String sdkmanVersionInvisible;
 
     @CommandLine.Option(names = {"-f", "--fork-name"}, description = "The repository name of the github fork to push the changes to (default: \"${DEFAULT-VALUE}\")", defaultValue = "zakkak/mandrel")
     private String forkName;
@@ -122,15 +113,7 @@ class MandrelRelease implements Callable<Integer>
     }
 
     @Override
-    public Integer call() throws IOException, InterruptedException
-    {
-        // Make a particular SDKMAN published version invisible
-        if (phase.equals("sdkman") && (sdkmanVersionInvisible != null && !sdkmanVersionInvisible.isBlank()))
-        {
-            makeSDKManVersionInvisible();
-            return 0;
-        }
-
+    public Integer call() throws IOException {
         // Prepare version
         if (!suffix.equals("Final") && !Pattern.compile("^(Alpha|Beta)\\d*$").matcher(suffix).find())
         {
@@ -146,13 +129,6 @@ class MandrelRelease implements Callable<Integer>
         info("Current version is " + version);
         version.suffix = suffix; // TODO: if Alpha/Beta autobump suffix number?
 
-        // Publish to SDKMAN
-        if (phase.equals("sdkman"))
-        {
-            createSDKManRelease();
-            return 0;
-        }
-
         if (suffix.equals("Final"))
         {
             newVersion = version.getNewVersion();
@@ -162,9 +138,9 @@ class MandrelRelease implements Callable<Integer>
         releaseBranch = "release/mandrel-" + version;
         baseBranch = "mandrel/" + version.majorMinor();
 
-        if (!phase.equals("prepare") && !phase.equals("release") && !phase.equals("sdkman"))
+        if (!phase.equals("prepare") && !phase.equals("release"))
         {
-            throw new IllegalArgumentException(phase + " is not a valid phase. Please use \"prepare\" or \"release\" or \"sdkman\".");
+            throw new IllegalArgumentException(phase + " is not a valid phase. Please use \"prepare\" or \"release\".");
         }
         if (phase.equals("release"))
         {
@@ -506,152 +482,6 @@ class MandrelRelease implements Callable<Integer>
         return null;
     }
 
-
-    private Map<String, String> getSDKManVendorCred() throws IOException
-    {
-        final Path vendorCredentials = Path.of(System.getProperty("user.home"), ".sdkman", "vendor.json");
-        final String errMsg = "A valid vendor.json file is expected on " + vendorCredentials + ", e.g. \n" +
-            "{\n" +
-            "    \"consumerKey\": \"changeit\",\n" +
-            "    \"consumerToken\": \"changeit\",\n" +
-            "    \"name\": \"karm@redhat.com\"\n" +
-            "}";
-        if (Files.notExists(vendorCredentials) || Files.size(vendorCredentials) < 100)
-        {
-            error(errMsg);
-        }
-        final Pattern vendorPattern = Pattern.compile(".*consumerKey\" *: *\"(?<ck>[^\"]+)\".*consumerToken\" *: *\"(?<ct>[^\"]+)\".*", Pattern.DOTALL);
-        final Matcher matcher = vendorPattern.matcher(Files.readString(vendorCredentials, StandardCharsets.UTF_8));
-        if (matcher.matches())
-        {
-            return Map.of("consumerKey", matcher.group("ck"), "consumerToken", matcher.group("ct"));
-        }
-        else
-        {
-            error(errMsg);
-        }
-        return null;
-    }
-
-    private String[] getSDKManHeaders() throws IOException
-    {
-        final Map<String, String> vendorCredentials = getSDKManVendorCred();
-        if (vendorCredentials == null)
-        {
-            error("Unable to proceed without SDKMAN vendor credentials.");
-        }
-        return new String[]{
-            "User-Agent", "Mandrel Release Script",
-            "Consumer-Key", vendorCredentials.get("consumerKey"),
-            "Consumer-Token", vendorCredentials.get("consumerToken"),
-            "Content-Type", "application/json",
-            "Accept", "application/json"
-        };
-    }
-
-    private void makeSDKManVersionInvisible() throws IOException, InterruptedException
-    {
-        final HttpClient hc = HttpClient.newBuilder().followRedirects(HttpClient.Redirect.ALWAYS).build();
-        final String[] headers = getSDKManHeaders();
-        for (String platform : new String[]{"LINUX_64", "LINUX_ARM64", "WINDOWS_64"})
-        {
-            final String payload = "{\n" +
-                "  \"candidate\": \"java\",\n" +
-                "  \"version\": \"" + sdkmanVersionInvisible + "-mandrel\",\n" +
-                "  \"platform\": \"" + platform + "\",\n" +
-                "  \"visible\": false\n" +
-                "}";
-            debug(payload, verbose);
-            if (!dryRun)
-            {
-                final HttpRequest releaseRequest = HttpRequest.newBuilder()
-                    .method("PATCH", HttpRequest.BodyPublishers.ofString(payload))
-                    .uri(SDKMAN_ENDPOINT)
-                    .headers(headers)
-                    .build();
-                final HttpResponse<String> releaseResponse = hc.send(releaseRequest, HttpResponse.BodyHandlers.ofString());
-                info("Response Code : " + releaseResponse.statusCode());
-                info("Response Body : " + releaseResponse.body());
-            }
-        }
-    }
-
-    /**
-     * One needs vendor credentials. Decipher those in:
-     * gpg --decrypt sdkman-vendor.json.asc > ~/.sdkman/vendor.json
-     * <p>
-     * Docs: https://sdkman.io/vendors#endpoints
-     * <p>
-     * Usage:
-     * ./mandrel-release.java sdkman -m /home/karm/workspaceRH/graal/graal -s Final -f Karm/graal
-     *
-     * @throws IOException
-     * @throws InterruptedException
-     */
-    private void createSDKManRelease() throws IOException, InterruptedException
-    {
-        final Pattern filePattern = Pattern.compile("mandrel-java(?<javaVersion>[\\d]{2})-(?<os>linux|windows)-(?<arch>amd64|aarch64)-(?<version>[^-]+)-.*");
-        final Pattern shaPattern = Pattern.compile("(?<hash>[^ ]*).*", Pattern.DOTALL);
-        final File[] assets = assets(version.toString());
-        final HttpClient hc = HttpClient.newBuilder().followRedirects(HttpClient.Redirect.ALWAYS).build();
-        final String[] headers = getSDKManHeaders();
-        for (File asset : assets)
-        {
-            final Matcher m = filePattern.matcher(asset.getName());
-            if (m.matches())
-            {
-                final String urlBase = "https://github.com/graalvm/mandrel/releases/download/mandrel-" + m.group("version") + "-" + suffix + "/";
-                final String os = m.group("os").toUpperCase();
-                final String arch = "amd64".equals(m.group("arch")) ? "64" : "ARM64";
-                final String version = m.group("version") + ".r" + m.group("javaVersion").trim();
-                final String sha1 = parseSmallRemoteTextFile(urlBase + asset.getName() + ".sha1", shaPattern, "hash");
-                final String sha256 = parseSmallRemoteTextFile(urlBase + asset.getName() + ".sha256", shaPattern, "hash");
-                if (sha1 == null || sha1.length() != 40)
-                {
-                    error("Failed to parse " + urlBase + asset.getName() + ".sha1. Was: " + sha1 + ". Terminating.");
-                }
-                if (sha256 == null || sha256.length() != 64)
-                {
-                    error("Failed to parse " + urlBase + asset.getName() + ".sha256. Was: " + sha256 + ". Terminating.");
-                }
-                final String url = urlBase + asset.getName();
-                if (!doesRemoteFileExist(hc, url))
-                {
-                    error("Remote file " + url + " does not exist. Terminating.");
-                }
-                info("Releasing: " + asset.getName());
-                final String releasePayload = "" +
-                    "{\n" +
-                    "    \"candidate\": \"java\",\n" +
-                    "    \"version\": \"" + version + "\",\n" +
-                    "    \"vendor\": \"mandrel\",\n" +
-                    "    \"url\": \"" + url + "\",\n" +
-                    "    \"platform\": \"" + os + "_" + arch + "\",\n" +
-                    "    \"checksums\": {\n" +
-                    "        \"SHA-1\": \"" + sha1.toLowerCase() + "\",\n" +
-                    "        \"SHA-256\": \"" + sha256.toLowerCase() + "\"\n" +
-                    "    }\n" +
-                    "}";
-                debug(releasePayload, verbose);
-                if (!dryRun)
-                {
-                    final HttpRequest releaseRequest = HttpRequest.newBuilder()
-                        .POST(HttpRequest.BodyPublishers.ofString(releasePayload))
-                        .uri(SDKMAN_ENDPOINT)
-                        .headers(headers)
-                        .build();
-                    final HttpResponse<String> releaseResponse = hc.send(releaseRequest, HttpResponse.BodyHandlers.ofString());
-                    info("Released Response Code : " + releaseResponse.statusCode());
-                    info("Released Response Body : " + releaseResponse.body());
-                }
-            }
-            else
-            {
-                warn("File name " + asset.getName() + " does not match regexp " + filePattern.pattern() + " and that is unexpected. Skipping asset.");
-            }
-        }
-    }
-
     private void createGHRelease() throws IOException
     {
         final Set<String> jdkVersionsUsed = new HashSet<>();
@@ -760,23 +590,6 @@ class MandrelRelease implements Callable<Integer>
             error("Failed to download " + sourceURL + ". Terminating." + e.getMessage());
         }
         return null;
-    }
-
-    private boolean doesRemoteFileExist(HttpClient hc, String sourceURL) throws IOException, InterruptedException
-    {
-        try
-        {
-            return hc.send(HttpRequest.newBuilder()
-                    .method("HEAD", HttpRequest.BodyPublishers.noBody())
-                    .uri(URI.create(sourceURL))
-                    .build(), HttpResponse.BodyHandlers.discarding())
-                .statusCode() == HttpStatus.SC_OK;
-        }
-        catch (IOException | InterruptedException e)
-        {
-            error("Remote file " + sourceURL + " does not exist or cannot be reached. Terminating." + e.getMessage());
-        }
-        return false;
     }
 
     private File[] assets(String fullVersion)
