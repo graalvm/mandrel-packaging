@@ -129,7 +129,8 @@ class MandrelRelease
         assert phase.equals("prepare") || release;
         if (release)
         {
-            createGHRelease();
+            final Set<String> jdkVersionsUsed = maybeDownloadBuildsAndGetJdkVersions();
+            createGHRelease(jdkVersionsUsed);
         }
         if (!suffix.equals("Final"))
         {
@@ -246,30 +247,8 @@ class MandrelRelease
         }
     }
 
-    private void createGHRelease() throws IOException
+    private void createGHRelease(Set<String> jdkVersionsUsed) throws IOException
     {
-        final Set<String> jdkVersionsUsed = new HashSet<>();
-        if (download)
-        {
-            if (windowsBuildNumber != UNDEFINED || linuxBuildNumber != UNDEFINED)
-            {
-                jdkVersionsUsed.addAll(downloadAssets(version));
-            }
-            else
-            {
-                Log.error("At least one of --windows-job-build-number, --linux-job-build-number must be specified. Terminating.");
-            }
-            if (jdkVersionsUsed.size() != 2)
-            {
-                Log.warn("There are supposed to be 2 distinct JDK versions used, one for JDK 17 and one for JDK 11." +
-                    "This is unexpected: " + String.join(",", jdkVersionsUsed));
-            }
-        }
-        if (jdkVersionsUsed.isEmpty())
-        {
-            jdkVersionsUsed.add(System.getProperty("java.runtime.version"));
-        }
-
         final GitHub github = connectToGitHub();
         try
         {
@@ -324,6 +303,32 @@ class MandrelRelease
             e.printStackTrace();
             Log.error(e.getMessage());
         }
+    }
+
+    private Set<String> maybeDownloadBuildsAndGetJdkVersions() throws IOException
+    {
+        final Set<String> jdkVersionsUsed = new HashSet<>();
+        if (download)
+        {
+            if (windowsBuildNumber != UNDEFINED || linuxBuildNumber != UNDEFINED)
+            {
+                jdkVersionsUsed.addAll(downloadAssets(version));
+            }
+            else
+            {
+                Log.error("At least one of --windows-job-build-number, --linux-job-build-number must be specified. Terminating.");
+            }
+            if (jdkVersionsUsed.size() != 2)
+            {
+                Log.warn("There are supposed to be 2 distinct JDK versions used, one for JDK 17 and one for JDK 11." +
+                    "This is unexpected: " + String.join(",", jdkVersionsUsed));
+            }
+        }
+        if (jdkVersionsUsed.isEmpty())
+        {
+            jdkVersionsUsed.add(System.getProperty("java.runtime.version"));
+        }
+        return jdkVersionsUsed;
     }
 
     private void downloadFile(String sourceURL) throws IOException
