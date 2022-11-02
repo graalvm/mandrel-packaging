@@ -144,11 +144,11 @@ class MandrelRelease
         gitOps.checkAndPrepareRepository();
         if (release)
         {
-            updateSuites(this::updateReleaseAndBumpVersionInSuite);
+            MxSuiteUtils.updateSuites(mandrelRepo, suite -> MxSuiteUtils.updateReleaseAndBumpVersionInSuite(version, suite));
         }
         else
         {
-            updateSuites(this::markSuiteAsRelease);
+            MxSuiteUtils.updateSuites(mandrelRepo, MxSuiteUtils::markSuiteAsRelease);
         }
         final String authorEmail = gitOps.commitAndPushChanges();
         gitOps.openPR(authorEmail);
@@ -165,85 +165,6 @@ class MandrelRelease
         if (!Path.of(mandrelRepo).toFile().exists())
         {
             Log.error("Path " + mandrelRepo + " does not exist");
-        }
-    }
-
-    /**
-     * Visit all suite.py files and change the "release" and "version" fields
-     */
-    private void updateSuites(Consumer<File> updater)
-    {
-        File cwd = new File(mandrelRepo);
-        Stream.of(Objects.requireNonNull(cwd.listFiles()))
-            .filter(File::isDirectory)
-            .flatMap(path -> Stream.of(Objects.requireNonNull(path.listFiles())).filter(child -> child.getName().startsWith("mx.")))
-            .map(path -> new File(path, "suite.py"))
-            .filter(File::exists)
-            .forEach(updater);
-        Log.info("Updated suites");
-    }
-
-    /**
-     * Visit {@code suite} file and change the "release" value to {@code asRelease}
-     *
-     * @param suite
-     */
-    private void markSuiteAsRelease(File suite)
-    {
-        try
-        {
-            Log.info("Marking " + suite.getPath());
-            List<String> lines = Files.readAllLines(suite.toPath());
-            final String pattern = "(.*\"release\" : )False(.*)";
-            final Pattern releasePattern = Pattern.compile(pattern);
-            for (int i = 0; i < lines.size(); i++)
-            {
-                final Matcher releaseMatcher = releasePattern.matcher(lines.get(i));
-                if (releaseMatcher.find())
-                {
-                    String newLine = releaseMatcher.group(1) + "True" + releaseMatcher.group(2);
-                    lines.set(i, newLine);
-                    break;
-                }
-            }
-            Files.write(suite.toPath(), lines, StandardCharsets.UTF_8);
-        }
-        catch (IOException e)
-        {
-            e.printStackTrace();
-            Log.error(e.getMessage());
-        }
-    }
-
-    private void updateReleaseAndBumpVersionInSuite(File suite)
-    {
-        try
-        {
-            Log.info("Updating " + suite.getPath());
-            List<String> lines = Files.readAllLines(suite.toPath());
-            final Pattern releasePattern = Pattern.compile("(.*\"release\" : )True(.*)");
-            final Pattern versionPattern = Pattern.compile("(.*\"version\" : \")" + version.majorMinorMicroPico() + "(\".*)");
-            for (int i = 0; i < lines.size(); i++)
-            {
-                final Matcher releaseMatcher = releasePattern.matcher(lines.get(i));
-                if (releaseMatcher.find())
-                {
-                    String newLine = releaseMatcher.group(1) + "False" + releaseMatcher.group(2);
-                    lines.set(i, newLine);
-                }
-                final Matcher versionMatcher = versionPattern.matcher(lines.get(i));
-                if (versionMatcher.find())
-                {
-                    String newLine = versionMatcher.group(1) + newVersion.majorMinorMicroPico() + versionMatcher.group(2);
-                    lines.set(i, newLine);
-                }
-            }
-            Files.write(suite.toPath(), lines, StandardCharsets.UTF_8);
-        }
-        catch (IOException e)
-        {
-            e.printStackTrace();
-            Log.error(e.getMessage());
         }
     }
 
@@ -1145,6 +1066,89 @@ class GitOps
             Log.error(e.getMessage());
         }
     }
+}
+
+class MxSuiteUtils
+{
+    /**
+     * Visit all suite.py files and change the "release" and "version" fields
+     */
+    static void updateSuites(String mandrelRepo, Consumer<File> updater)
+    {
+        File cwd = new File(mandrelRepo);
+        Stream.of(Objects.requireNonNull(cwd.listFiles()))
+            .filter(File::isDirectory)
+            .flatMap(path -> Stream.of(Objects.requireNonNull(path.listFiles())).filter(child -> child.getName().startsWith("mx.")))
+            .map(path -> new File(path, "suite.py"))
+            .filter(File::exists)
+            .forEach(updater);
+        Log.info("Updated suites");
+    }
+
+    /**
+     * Visit {@code suite} file and change the "release" value to {@code asRelease}
+     *
+     * @param suite
+     */
+    static void markSuiteAsRelease(File suite)
+    {
+        try
+        {
+            Log.info("Marking " + suite.getPath());
+            List<String> lines = Files.readAllLines(suite.toPath());
+            final String pattern = "(.*\"release\" : )False(.*)";
+            final Pattern releasePattern = Pattern.compile(pattern);
+            for (int i = 0; i < lines.size(); i++)
+            {
+                final Matcher releaseMatcher = releasePattern.matcher(lines.get(i));
+                if (releaseMatcher.find())
+                {
+                    String newLine = releaseMatcher.group(1) + "True" + releaseMatcher.group(2);
+                    lines.set(i, newLine);
+                    break;
+                }
+            }
+            Files.write(suite.toPath(), lines, StandardCharsets.UTF_8);
+        }
+        catch (IOException e)
+        {
+            e.printStackTrace();
+            Log.error(e.getMessage());
+        }
+    }
+
+    static void updateReleaseAndBumpVersionInSuite(MandrelVersion version, File suite)
+    {
+        try
+        {
+            Log.info("Updating " + suite.getPath());
+            List<String> lines = Files.readAllLines(suite.toPath());
+            final Pattern releasePattern = Pattern.compile("(.*\"release\" : )True(.*)");
+            final Pattern versionPattern = Pattern.compile("(.*\"version\" : \")" + version.majorMinorMicroPico() + "(\".*)");
+            for (int i = 0; i < lines.size(); i++)
+            {
+                final Matcher releaseMatcher = releasePattern.matcher(lines.get(i));
+                if (releaseMatcher.find())
+                {
+                    String newLine = releaseMatcher.group(1) + "False" + releaseMatcher.group(2);
+                    lines.set(i, newLine);
+                }
+                final Matcher versionMatcher = versionPattern.matcher(lines.get(i));
+                if (versionMatcher.find())
+                {
+                    String newLine = versionMatcher.group(1) + version.getNewVersion().majorMinorMicroPico() + versionMatcher.group(2);
+                    lines.set(i, newLine);
+                }
+            }
+            Files.write(suite.toPath(), lines, StandardCharsets.UTF_8);
+        }
+        catch (IOException e)
+        {
+            e.printStackTrace();
+            Log.error(e.getMessage());
+        }
+    }
+
 }
 
 class Log
