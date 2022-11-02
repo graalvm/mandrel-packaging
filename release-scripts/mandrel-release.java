@@ -62,7 +62,6 @@ import java.util.stream.Stream;
 class MandrelRelease
 {
 
-    public static final String GITFORGE_URL = "git@github.com:";
     public static final String REPOSITORY_NAME = "graalvm/mandrel";
     public static final int UNDEFINED = -1;
 
@@ -109,12 +108,8 @@ class MandrelRelease
         description = "Prints verbose debug info")
     private boolean verbose;
 
-    private static final String REMOTE_NAME = "mandrel-release-fork";
     private MandrelVersion version = null;
-    private String releaseBranch = null;
-    private String baseBranch = null;
     private MandrelVersion newVersion = null;
-    private String developBranch = null;
 
     public static void main(String... args)
     {
@@ -130,17 +125,9 @@ class MandrelRelease
         Log.info("Current version is " + version);
         version.suffix = suffix; // TODO: if Alpha/Beta autobump suffix number?
 
-        if (suffix.equals("Final"))
-        {
-            newVersion = version.getNewVersion();
-            Log.info("New version will be " + newVersion.majorMinorMicroPico());
-            developBranch = "develop/mandrel-" + newVersion;
-        }
-        releaseBranch = "release/mandrel-" + version;
-        baseBranch = "mandrel/" + version.majorMinor();
-
-        assert phase.equals("prepare") || phase.equals("release");
-        if (phase.equals("release"))
+        boolean release = phase.equals("release");
+        assert phase.equals("prepare") || release;
+        if (release)
         {
             createGHRelease();
         }
@@ -148,8 +135,13 @@ class MandrelRelease
         {
             return 0;
         }
-        checkAndPrepareRepository();
-        if (phase.equals("release"))
+
+        newVersion = version.getNewVersion();
+        Log.info("New version will be " + newVersion.majorMinorMicroPico());
+
+        GitOps gitOps = new GitOps(version, mandrelRepo, forkName, signCommits, dryRun, release);
+        gitOps.checkAndPrepareRepository();
+        if (release)
         {
             updateSuites(this::updateReleaseAndBumpVersionInSuite);
         }
@@ -157,8 +149,8 @@ class MandrelRelease
         {
             updateSuites(this::markSuiteAsRelease);
         }
-        final String authorEmail = commitAndPushChanges();
-        openPR(authorEmail);
+        final String authorEmail = gitOps.commitAndPushChanges();
+        gitOps.openPR(authorEmail);
         return 0;
     }
 
@@ -173,75 +165,6 @@ class MandrelRelease
         {
             Log.error("Path " + mandrelRepo + " does not exist");
         }
-    }
-
-    private void checkAndPrepareRepository()
-    {
-        try (Git git = Git.open(new File(mandrelRepo)))
-        {
-            if (!git.getRepository().getBranch().equals(baseBranch))
-            {
-                Log.error("Please checkout " + baseBranch + " and try again!");
-            }
-            final Status status = git.status().call();
-            if (status.hasUncommittedChanges() || !status.getChanged().isEmpty())
-            {
-                Log.error("Status of branch " + baseBranch + " is not clean, aborting!");
-            }
-
-            maybeCreateRemote(git);
-            final String newBranch = phase.equals("release") ? developBranch : releaseBranch;
-            try
-            {
-                git.checkout().setCreateBranch(true).setName(newBranch).setStartPoint(baseBranch).call();
-                Log.info("Created new branch " + newBranch + " based on " + baseBranch);
-            }
-            catch (RefAlreadyExistsException e)
-            {
-                Log.warn(e.getMessage());
-                gitCheckout(git, newBranch);
-                git.reset().setRef(baseBranch).setMode(ResetCommand.ResetType.HARD).call();
-                Log.warn(newBranch + " reset (hard) to " + baseBranch);
-            }
-        }
-        catch (IOException | GitAPIException | URISyntaxException e)
-        {
-            e.printStackTrace();
-            Log.error(e.getMessage());
-        }
-    }
-
-    private void maybeCreateRemote(Git git) throws URISyntaxException, GitAPIException
-    {
-        final String forkURL = GITFORGE_URL + forkName;
-        final URIish forkURI = new URIish(forkURL);
-        RemoteConfig remote = getRemoteConfig(git);
-        if (remote != null && remote.getURIs().stream().noneMatch(forkURI::equals))
-        {
-            Log.error("Remote " + REMOTE_NAME + " already exists and does not point to " + forkURL +
-                "\nPlease remove with `git remote remove " + REMOTE_NAME + "` and try again.");
-        }
-        git.remoteAdd().setName(REMOTE_NAME).setUri(forkURI).call();
-        remote = getRemoteConfig(git);
-        if (remote != null && remote.getURIs().stream().anyMatch(forkURI::equals))
-        {
-            Log.info("Git remote " + REMOTE_NAME + " points to " + forkURL);
-        }
-        else
-        {
-            Log.error("Failed to add remote " + REMOTE_NAME + " pointing to " + forkURL);
-        }
-    }
-
-    private RemoteConfig getRemoteConfig(Git git) throws GitAPIException
-    {
-        final List<RemoteConfig> remotes = git.remoteList().call();
-        for (RemoteConfig remoteConfig : remotes) {
-            if (remoteConfig.getName().equals(REMOTE_NAME)) {
-                return remoteConfig;
-            }
-        }
-        return null;
     }
 
     /**
@@ -315,142 +238,6 @@ class MandrelRelease
                 }
             }
             Files.write(suite.toPath(), lines, StandardCharsets.UTF_8);
-        }
-        catch (IOException e)
-        {
-            e.printStackTrace();
-            Log.error(e.getMessage());
-        }
-    }
-
-    private String commitAndPushChanges()
-    {
-        try (Git git = Git.open(new File(mandrelRepo)))
-        {
-            ConsoleCredentialsProvider.install(); // Needed for gpg signing
-            final String message;
-            if (phase.equals("release"))
-            {
-                message = "Unmark suites and bump version to " + newVersion.majorMinorMicroPico() + " [skip ci]";
-            }
-            else
-            {
-                message = "Mark suites for " + version + " release [skip ci]";
-            }
-            final RevCommit commit = git.commit().setAll(true).setMessage(message).setSign(signCommits).call();
-            final String author = commit.getAuthorIdent().getEmailAddress();
-            Log.info("Changes commited");
-            git.push().setForce(true).setRemote(REMOTE_NAME).setDryRun(dryRun).call();
-            if (dryRun)
-            {
-                Log.warn("Changes not pushed to remote due to --dry-run being present");
-            }
-            else
-            {
-                Log.info("Changes pushed to remote " + REMOTE_NAME);
-            }
-            gitCheckout(git, baseBranch);
-            return author;
-        }
-        catch (IOException | GitAPIException e)
-        {
-            e.printStackTrace();
-            Log.error(e.getMessage());
-        }
-        return null;
-    }
-
-    private void gitCheckout(Git git, String baseBranch) throws GitAPIException
-    {
-        git.checkout().setName(baseBranch).call();
-        Log.info("Checked out " + baseBranch);
-    }
-
-    private void openPR(String authorEmail)
-    {
-        assert suffix.equals("Final");
-        GitHub github = connectToGitHub();
-        try
-        {
-            final GHRepository repository = github.getRepository(REPOSITORY_NAME);
-            if (dryRun)
-            {
-                Log.warn("Pull request creation skipped due to --dry-run being present");
-                return;
-            }
-
-            final String title;
-            final String body;
-            String head = "";
-            if (!forkName.equals(REPOSITORY_NAME))
-            {
-                head = forkName.split("/")[0] + ":";
-            }
-            if (phase.equals("release"))
-            {
-                title = "Unmark suites and bump version to " + newVersion.majorMinorMicroPico();
-                head += developBranch;
-                body = "This PR was automatically generated by `mandrel-release.java` of graalvm/mandrel-packaging!";
-            }
-            else
-            {
-                title = "Mark suites for " + version + " release";
-                head += releaseBranch;
-                body = "This PR was automatically generated by `mandrel-release.java` of graalvm/mandrel-packaging!\n\n" +
-                    "Please tag branch `" + baseBranch + "` after merging, and push the tag.\n" +
-                    "```\n" +
-                    "git checkout " + baseBranch + "\n" +
-                    "git pull upstream " + baseBranch + "\n" +
-                    "git tag -a mandrel-" + version + " -m \"mandrel-" + version + "\" -s\n" +
-                    "git push upstream mandrel-" + version + "\n" +
-                    "```\n" +
-                    "where `upstream` is the git remote showing to https://github.com/graalvm/mandrel\n\n" +
-                    "Make sure to create the same tag in the mandrel-packaging repository!";
-            }
-
-            final GHPullRequest pullRequest = repository.createPullRequest(title, head, baseBranch, body, true, false);
-
-            final GHUser galderz = github.getUser("galderz");
-            final GHUser jerboaa = github.getUser("jerboaa");
-            final GHUser karm = github.getUser("Karm");
-            final GHUser zakkak = github.getUser("zakkak");
-
-            ArrayList<GHUser> reviewers = new ArrayList<>();
-            if (!authorEmail.contains("galder"))
-            {
-                reviewers.add(galderz);
-            }
-            else
-            {
-                pullRequest.addAssignees(Collections.singletonList(galderz));
-            }
-            if (!authorEmail.contains("sgehwolf") && !authorEmail.contains("jerboaa"))
-            {
-                reviewers.add(jerboaa);
-            }
-            else
-            {
-                pullRequest.addAssignees(Collections.singletonList(jerboaa));
-            }
-            if (!authorEmail.contains("karm"))
-            {
-                reviewers.add(karm);
-            }
-            else
-            {
-                pullRequest.addAssignees(Collections.singletonList(karm));
-            }
-            if (!authorEmail.contains("zakkak"))
-            {
-                reviewers.add(zakkak);
-            }
-            else
-            {
-                pullRequest.addAssignees(Collections.singletonList(zakkak));
-            }
-            pullRequest.requestReviewers(reviewers);
-
-            Log.info("Pull request " + pullRequest.getHtmlUrl() + " created");
         }
         catch (IOException e)
         {
@@ -1080,6 +867,263 @@ class MandrelVersion implements Comparable<MandrelVersion>
             }
         }
         return -1;
+    }
+}
+
+class GitOps
+{
+    public static final String GITFORGE_URL = "git@github.com:";
+    public static final String REPOSITORY_NAME = "graalvm/mandrel";
+    private static final String REMOTE_NAME = "mandrel-release-fork";
+    private final MandrelVersion version;
+    private final String mandrelRepo;
+    private final String forkName;
+    private final String baseBranch;
+    private final String releaseBranch;
+    private final String developBranch;
+    private final boolean signCommits;
+    private final boolean dryRun;
+    private final boolean release;
+
+    public GitOps(MandrelVersion version, String mandrelRepo, String forkName, boolean signCommits, boolean dryRun, boolean release)
+    {
+        this.version = version;
+        this.mandrelRepo = mandrelRepo;
+        this.forkName = forkName;
+        this.baseBranch = "mandrel/" + version.majorMinor();
+        this.releaseBranch = "release/mandrel-" + version;
+        this.developBranch = "develop/mandrel-" + version.getNewVersion();
+        this.signCommits = signCommits;
+        this.dryRun = dryRun;
+        this.release = release;
+    }
+
+    static GitHub connectToGitHub()
+    {
+        GitHub github = null;
+        try
+        {
+            github = GitHubBuilder.fromPropertyFile().build();
+        }
+        catch (IOException e)
+        {
+            try
+            {
+                github = GitHubBuilder.fromEnvironment().build();
+            }
+            catch (IOException ioException)
+            {
+                ioException.printStackTrace();
+                Log.error(ioException.getMessage());
+            }
+        }
+        return github;
+    }
+
+    void checkAndPrepareRepository()
+    {
+        try (Git git = Git.open(new File(mandrelRepo)))
+        {
+            if (!git.getRepository().getBranch().equals(baseBranch))
+            {
+                Log.error("Please checkout " + baseBranch + " and try again!");
+            }
+            final Status status = git.status().call();
+            if (status.hasUncommittedChanges() || !status.getChanged().isEmpty())
+            {
+                Log.error("Status of branch " + baseBranch + " is not clean, aborting!");
+            }
+
+            maybeCreateRemote(git, forkName);
+            String targetBranch = release ? developBranch : releaseBranch;
+            try
+            {
+                git.checkout().setCreateBranch(true).setName(targetBranch).setStartPoint(baseBranch).call();
+                Log.info("Created new branch " + targetBranch + " based on " + baseBranch);
+            }
+            catch (RefAlreadyExistsException e)
+            {
+                Log.warn(e.getMessage());
+                gitCheckout(git, targetBranch);
+                git.reset().setRef(baseBranch).setMode(ResetCommand.ResetType.HARD).call();
+                Log.warn(targetBranch + " reset (hard) to " + baseBranch);
+            }
+        }
+        catch (IOException | GitAPIException | URISyntaxException e)
+        {
+            e.printStackTrace();
+            Log.error(e.getMessage());
+        }
+    }
+
+    private static void gitCheckout(Git git, String baseBranch) throws GitAPIException
+    {
+        git.checkout().setName(baseBranch).call();
+        Log.info("Checked out " + baseBranch);
+    }
+
+    private static void maybeCreateRemote(Git git, String forkName) throws URISyntaxException, GitAPIException
+    {
+        final String forkURL = GITFORGE_URL + forkName;
+        final URIish forkURI = new URIish(forkURL);
+        RemoteConfig remote = getRemoteConfig(git);
+        if (remote != null && remote.getURIs().stream().noneMatch(forkURI::equals))
+        {
+            Log.error("Remote " + REMOTE_NAME + " already exists and does not point to " + forkURL +
+                "\nPlease remove with `git remote remove " + REMOTE_NAME + "` and try again.");
+        }
+        git.remoteAdd().setName(REMOTE_NAME).setUri(forkURI).call();
+        remote = getRemoteConfig(git);
+        if (remote != null && remote.getURIs().stream().anyMatch(forkURI::equals))
+        {
+            Log.info("Git remote " + REMOTE_NAME + " points to " + forkURL);
+        }
+        else
+        {
+            Log.error("Failed to add remote " + REMOTE_NAME + " pointing to " + forkURL);
+        }
+    }
+
+    private static RemoteConfig getRemoteConfig(Git git) throws GitAPIException
+    {
+        final List<RemoteConfig> remotes = git.remoteList().call();
+        for (RemoteConfig remoteConfig : remotes)
+        {
+            if (remoteConfig.getName().equals(REMOTE_NAME))
+            {
+                return remoteConfig;
+            }
+        }
+        return null;
+    }
+
+    String commitAndPushChanges()
+    {
+        try (Git git = Git.open(new File(mandrelRepo)))
+        {
+            ConsoleCredentialsProvider.install(); // Needed for gpg signing
+            final String message;
+            if (release)
+            {
+                message = "Unmark suites and bump version to " + version.getNewVersion().majorMinorMicroPico() + " [skip ci]";
+            }
+            else
+            {
+                message = "Mark suites for " + version + " release [skip ci]";
+            }
+            final RevCommit commit = git.commit().setAll(true).setMessage(message).setSign(signCommits).call();
+            final String author = commit.getAuthorIdent().getEmailAddress();
+            Log.info("Changes commited");
+            git.push().setForce(true).setRemote(REMOTE_NAME).setDryRun(dryRun).call();
+            if (dryRun)
+            {
+                Log.warn("Changes not pushed to remote due to --dry-run being present");
+            }
+            else
+            {
+                Log.info("Changes pushed to remote " + REMOTE_NAME);
+            }
+            gitCheckout(git, baseBranch);
+            return author;
+        }
+        catch (IOException | GitAPIException e)
+        {
+            e.printStackTrace();
+            Log.error(e.getMessage());
+        }
+        return null;
+    }
+
+    void openPR(String authorEmail)
+    {
+        GitHub github = GitOps.connectToGitHub();
+        try
+        {
+            final GHRepository repository = github.getRepository(REPOSITORY_NAME);
+            if (dryRun)
+            {
+                Log.warn("Pull request creation skipped due to --dry-run being present");
+                return;
+            }
+
+            final String title;
+            final String body;
+            String head = "";
+            if (!forkName.equals(REPOSITORY_NAME))
+            {
+                head = forkName.split("/")[0] + ":";
+            }
+            if (release)
+            {
+                title = "Unmark suites and bump version to " + version.getNewVersion().majorMinorMicroPico();
+                head += developBranch;
+                body = "This PR was automatically generated by `mandrel-release.java` of graalvm/mandrel-packaging!";
+            }
+            else
+            {
+                title = "Mark suites for " + version + " release";
+                head += releaseBranch;
+                body = "This PR was automatically generated by `mandrel-release.java` of graalvm/mandrel-packaging!\n\n" +
+                    "Please tag branch `" + baseBranch + "` after merging, and push the tag.\n" +
+                    "```\n" +
+                    "git checkout " + baseBranch + "\n" +
+                    "git pull upstream " + baseBranch + "\n" +
+                    "git tag -a mandrel-" + version + " -m \"mandrel-" + version + "\" -s\n" +
+                    "git push upstream mandrel-" + version + "\n" +
+                    "```\n" +
+                    "where `upstream` is the git remote showing to https://github.com/graalvm/mandrel\n\n" +
+                    "Make sure to create the same tag in the mandrel-packaging repository!";
+            }
+
+            final GHPullRequest pullRequest = repository.createPullRequest(title, head, baseBranch, body, true, false);
+
+            final GHUser galderz = github.getUser("galderz");
+            final GHUser jerboaa = github.getUser("jerboaa");
+            final GHUser karm = github.getUser("Karm");
+            final GHUser zakkak = github.getUser("zakkak");
+
+            ArrayList<GHUser> reviewers = new ArrayList<>();
+            if (!authorEmail.contains("galder"))
+            {
+                reviewers.add(galderz);
+            }
+            else
+            {
+                pullRequest.addAssignees(Collections.singletonList(galderz));
+            }
+            if (!authorEmail.contains("sgehwolf") && !authorEmail.contains("jerboaa"))
+            {
+                reviewers.add(jerboaa);
+            }
+            else
+            {
+                pullRequest.addAssignees(Collections.singletonList(jerboaa));
+            }
+            if (!authorEmail.contains("karm"))
+            {
+                reviewers.add(karm);
+            }
+            else
+            {
+                pullRequest.addAssignees(Collections.singletonList(karm));
+            }
+            if (!authorEmail.contains("zakkak"))
+            {
+                reviewers.add(zakkak);
+            }
+            else
+            {
+                pullRequest.addAssignees(Collections.singletonList(zakkak));
+            }
+            pullRequest.requestReviewers(reviewers);
+
+            Log.info("Pull request " + pullRequest.getHtmlUrl() + " created");
+        }
+        catch (IOException e)
+        {
+            e.printStackTrace();
+            Log.error(e.getMessage());
+        }
     }
 }
 
