@@ -61,94 +61,43 @@ import java.util.stream.Stream;
     description = "Script automating part of the Mandrel release process")
 class MandrelRelease
 {
-
-    public static final int UNDEFINED = -1;
-
-    String phase;
-
     @CommandLine.Option(names = {"-m", "--mandrel-repo"},
         scope = CommandLine.ScopeType.INHERIT,
         description = "The path to the mandrel repository",
         defaultValue = "./")
-    private String mandrelRepo;
-
-    boolean download;
-
-    String downloadDir;
-
-    int linuxBuildNumber;
-
-    int windowsBuildNumber;
+    String mandrelRepo;
 
     @CommandLine.Option(names = {"-s", "--suffix"},
         scope = CommandLine.ScopeType.INHERIT,
         description = "The release suffix, e.g, Final, Alpha2, Beta1, etc. (default: \"${DEFAULT-VALUE}\")",
         defaultValue = "Final")
-    private String suffix;
+    String suffix;
 
     @CommandLine.Option(names = {"-f", "--fork-name"},
         scope = CommandLine.ScopeType.INHERIT,
         description = "The repository name of the github fork to push the changes to (default: \"${DEFAULT-VALUE}\")",
         defaultValue = "zakkak/mandrel")
-    private String forkName;
+    String forkName;
 
     @CommandLine.Option(names = {"-S", "--sign-commits"},
         scope = CommandLine.ScopeType.INHERIT,
         description = "Sign commits")
-    private boolean signCommits;
+    boolean signCommits;
 
     @CommandLine.Option(names = {"-D", "--dry-run"},
         scope = CommandLine.ScopeType.INHERIT,
         description = "Perform a dry run (no remote pushes and PRs)")
-    private boolean dryRun;
+    boolean dryRun;
 
     @CommandLine.Option(names = {"--verbose"},
         scope = CommandLine.ScopeType.INHERIT,
         description = "Prints verbose debug info")
-    private boolean verbose;
+    boolean verbose;
 
     public static void main(String... args)
     {
         int exitCode = new CommandLine(new MandrelRelease()).execute(args);
         System.exit(exitCode);
-    }
-
-    public Integer call() throws IOException
-    {
-        checkOptions();
-        // Prepare version
-        MandrelVersion version = MandrelVersion.ofRepository(mandrelRepo);
-        Log.info("Current version is " + version);
-        version.suffix = suffix; // TODO: if Alpha/Beta autobump suffix number?
-
-        boolean release = phase.equals("release");
-        assert phase.equals("prepare") || release;
-        if (release)
-        {
-            final Set<String> jdkVersionsUsed = maybeDownloadBuildsAndGetJdkVersions(version);
-            GitHubOps gitHubOps = new GitHubOps(version, dryRun, downloadDir);
-            gitHubOps.createGHRelease(jdkVersionsUsed);
-        }
-        if (!suffix.equals("Final"))
-        {
-            return 0;
-        }
-
-        Log.info("New version will be " + version.getNewVersion().majorMinorMicroPico());
-
-        GitOps gitOps = new GitOps(version, mandrelRepo, forkName, signCommits, dryRun, release);
-        gitOps.checkAndPrepareRepository();
-        if (release)
-        {
-            MxSuiteUtils.updateSuites(mandrelRepo, suite -> MxSuiteUtils.updateReleaseAndBumpVersionInSuite(version, suite));
-        }
-        else
-        {
-            MxSuiteUtils.updateSuites(mandrelRepo, MxSuiteUtils::markSuiteAsRelease);
-        }
-        final String authorEmail = gitOps.commitAndPushChanges();
-        gitOps.openPR(authorEmail);
-        return 0;
     }
 
     void checkOptions()
@@ -163,140 +112,6 @@ class MandrelRelease
             Log.error("Path " + mandrelRepo + " does not exist");
         }
     }
-
-    private Set<String> maybeDownloadBuildsAndGetJdkVersions(MandrelVersion version) throws IOException
-    {
-        final Set<String> jdkVersionsUsed = new HashSet<>();
-        if (download)
-        {
-            if (windowsBuildNumber != UNDEFINED || linuxBuildNumber != UNDEFINED)
-            {
-                jdkVersionsUsed.addAll(downloadAssets(version));
-            }
-            else
-            {
-                Log.error("At least one of --windows-job-build-number, --linux-job-build-number must be specified. Terminating.");
-            }
-            if (jdkVersionsUsed.size() != 2)
-            {
-                Log.warn("There are supposed to be 2 distinct JDK versions used, one for JDK 17 and one for JDK 11." +
-                    "This is unexpected: " + String.join(",", jdkVersionsUsed));
-            }
-        }
-        if (jdkVersionsUsed.isEmpty())
-        {
-            jdkVersionsUsed.add(System.getProperty("java.runtime.version"));
-        }
-        return jdkVersionsUsed;
-    }
-
-    private void downloadFile(String sourceURL) throws IOException
-    {
-        final URL url = new URL(sourceURL);
-        final Path destPath = Paths.get(downloadDir, url.getPath().substring(url.getPath().lastIndexOf('/') + 1));
-        try (final InputStream inputStream = url.openStream())
-        {
-            Log.info("Downloading " + destPath.getFileName() + "...");
-            Files.copy(inputStream, destPath, StandardCopyOption.REPLACE_EXISTING);
-        }
-        catch (IOException e)
-        {
-            Log.error("Failed to download " + destPath.getFileName() + ", Error: " + e.getMessage());
-        }
-    }
-
-    private String parseSmallRemoteTextFile(String sourceURL, Pattern pattern, String groupName)
-    {
-        try (final Scanner scanner = new Scanner(new URL(sourceURL).openConnection().getInputStream(), StandardCharsets.UTF_8))
-        {
-            scanner.useDelimiter("\\A");
-            if (scanner.hasNext())
-            {
-                final String c = scanner.next();
-                Log.debug("URL: " + sourceURL + " file contents: " + c, verbose);
-                final Matcher m = pattern.matcher(c);
-                if (m.matches())
-                {
-                    return m.group(groupName).trim();
-                }
-                else
-                {
-                    Log.warn("No match for pattern " + pattern + " found on " + sourceURL + ". This is likely an error.");
-                }
-            }
-        }
-        catch (IOException e)
-        {
-            Log.error("Failed to download " + sourceURL + ". Terminating." + e.getMessage());
-        }
-        return null;
-    }
-
-    /**
-     * This method is hardwired to the Jenkins instance.
-     *
-     * @return Set of OpenJDKs used to do the upstream Mandrel builds
-     */
-    private Set<String> downloadAssets(MandrelVersion mandrelVersion) throws IOException
-    {
-        final Pattern jdkVersionPattern = Pattern.compile(".*OpenJDK *used: *(?<jdk>.*)", Pattern.DOTALL);
-        final int[] jdkMajorVersions = new int[]{11, 17};
-        final String jenkinsURL = "https://ci.modcluster.io";
-
-        final File df = new File(downloadDir);
-        if (df.exists())
-        {
-            Arrays.stream(Objects.requireNonNull(df.listFiles())).forEach(File::delete);
-        }
-        else
-        {
-            df.mkdir();
-        }
-
-        final Set<String> jdkVersionsUsed = new HashSet<>(2);
-
-        if (linuxBuildNumber != UNDEFINED)
-        {
-            final String[] linuxArchLabels = new String[]{"el8_aarch64", "el8"};
-            final String linuxJobUrl = jenkinsURL + "/job/mandrel-" + mandrelVersion.major + "-" + mandrelVersion.minor + "-linux-build-matrix";
-            for (int jdkMajorVersion : jdkMajorVersions)
-            {
-                for (String linuxArchLabel : linuxArchLabels)
-                {
-                    final String matrixJobCoordinates = linuxJobUrl + "/" + linuxBuildNumber + "/JDK_RELEASE=ga,JDK_VERSION=" + jdkMajorVersion + ",LABEL=" + linuxArchLabel + "/artifact";
-                    final String tarURL = matrixJobCoordinates + "/mandrel-java" + jdkMajorVersion + "-linux-" + (linuxArchLabel.contains("aarch64") ? "aarch64" : "amd64") + "-" + mandrelVersion + ".tar.gz";
-                    downloadFile(tarURL);
-                    downloadFile(tarURL + ".sha1");
-                    downloadFile(tarURL + ".sha256");
-                    final String jdkv = parseSmallRemoteTextFile(matrixJobCoordinates + "/MANDREL.md", jdkVersionPattern, "jdk");
-                    if (jdkv != null)
-                    {
-                        jdkVersionsUsed.add(jdkv);
-                    }
-                }
-            }
-        }
-        if (windowsBuildNumber != UNDEFINED)
-        {
-            final String windowsArchLabel = "w2k19";
-            final String windowsJobUrl = jenkinsURL + "/job/mandrel-" + mandrelVersion.major + "-" + mandrelVersion.minor + "-windows-build-matrix";
-            for (int jdkMajorVersion : jdkMajorVersions)
-            {
-                final String matrixJobCoordinates = windowsJobUrl + "/" + windowsBuildNumber + "/JDK_RELEASE=ga,JDK_VERSION=" + jdkMajorVersion + ",LABEL=" + windowsArchLabel + "/artifact";
-                final String zipURL = matrixJobCoordinates + "/mandrel-java" + jdkMajorVersion + "-windows-amd64-" + mandrelVersion + ".zip";
-                downloadFile(zipURL);
-                downloadFile(zipURL + ".sha1");
-                downloadFile(zipURL + ".sha256");
-                final String jdkv = parseSmallRemoteTextFile(matrixJobCoordinates + "/MANDREL.md", jdkVersionPattern, "jdk");
-                if (jdkv != null)
-                {
-                    jdkVersionsUsed.add(jdkv);
-                }
-            }
-        }
-        return jdkVersionsUsed;
-    }
-
 }
 
 class MandrelVersion implements Comparable<MandrelVersion>
@@ -1180,10 +995,28 @@ class Prepare implements Callable<Integer>
     @CommandLine.ParentCommand
     private MandrelRelease parent;
 
-    public Integer call() throws IOException
+    public Integer call()
     {
-        parent.phase = "prepare";
-        return parent.call();
+        parent.checkOptions();
+        // Prepare version
+        MandrelVersion version = MandrelVersion.ofRepository(parent.mandrelRepo);
+        assert version != null;
+        Log.info("Current version is " + version);
+        version.suffix = parent.suffix; // TODO: if Alpha/Beta autobump suffix number?
+
+        if (!version.suffix.equals("Final"))
+        {
+            return 0;
+        }
+
+        Log.info("New version will be " + version.getNewVersion().majorMinorMicroPico());
+
+        GitOps gitOps = new GitOps(version, parent.mandrelRepo, parent.forkName, parent.signCommits, parent.dryRun, false);
+        gitOps.checkAndPrepareRepository();
+        MxSuiteUtils.updateSuites(parent.mandrelRepo, MxSuiteUtils::markSuiteAsRelease);
+        final String authorEmail = gitOps.commitAndPushChanges();
+        gitOps.openPR(authorEmail);
+        return 0;
     }
 }
 
@@ -1207,11 +1040,162 @@ class Release implements Callable<Integer>
     @Override
     public Integer call() throws IOException
     {
-        parent.download = download;
-        parent.downloadDir = downloadDir;
-        parent.linuxBuildNumber = linuxBuildNumber;
-        parent.windowsBuildNumber = windowsBuildNumber;
-        parent.phase = "release";
-        return parent.call();
+        parent.checkOptions();
+        // Prepare version
+        MandrelVersion version = MandrelVersion.ofRepository(parent.mandrelRepo);
+        assert version != null;
+        Log.info("Current version is " + version);
+        version.suffix = parent.suffix; // TODO: if Alpha/Beta autobump suffix number?
+
+        final Set<String> jdkVersionsUsed = maybeDownloadBuildsAndGetJdkVersions(version);
+        GitHubOps gitHubOps = new GitHubOps(version, parent.dryRun, downloadDir);
+        gitHubOps.createGHRelease(jdkVersionsUsed);
+        if (!version.suffix.equals("Final"))
+        {
+            return 0;
+        }
+
+        Log.info("New version will be " + version.getNewVersion().majorMinorMicroPico());
+
+        GitOps gitOps = new GitOps(version, parent.mandrelRepo, parent.forkName, parent.signCommits, parent.dryRun, true);
+        gitOps.checkAndPrepareRepository();
+        MxSuiteUtils.updateSuites(parent.mandrelRepo, suite -> MxSuiteUtils.updateReleaseAndBumpVersionInSuite(version, suite));
+        final String authorEmail = gitOps.commitAndPushChanges();
+        gitOps.openPR(authorEmail);
+        return 0;
+    }
+
+
+    private Set<String> maybeDownloadBuildsAndGetJdkVersions(MandrelVersion version) throws IOException
+    {
+        final Set<String> jdkVersionsUsed = new HashSet<>();
+        if (download)
+        {
+            if (windowsBuildNumber != UNDEFINED || linuxBuildNumber != UNDEFINED)
+            {
+                jdkVersionsUsed.addAll(downloadAssets(version));
+            }
+            else
+            {
+                Log.error("At least one of --windows-job-build-number, --linux-job-build-number must be specified. Terminating.");
+            }
+            if (jdkVersionsUsed.size() != 2)
+            {
+                Log.warn("There are supposed to be 2 distinct JDK versions used, one for JDK 17 and one for JDK 11." +
+                    "This is unexpected: " + String.join(",", jdkVersionsUsed));
+            }
+        }
+        if (jdkVersionsUsed.isEmpty())
+        {
+            jdkVersionsUsed.add(System.getProperty("java.runtime.version"));
+        }
+        return jdkVersionsUsed;
+    }
+
+    private void downloadFile(String sourceURL) throws IOException
+    {
+        final URL url = new URL(sourceURL);
+        final Path destPath = Paths.get(downloadDir, url.getPath().substring(url.getPath().lastIndexOf('/') + 1));
+        try (final InputStream inputStream = url.openStream())
+        {
+            Log.info("Downloading " + destPath.getFileName() + "...");
+            Files.copy(inputStream, destPath, StandardCopyOption.REPLACE_EXISTING);
+        }
+        catch (IOException e)
+        {
+            Log.error("Failed to download " + destPath.getFileName() + ", Error: " + e.getMessage());
+        }
+    }
+
+    private String parseSmallRemoteTextFile(String sourceURL, Pattern pattern, String groupName)
+    {
+        try (final Scanner scanner = new Scanner(new URL(sourceURL).openConnection().getInputStream(), StandardCharsets.UTF_8))
+        {
+            scanner.useDelimiter("\\A");
+            if (scanner.hasNext())
+            {
+                final String c = scanner.next();
+                Log.debug("URL: " + sourceURL + " file contents: " + c, parent.verbose);
+                final Matcher m = pattern.matcher(c);
+                if (m.matches())
+                {
+                    return m.group(groupName).trim();
+                }
+                else
+                {
+                    Log.warn("No match for pattern " + pattern + " found on " + sourceURL + ". This is likely an error.");
+                }
+            }
+        }
+        catch (IOException e)
+        {
+            Log.error("Failed to download " + sourceURL + ". Terminating." + e.getMessage());
+        }
+        return null;
+    }
+
+    /**
+     * This method is hardwired to the Jenkins instance.
+     *
+     * @return Set of OpenJDKs used to do the upstream Mandrel builds
+     */
+    private Set<String> downloadAssets(MandrelVersion mandrelVersion) throws IOException
+    {
+        final Pattern jdkVersionPattern = Pattern.compile(".*OpenJDK *used: *(?<jdk>.*)", Pattern.DOTALL);
+        final int[] jdkMajorVersions = new int[]{11, 17};
+        final String jenkinsURL = "https://ci.modcluster.io";
+
+        final File df = new File(downloadDir);
+        if (df.exists())
+        {
+            Arrays.stream(Objects.requireNonNull(df.listFiles())).forEach(File::delete);
+        }
+        else
+        {
+            df.mkdir();
+        }
+
+        final Set<String> jdkVersionsUsed = new HashSet<>(2);
+
+        if (linuxBuildNumber != UNDEFINED)
+        {
+            final String[] linuxArchLabels = new String[]{"el8_aarch64", "el8"};
+            final String linuxJobUrl = jenkinsURL + "/job/mandrel-" + mandrelVersion.major + "-" + mandrelVersion.minor + "-linux-build-matrix";
+            for (int jdkMajorVersion : jdkMajorVersions)
+            {
+                for (String linuxArchLabel : linuxArchLabels)
+                {
+                    final String matrixJobCoordinates = linuxJobUrl + "/" + linuxBuildNumber + "/JDK_RELEASE=ga,JDK_VERSION=" + jdkMajorVersion + ",LABEL=" + linuxArchLabel + "/artifact";
+                    final String tarURL = matrixJobCoordinates + "/mandrel-java" + jdkMajorVersion + "-linux-" + (linuxArchLabel.contains("aarch64") ? "aarch64" : "amd64") + "-" + mandrelVersion + ".tar.gz";
+                    downloadFile(tarURL);
+                    downloadFile(tarURL + ".sha1");
+                    downloadFile(tarURL + ".sha256");
+                    final String jdkv = parseSmallRemoteTextFile(matrixJobCoordinates + "/MANDREL.md", jdkVersionPattern, "jdk");
+                    if (jdkv != null)
+                    {
+                        jdkVersionsUsed.add(jdkv);
+                    }
+                }
+            }
+        }
+        if (windowsBuildNumber != UNDEFINED)
+        {
+            final String windowsArchLabel = "w2k19";
+            final String windowsJobUrl = jenkinsURL + "/job/mandrel-" + mandrelVersion.major + "-" + mandrelVersion.minor + "-windows-build-matrix";
+            for (int jdkMajorVersion : jdkMajorVersions)
+            {
+                final String matrixJobCoordinates = windowsJobUrl + "/" + windowsBuildNumber + "/JDK_RELEASE=ga,JDK_VERSION=" + jdkMajorVersion + ",LABEL=" + windowsArchLabel + "/artifact";
+                final String zipURL = matrixJobCoordinates + "/mandrel-java" + jdkMajorVersion + "-windows-amd64-" + mandrelVersion + ".zip";
+                downloadFile(zipURL);
+                downloadFile(zipURL + ".sha1");
+                downloadFile(zipURL + ".sha256");
+                final String jdkv = parseSmallRemoteTextFile(matrixJobCoordinates + "/MANDREL.md", jdkVersionPattern, "jdk");
+                if (jdkv != null)
+                {
+                    jdkVersionsUsed.add(jdkv);
+                }
+            }
+        }
+        return jdkVersionsUsed;
     }
 }
