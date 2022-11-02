@@ -58,45 +58,54 @@ import java.util.stream.Stream;
 
 @Command(name = "mandrel-release", mixinStandardHelpOptions = true,
     description = "Script automating part of the Mandrel release process")
-class MandrelRelease implements Callable<Integer>
+class MandrelRelease
 {
 
     public static final String GITFORGE_URL = "git@github.com:";
     public static final String REPOSITORY_NAME = "graalvm/mandrel";
     public static final int UNDEFINED = -1;
 
-
-    @CommandLine.Parameters(index = "0", description = "The kind of steps to execute, must be one of \"prepare\" or \"release\"")
     private String phase;
 
-    @CommandLine.Option(names = {"-m", "--mandrel-repo"}, description = "The path to the mandrel repository", defaultValue = "./")
+    @CommandLine.Option(names = {"-m", "--mandrel-repo"},
+        scope = CommandLine.ScopeType.INHERIT,
+        description = "The path to the mandrel repository",
+        defaultValue = "./")
     private String mandrelRepo;
 
-    @CommandLine.Option(names = {"-d", "--download"}, description = "Download built artifacts")
     private boolean download;
 
-    @CommandLine.Option(names = {"-O", "--download-dir"}, description = "Directory for artifacts download and upload", defaultValue = "./artifacts")
     private String downloadDir;
 
-    @CommandLine.Option(names = {"--linux-job-build-number"}, description = "The build number of the complete, tested matrix job run.", defaultValue = "" + UNDEFINED)
     private int linuxBuildNumber;
 
-    @CommandLine.Option(names = {"--windows-job-build-number"}, description = "The build number of the complete, tested matrix job run.", defaultValue = "" + UNDEFINED)
     private int windowsBuildNumber;
 
-    @CommandLine.Option(names = {"-s", "--suffix"}, description = "The release suffix, e.g, Final, Alpha2, Beta1, etc. (default: \"${DEFAULT-VALUE}\")", defaultValue = "Final")
+    @CommandLine.Option(names = {"-s", "--suffix"},
+        scope = CommandLine.ScopeType.INHERIT,
+        description = "The release suffix, e.g, Final, Alpha2, Beta1, etc. (default: \"${DEFAULT-VALUE}\")",
+        defaultValue = "Final")
     private String suffix;
 
-    @CommandLine.Option(names = {"-f", "--fork-name"}, description = "The repository name of the github fork to push the changes to (default: \"${DEFAULT-VALUE}\")", defaultValue = "zakkak/mandrel")
+    @CommandLine.Option(names = {"-f", "--fork-name"},
+        scope = CommandLine.ScopeType.INHERIT,
+        description = "The repository name of the github fork to push the changes to (default: \"${DEFAULT-VALUE}\")",
+        defaultValue = "zakkak/mandrel")
     private String forkName;
 
-    @CommandLine.Option(names = {"-S", "--sign-commits"}, description = "Sign commits")
+    @CommandLine.Option(names = {"-S", "--sign-commits"},
+        scope = CommandLine.ScopeType.INHERIT,
+        description = "Sign commits")
     private boolean signCommits;
 
-    @CommandLine.Option(names = {"-D", "--dry-run"}, description = "Perform a dry run (no remote pushes and PRs)")
+    @CommandLine.Option(names = {"-D", "--dry-run"},
+        scope = CommandLine.ScopeType.INHERIT,
+        description = "Perform a dry run (no remote pushes and PRs)")
     private boolean dryRun;
 
-    @CommandLine.Option(names = {"--verbose"}, description = "Prints verbose debug info")
+    @CommandLine.Option(names = {"--verbose"},
+        scope = CommandLine.ScopeType.INHERIT,
+        description = "Prints verbose debug info")
     private boolean verbose;
 
     private static final String REMOTE_NAME = "mandrel-release-fork";
@@ -112,8 +121,8 @@ class MandrelRelease implements Callable<Integer>
         System.exit(exitCode);
     }
 
-    @Override
-    public Integer call() throws IOException {
+    public Integer call() throws IOException
+    {
         // Prepare version
         if (!suffix.equals("Final") && !Pattern.compile("^(Alpha|Beta)\\d*$").matcher(suffix).find())
         {
@@ -138,10 +147,7 @@ class MandrelRelease implements Callable<Integer>
         releaseBranch = "release/mandrel-" + version;
         baseBranch = "mandrel/" + version.majorMinor();
 
-        if (!phase.equals("prepare") && !phase.equals("release"))
-        {
-            throw new IllegalArgumentException(phase + " is not a valid phase. Please use \"prepare\" or \"release\".");
-        }
+        assert phase.equals("prepare") || phase.equals("release");
         if (phase.equals("release"))
         {
             createGHRelease();
@@ -162,6 +168,32 @@ class MandrelRelease implements Callable<Integer>
         final String authorEmail = commitAndPushChanges();
         openPR(authorEmail);
         return 0;
+    }
+
+    @Command(name = "prepare", description = "Prepare repository for release.")
+    int prepare() throws IOException
+    {
+        phase = "prepare";
+        return call();
+    }
+
+    @Command(name = "release", description = "Release a new version.")
+    int release(
+        @CommandLine.Option(names = {"-d", "--download"}, description = "Download built artifacts")
+        boolean download,
+        @CommandLine.Option(names = {"-O", "--download-dir"}, description = "Directory for artifacts download and upload", defaultValue = "./artifacts")
+        String downloadDir,
+        @CommandLine.Option(names = {"--linux-job-build-number"}, description = "The build number of the complete, tested matrix job run.", defaultValue = "" + UNDEFINED)
+        int linuxBuildNumber,
+        @CommandLine.Option(names = {"--windows-job-build-number"}, description = "The build number of the complete, tested matrix job run.", defaultValue = "" + UNDEFINED)
+        int windowsBuildNumber) throws IOException
+    {
+        this.download = download;
+        this.downloadDir = downloadDir;
+        this.linuxBuildNumber = linuxBuildNumber;
+        this.windowsBuildNumber = windowsBuildNumber;
+        this.phase = "release";
+        return call();
     }
 
     private void checkAndPrepareRepository()
