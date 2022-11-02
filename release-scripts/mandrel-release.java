@@ -107,9 +107,6 @@ class MandrelRelease
         description = "Prints verbose debug info")
     private boolean verbose;
 
-    private MandrelVersion version = null;
-    private MandrelVersion newVersion = null;
-
     public static void main(String... args)
     {
         int exitCode = new CommandLine(new MandrelRelease()).execute(args);
@@ -120,7 +117,7 @@ class MandrelRelease
     {
         checkOptions();
         // Prepare version
-        version = MandrelVersion.ofRepository(mandrelRepo);
+        MandrelVersion version = MandrelVersion.ofRepository(mandrelRepo);
         Log.info("Current version is " + version);
         version.suffix = suffix; // TODO: if Alpha/Beta autobump suffix number?
 
@@ -128,7 +125,7 @@ class MandrelRelease
         assert phase.equals("prepare") || release;
         if (release)
         {
-            final Set<String> jdkVersionsUsed = maybeDownloadBuildsAndGetJdkVersions();
+            final Set<String> jdkVersionsUsed = maybeDownloadBuildsAndGetJdkVersions(version);
             GitHubOps gitHubOps = new GitHubOps(version, dryRun, downloadDir);
             gitHubOps.createGHRelease(jdkVersionsUsed);
         }
@@ -137,8 +134,7 @@ class MandrelRelease
             return 0;
         }
 
-        newVersion = version.getNewVersion();
-        Log.info("New version will be " + newVersion.majorMinorMicroPico());
+        Log.info("New version will be " + version.getNewVersion().majorMinorMicroPico());
 
         GitOps gitOps = new GitOps(version, mandrelRepo, forkName, signCommits, dryRun, release);
         gitOps.checkAndPrepareRepository();
@@ -168,7 +164,7 @@ class MandrelRelease
         }
     }
 
-    private Set<String> maybeDownloadBuildsAndGetJdkVersions() throws IOException
+    private Set<String> maybeDownloadBuildsAndGetJdkVersions(MandrelVersion version) throws IOException
     {
         final Set<String> jdkVersionsUsed = new HashSet<>();
         if (download)
@@ -268,7 +264,7 @@ class MandrelRelease
                 for (String linuxArchLabel : linuxArchLabels)
                 {
                     final String matrixJobCoordinates = linuxJobUrl + "/" + linuxBuildNumber + "/JDK_RELEASE=ga,JDK_VERSION=" + jdkMajorVersion + ",LABEL=" + linuxArchLabel + "/artifact";
-                    final String tarURL = matrixJobCoordinates + "/mandrel-java" + jdkMajorVersion + "-linux-" + (linuxArchLabel.contains("aarch64") ? "aarch64" : "amd64") + "-" + version.toString() + ".tar.gz";
+                    final String tarURL = matrixJobCoordinates + "/mandrel-java" + jdkMajorVersion + "-linux-" + (linuxArchLabel.contains("aarch64") ? "aarch64" : "amd64") + "-" + mandrelVersion + ".tar.gz";
                     downloadFile(tarURL);
                     downloadFile(tarURL + ".sha1");
                     downloadFile(tarURL + ".sha256");
@@ -287,7 +283,7 @@ class MandrelRelease
             for (int jdkMajorVersion : jdkMajorVersions)
             {
                 final String matrixJobCoordinates = windowsJobUrl + "/" + windowsBuildNumber + "/JDK_RELEASE=ga,JDK_VERSION=" + jdkMajorVersion + ",LABEL=" + windowsArchLabel + "/artifact";
-                final String zipURL = matrixJobCoordinates + "/mandrel-java" + jdkMajorVersion + "-windows-amd64-" + version.toString() + ".zip";
+                final String zipURL = matrixJobCoordinates + "/mandrel-java" + jdkMajorVersion + "-windows-amd64-" + mandrelVersion + ".zip";
                 downloadFile(zipURL);
                 downloadFile(zipURL + ".sha1");
                 downloadFile(zipURL + ".sha256");
