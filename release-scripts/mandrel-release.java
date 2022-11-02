@@ -62,7 +62,6 @@ import java.util.stream.Stream;
 class MandrelRelease
 {
 
-    public static final String REPOSITORY_NAME = "graalvm/mandrel";
     public static final int UNDEFINED = -1;
 
     String phase;
@@ -130,7 +129,8 @@ class MandrelRelease
         if (release)
         {
             final Set<String> jdkVersionsUsed = maybeDownloadBuildsAndGetJdkVersions();
-            createGHRelease(jdkVersionsUsed);
+            GitHubOps gitHubOps = new GitHubOps(version, dryRun, downloadDir);
+            gitHubOps.createGHRelease(jdkVersionsUsed);
         }
         if (!suffix.equals("Final"))
         {
@@ -247,64 +247,6 @@ class MandrelRelease
         }
     }
 
-    private void createGHRelease(Set<String> jdkVersionsUsed) throws IOException
-    {
-        final GitHub github = connectToGitHub();
-        try
-        {
-            final GHRepository repository = github.getRepository(REPOSITORY_NAME);
-            final PagedIterable<GHMilestone> ghMilestones = repository.listMilestones(GHIssueState.OPEN);
-            final String finalVersion = version.majorMinorMicroPico() + "-Final";
-
-            final GHMilestone milestone = ghMilestones.toList().stream().filter(m -> m.getTitle().equals(finalVersion)).findAny().orElse(null);
-
-            if (milestone == null)
-            {
-                Log.error("No milestone titled " + version.majorMinorMicroPico() + "-Final! Can't produce changelog without it!");
-            }
-            if (suffix.equals("Final") && milestone.getOpenIssues() != 0)
-            {
-                Log.error("There are still open issues in milestone " + milestone.getTitle() + ". Please take care of them and try again.");
-            }
-
-            final List<GHTag> tags = repository.listTags().toList();
-
-            // Ensure that the tag exists
-            final String tag = "mandrel-" + version;
-            if (tags.stream().noneMatch(x -> x.getName().equals(tag)))
-            {
-                Log.error("Please create tag " + tag + " and try again");
-            }
-
-            final String changelog = createChangelog(repository, milestone, tags);
-
-            if (dryRun)
-            {
-                Log.warn("Skipping release due to --dry-run");
-                Log.info("Release body would look like");
-                System.out.println(releaseMainBody(version, changelog, jdkVersionsUsed));
-                return;
-            }
-
-            manageMilestones(repository, ghMilestones, milestone);
-
-            final GHRelease ghRelease = repository.createRelease(tag)
-                .name("Mandrel " + version)
-                .prerelease(!suffix.equals("Final"))
-                .body(releaseMainBody(version, changelog, jdkVersionsUsed))
-                .draft(true)
-                .create();
-            uploadAssets(version.toString(), ghRelease);
-            Log.info("Created new draft release: " + ghRelease.getHtmlUrl());
-            Log.info("Please review and publish!");
-        }
-        catch (IOException e)
-        {
-            e.printStackTrace();
-            Log.error(e.getMessage());
-        }
-    }
-
     private Set<String> maybeDownloadBuildsAndGetJdkVersions() throws IOException
     {
         final Set<String> jdkVersionsUsed = new HashSet<>();
@@ -373,18 +315,6 @@ class MandrelRelease
         return null;
     }
 
-    private File[] assets(String fullVersion)
-    {
-        return new File[]{
-            new File(downloadDir, "mandrel-java11-linux-amd64-" + fullVersion + ".tar.gz"),
-            new File(downloadDir, "mandrel-java11-linux-aarch64-" + fullVersion + ".tar.gz"),
-            new File(downloadDir, "mandrel-java11-windows-amd64-" + fullVersion + ".zip"),
-            new File(downloadDir, "mandrel-java17-linux-amd64-" + fullVersion + ".tar.gz"),
-            new File(downloadDir, "mandrel-java17-linux-aarch64-" + fullVersion + ".tar.gz"),
-            new File(downloadDir, "mandrel-java17-windows-amd64-" + fullVersion + ".zip"),
-        };
-    }
-
     /**
      * This method is hardwired to the Jenkins instance.
      *
@@ -450,6 +380,230 @@ class MandrelRelease
         return jdkVersionsUsed;
     }
 
+}
+
+class MandrelVersion implements Comparable<MandrelVersion>
+{
+    final static String MANDREL_VERSION_REGEX = "(\\d+)\\.(\\d+)\\.(\\d+)\\.(\\d+)(-(Final|(Alpha|Beta)\\d*))?";
+
+    int major;
+    int minor;
+    int micro;
+    int pico;
+    String suffix;
+
+    public MandrelVersion(MandrelVersion mandrelVersion)
+    {
+        this.major = mandrelVersion.major;
+        this.minor = mandrelVersion.minor;
+        this.micro = mandrelVersion.micro;
+        this.pico = mandrelVersion.pico;
+        this.suffix = mandrelVersion.suffix;
+    }
+
+    public MandrelVersion(String version)
+    {
+        final Pattern versionPattern = Pattern.compile(MandrelVersion.MANDREL_VERSION_REGEX);
+        final Matcher versionMatcher = versionPattern.matcher(version);
+        boolean found = versionMatcher.find();
+        if (!found)
+        {
+            Log.error("Wrong version format! " + version + " does not match pattern: " + MandrelVersion.MANDREL_VERSION_REGEX);
+        }
+        major = Integer.parseInt(versionMatcher.group(1));
+        minor = Integer.parseInt(versionMatcher.group(2));
+        micro = Integer.parseInt(versionMatcher.group(3));
+        pico = Integer.parseInt(versionMatcher.group(4));
+        suffix = versionMatcher.group(6);
+    }
+
+    /**
+     * Returns current version of substratevm
+     *
+     * @return
+     */
+    static MandrelVersion ofRepository(String mandrelRepo)
+    {
+        final Path substrateSuite = Path.of(mandrelRepo, "substratevm", "mx.substratevm", "suite.py");
+        try
+        {
+            final List<String> lines = Files.readAllLines(substrateSuite);
+            final Pattern versionPattern = Pattern.compile("\"version\" : \"([\\d.]+)\"");
+            for (String line : lines)
+            {
+                final Matcher versionMatcher = versionPattern.matcher(line);
+                if (versionMatcher.find())
+                {
+                    final String version = versionMatcher.group(1);
+                    return new MandrelVersion(version);
+                }
+            }
+        }
+        catch (IOException e)
+        {
+            e.printStackTrace();
+            Log.error(e.getMessage());
+        }
+        return null;
+    }
+
+    /**
+     * Calculates the new version by bumping pico in major.minor.micro.pico
+     *
+     * @return The new version
+     */
+    MandrelVersion getNewVersion()
+    {
+        final MandrelVersion mandrelVersion = new MandrelVersion(this);
+        mandrelVersion.pico++;
+        return mandrelVersion;
+    }
+
+    String majorMinor()
+    {
+        return major + "." + minor;
+    }
+
+    String majorMinorMicro()
+    {
+        return major + "." + minor + "." + micro;
+    }
+
+    String majorMinorMicroPico()
+    {
+        return major + "." + minor + "." + micro + "." + pico;
+    }
+
+    @Override
+    public String toString()
+    {
+        String version = majorMinorMicroPico();
+        if (suffix != null)
+        {
+            version += "-" + suffix;
+        }
+        return version;
+    }
+
+    @Override
+    public int compareTo(MandrelVersion o)
+    {
+        assert suffix.equals(o.suffix);
+        if (major > o.major)
+        {
+            return 1;
+        }
+        else if (major == o.major)
+        {
+            if (minor > o.minor)
+            {
+                return 1;
+            }
+            else if (minor == o.minor)
+            {
+                if (micro > o.micro)
+                {
+                    return 1;
+                }
+                else if (micro == o.micro)
+                {
+                    if (pico > o.pico)
+                    {
+                        return 1;
+                    }
+                    else if (pico == o.pico)
+                    {
+                        return 0;
+                    }
+                }
+            }
+        }
+        return -1;
+    }
+}
+
+class GitHubOps
+{
+    private final MandrelVersion version;
+    private final boolean dryRun;
+    private final String downloadDir;
+
+    GitHubOps(MandrelVersion version, boolean dryRun, String downloadDir)
+    {
+        this.version = version;
+        this.dryRun = dryRun;
+        this.downloadDir = downloadDir;
+    }
+
+    void createGHRelease(Set<String> jdkVersionsUsed)
+    {
+        final GitHub github = connectToGitHub();
+        try
+        {
+            final GHRepository repository = github.getRepository(GitOps.REPOSITORY_NAME);
+            final PagedIterable<GHMilestone> ghMilestones = repository.listMilestones(GHIssueState.OPEN);
+            final String finalVersion = version.majorMinorMicroPico() + "-Final";
+
+            final GHMilestone milestone = ghMilestones.toList().stream().filter(m -> m.getTitle().equals(finalVersion)).findAny().orElse(null);
+
+            if (milestone == null)
+            {
+                Log.error("No milestone titled " + version.majorMinorMicroPico() + "-Final! Can't produce changelog without it!");
+            }
+            if (version.suffix.equals("Final") && milestone.getOpenIssues() != 0)
+            {
+                Log.error("There are still open issues in milestone " + milestone.getTitle() + ". Please take care of them and try again.");
+            }
+
+            final List<GHTag> tags = repository.listTags().toList();
+
+            // Ensure that the tag exists
+            final String tag = "mandrel-" + version;
+            if (tags.stream().noneMatch(x -> x.getName().equals(tag)))
+            {
+                Log.error("Please create tag " + tag + " and try again");
+            }
+
+            final String changelog = createChangelog(repository, milestone, tags);
+
+            if (dryRun)
+            {
+                Log.warn("Skipping release due to --dry-run");
+                Log.info("Release body would look like");
+                System.out.println(releaseMainBody(changelog, jdkVersionsUsed));
+                return;
+            }
+
+            manageMilestones(repository, ghMilestones, milestone);
+
+            final GHRelease ghRelease = repository.createRelease(tag)
+                .name("Mandrel " + version)
+                .prerelease(!version.suffix.equals("Final"))
+                .body(releaseMainBody(changelog, jdkVersionsUsed))
+                .draft(true)
+                .create();
+            uploadAssets(version.toString(), ghRelease);
+            Log.info("Created new draft release: " + ghRelease.getHtmlUrl());
+            Log.info("Please review and publish!");
+        }
+        catch (IOException e)
+        {
+            e.printStackTrace();
+            Log.error(e.getMessage());
+        }
+    }
+
+    private File[] assets(String fullVersion)
+    {
+        return new File[]{
+            new File(downloadDir, "mandrel-java11-linux-amd64-" + fullVersion + ".tar.gz"),
+            new File(downloadDir, "mandrel-java11-linux-aarch64-" + fullVersion + ".tar.gz"),
+            new File(downloadDir, "mandrel-java11-windows-amd64-" + fullVersion + ".zip"),
+            new File(downloadDir, "mandrel-java17-linux-amd64-" + fullVersion + ".tar.gz"),
+            new File(downloadDir, "mandrel-java17-linux-aarch64-" + fullVersion + ".tar.gz"),
+            new File(downloadDir, "mandrel-java17-windows-amd64-" + fullVersion + ".zip"),
+        };
+    }
 
     private void uploadAssets(String fullVersion, GHRelease ghRelease) throws IOException
     {
@@ -492,7 +646,7 @@ class MandrelRelease
         }
     }
 
-    private String releaseMainBody(MandrelVersion version, String changelog, Set<String> jdkVersionsUsed)
+    private String releaseMainBody(String changelog, Set<String> jdkVersionsUsed)
     {
         return "# Mandrel\n" +
             "\n" +
@@ -589,7 +743,7 @@ class MandrelRelease
             .filter(pr -> includeInChangelog(pr, milestone));
         final Map<Integer, List<GHPullRequest>> collect = mergedPRsInMilestone.collect(Collectors.groupingBy(this::getGroup));
         StringBuilder changelogBuilder = new StringBuilder("\n### Changelog\n\n");
-        final String latestReleasedTag = version.getLatestReleasedTag(tags);
+        final String latestReleasedTag = getLatestReleasedTag(tags);
         final List<GHPullRequest> noteworthyPRs = collect.get(0);
         if (noteworthyPRs != null && noteworthyPRs.size() != 0)
         {
@@ -605,21 +759,58 @@ class MandrelRelease
         }
         if (latestReleasedTag == null)
         {
-            changelogBuilder.append("\n<!--\nFor a complete list of changes please visit https://github.com/" + REPOSITORY_NAME + "/compare/")
+            changelogBuilder.append("\n<!--\nFor a complete list of changes please visit https://github.com/" + GitOps.REPOSITORY_NAME + "/compare/")
                 .append("TODO_REPLACE_WITH_UPSTREAM_TAG").append("...mandrel-").append(version).append("\n-->\n");
         }
         else
         {
-            changelogBuilder.append("\nFor a complete list of changes please visit https://github.com/" + REPOSITORY_NAME + "/compare/")
+            changelogBuilder.append("\nFor a complete list of changes please visit https://github.com/" + GitOps.REPOSITORY_NAME + "/compare/")
                 .append(latestReleasedTag).append("...mandrel-").append(version).append("\n");
         }
         return changelogBuilder.toString();
     }
 
+    /**
+     * Calculates the latest final version by checking major.minor.micro.pico
+     *
+     * @param tags
+     * @return The latest final version
+     */
+    private String getLatestReleasedTag(List<GHTag> tags)
+    {
+        final String tagPrefix = "mandrel-";
+        List<MandrelVersion> finalVersions = tags.stream()
+            .filter(x -> x.getName().startsWith(tagPrefix + version.majorMinorMicro()) && x.getName().endsWith("Final"))
+            .map(x -> new MandrelVersion(x.getName().substring(tagPrefix.length())))
+            .sorted(Comparator.reverseOrder())
+            .collect(Collectors.toList());
+        for (MandrelVersion mandrelVersion : finalVersions)
+        {
+            System.out.println(mandrelVersion);
+        }
+        assert !finalVersions.isEmpty() :
+            "Tag for " + version + " is missing, please make sure the tag has been pushed before releasing.";
+        assert version.compareTo(finalVersions.get(0)) == 0 :
+            "Latest tag (" + finalVersions.get(0) + ") does not match the version of the current branch (" + version + "). " +
+                "Please make sure you are on the correct branch and that you have created a tag for the release.";
+        if (finalVersions.size() == 1)
+        {
+            // There is no Mandrel release before that major.minor.micro, return upstream graal tag instead
+            final String upstreamTag = "vm-" + version.majorMinorMicro();
+            if (tags.stream().noneMatch(x -> x.getName().equals(upstreamTag)))
+            {
+                Log.warn("Upstream tag " + upstreamTag + " not found in " + GitOps.REPOSITORY_NAME + " please add the upstream tag manually in the release text.");
+                return null;
+            }
+            return upstreamTag;
+        }
+        return tagPrefix + finalVersions.get(1).toString();
+    }
+
     private void manageMilestones(GHRepository repository, PagedIterable<GHMilestone> ghMilestones, GHMilestone milestone) throws IOException
     {
         assert !dryRun : "Milestones should not be touched in dry runs";
-        if (!suffix.equals("Final"))
+        if (!version.suffix.equals("Final"))
         {
             return;
         }
@@ -628,6 +819,7 @@ class MandrelRelease
             milestone.close();
             Log.info("Closed milestone " + milestone.getTitle() + " (" + milestone.getNumber() + ")");
         }
+        MandrelVersion newVersion = version.getNewVersion();
         GHMilestone newMilestone = ghMilestones.toList().stream().filter(m -> m.getTitle().equals(newVersion.toString())).findAny().orElse(null);
         if (newMilestone == null)
         {
@@ -674,7 +866,7 @@ class MandrelRelease
         return 2;
     }
 
-    private GitHub connectToGitHub()
+    private static GitHub connectToGitHub()
     {
         GitHub github = null;
         try
@@ -696,183 +888,6 @@ class MandrelRelease
         return github;
     }
 
-}
-
-class MandrelVersion implements Comparable<MandrelVersion>
-{
-    final static String MANDREL_VERSION_REGEX = "(\\d+)\\.(\\d+)\\.(\\d+)\\.(\\d+)(-(Final|(Alpha|Beta)\\d*))?";
-
-    int major;
-    int minor;
-    int micro;
-    int pico;
-    String suffix;
-
-    public MandrelVersion(MandrelVersion mandrelVersion)
-    {
-        this.major = mandrelVersion.major;
-        this.minor = mandrelVersion.minor;
-        this.micro = mandrelVersion.micro;
-        this.pico = mandrelVersion.pico;
-        this.suffix = mandrelVersion.suffix;
-    }
-
-    public MandrelVersion(String version)
-    {
-        final Pattern versionPattern = Pattern.compile(MandrelVersion.MANDREL_VERSION_REGEX);
-        final Matcher versionMatcher = versionPattern.matcher(version);
-        boolean found = versionMatcher.find();
-        if (!found)
-        {
-            Log.error("Wrong version format! " + version + " does not match pattern: " + MandrelVersion.MANDREL_VERSION_REGEX);
-        }
-        major = Integer.parseInt(versionMatcher.group(1));
-        minor = Integer.parseInt(versionMatcher.group(2));
-        micro = Integer.parseInt(versionMatcher.group(3));
-        pico = Integer.parseInt(versionMatcher.group(4));
-        suffix = versionMatcher.group(6);
-    }
-
-    /**
-     * Returns current version of substratevm
-     *
-     * @return
-     */
-    static MandrelVersion ofRepository(String mandrelRepo)
-    {
-        final Path substrateSuite = Path.of(mandrelRepo, "substratevm", "mx.substratevm", "suite.py");
-        try
-        {
-            final List<String> lines = Files.readAllLines(substrateSuite);
-            final Pattern versionPattern = Pattern.compile("\"version\" : \"([\\d.]+)\"");
-            for (String line : lines)
-            {
-                final Matcher versionMatcher = versionPattern.matcher(line);
-                if (versionMatcher.find())
-                {
-                    final String version = versionMatcher.group(1);
-                    return new MandrelVersion(version);
-                }
-            }
-        }
-        catch (IOException e)
-        {
-            e.printStackTrace();
-            Log.error(e.getMessage());
-        }
-        return null;
-    }
-
-    /**
-     * Calculates the new version by bumping pico in major.minor.micro.pico
-     *
-     * @return The new version
-     */
-    MandrelVersion getNewVersion()
-    {
-        final MandrelVersion mandrelVersion = new MandrelVersion(this);
-        mandrelVersion.pico++;
-        return mandrelVersion;
-    }
-
-    /**
-     * Calculates the latest final version by checking major.minor.micro.pico
-     *
-     * @param tags
-     * @return The latest final version
-     */
-    String getLatestReleasedTag(List<GHTag> tags)
-    {
-        final String tagPrefix = "mandrel-";
-        List<MandrelVersion> finalVersions = tags.stream()
-            .filter(x -> x.getName().startsWith(tagPrefix + majorMinorMicro()) && x.getName().endsWith("Final"))
-            .map(x -> new MandrelVersion(x.getName().substring(tagPrefix.length())))
-            .sorted(Comparator.reverseOrder())
-            .collect(Collectors.toList());
-        for (MandrelVersion mandrelVersion : finalVersions)
-        {
-            System.out.println(mandrelVersion);
-        }
-        assert !finalVersions.isEmpty() :
-            "Tag for " + this + " is missing, please make sure the tag has been pushed before releasing.";
-        assert compareTo(finalVersions.get(0)) == 0 :
-            "Latest tag (" + finalVersions.get(0) + ") does not match the version of the current branch (" + this + "). " +
-                "Please make sure you are on the correct branch and that you have created a tag for the release.";
-        if (finalVersions.size() == 1)
-        {
-            // There is no Mandrel release before that major.minor.micro, return upstream graal tag instead
-            final String upstreamTag = "vm-" + majorMinorMicro();
-            if (tags.stream().noneMatch(x -> x.getName().equals(upstreamTag)))
-            {
-                Log.warn("Upstream tag " + upstreamTag + " not found in " + MandrelRelease.REPOSITORY_NAME + " please add the upstream tag manually in the release text.");
-                return null;
-            }
-            return upstreamTag;
-        }
-        return tagPrefix + finalVersions.get(1).toString();
-    }
-
-    String majorMinor()
-    {
-        return major + "." + minor;
-    }
-
-    String majorMinorMicro()
-    {
-        return major + "." + minor + "." + micro;
-    }
-
-    String majorMinorMicroPico()
-    {
-        return major + "." + minor + "." + micro + "." + pico;
-    }
-
-    @Override
-    public String toString()
-    {
-        String version = majorMinorMicroPico();
-        if (suffix != null)
-        {
-            version += "-" + suffix;
-        }
-        return version;
-    }
-
-    @Override
-    public int compareTo(MandrelVersion o)
-    {
-        assert suffix.equals(o.suffix);
-        if (major > o.major)
-        {
-            return 1;
-        }
-        else if (major == o.major)
-        {
-            if (minor > o.minor)
-            {
-                return 1;
-            }
-            else if (minor == o.minor)
-            {
-                if (micro > o.micro)
-                {
-                    return 1;
-                }
-                else if (micro == o.micro)
-                {
-                    if (pico > o.pico)
-                    {
-                        return 1;
-                    }
-                    else if (pico == o.pico)
-                    {
-                        return 0;
-                    }
-                }
-            }
-        }
-        return -1;
-    }
 }
 
 class GitOps
