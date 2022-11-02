@@ -124,17 +124,8 @@ class MandrelRelease
 
     public Integer call() throws IOException
     {
+        checkOptions();
         // Prepare version
-        if (!suffix.equals("Final") && !Pattern.compile("^(Alpha|Beta)\\d*$").matcher(suffix).find())
-        {
-            Log.error("Invalid version suffix : " + suffix);
-        }
-
-        if (!Path.of(mandrelRepo).toFile().exists())
-        {
-            Log.error("Path " + mandrelRepo + " does not exist");
-        }
-
         version = getCurrentVersion();
         Log.info("Current version is " + version);
         version.suffix = suffix; // TODO: if Alpha/Beta autobump suffix number?
@@ -169,6 +160,19 @@ class MandrelRelease
         final String authorEmail = commitAndPushChanges();
         openPR(authorEmail);
         return 0;
+    }
+
+    void checkOptions()
+    {
+        if (!suffix.equals("Final") && !Pattern.compile("^(Alpha|Beta)\\d*$").matcher(suffix).find())
+        {
+            Log.error("Invalid version suffix : " + suffix);
+        }
+
+        if (!Path.of(mandrelRepo).toFile().exists())
+        {
+            Log.error("Path " + mandrelRepo + " does not exist");
+        }
     }
 
     private void checkAndPrepareRepository()
