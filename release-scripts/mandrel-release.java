@@ -57,6 +57,7 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 @Command(name = "mandrel-release", mixinStandardHelpOptions = true,
+    subcommands = {Prepare.class, Release.class},
     description = "Script automating part of the Mandrel release process")
 class MandrelRelease
 {
@@ -65,7 +66,7 @@ class MandrelRelease
     public static final String REPOSITORY_NAME = "graalvm/mandrel";
     public static final int UNDEFINED = -1;
 
-    private String phase;
+    String phase;
 
     @CommandLine.Option(names = {"-m", "--mandrel-repo"},
         scope = CommandLine.ScopeType.INHERIT,
@@ -73,13 +74,13 @@ class MandrelRelease
         defaultValue = "./")
     private String mandrelRepo;
 
-    private boolean download;
+    boolean download;
 
-    private String downloadDir;
+    String downloadDir;
 
-    private int linuxBuildNumber;
+    int linuxBuildNumber;
 
-    private int windowsBuildNumber;
+    int windowsBuildNumber;
 
     @CommandLine.Option(names = {"-s", "--suffix"},
         scope = CommandLine.ScopeType.INHERIT,
@@ -168,32 +169,6 @@ class MandrelRelease
         final String authorEmail = commitAndPushChanges();
         openPR(authorEmail);
         return 0;
-    }
-
-    @Command(name = "prepare", description = "Prepare repository for release.")
-    int prepare() throws IOException
-    {
-        phase = "prepare";
-        return call();
-    }
-
-    @Command(name = "release", description = "Release a new version.")
-    int release(
-        @CommandLine.Option(names = {"-d", "--download"}, description = "Download built artifacts")
-        boolean download,
-        @CommandLine.Option(names = {"-O", "--download-dir"}, description = "Directory for artifacts download and upload", defaultValue = "./artifacts")
-        String downloadDir,
-        @CommandLine.Option(names = {"--linux-job-build-number"}, description = "The build number of the complete, tested matrix job run.", defaultValue = "" + UNDEFINED)
-        int linuxBuildNumber,
-        @CommandLine.Option(names = {"--windows-job-build-number"}, description = "The build number of the complete, tested matrix job run.", defaultValue = "" + UNDEFINED)
-        int windowsBuildNumber) throws IOException
-    {
-        this.download = download;
-        this.downloadDir = downloadDir;
-        this.linuxBuildNumber = linuxBuildNumber;
-        this.windowsBuildNumber = windowsBuildNumber;
-        this.phase = "release";
-        return call();
     }
 
     private void checkAndPrepareRepository()
@@ -1128,5 +1103,47 @@ class Log
     {
         System.err.println(Ansi.AUTO.string("[@|bold,red ERROR|@] ") + message);
         System.exit(1);
+    }
+}
+
+@Command(name = "prepare", description = "Prepare repository for release.")
+class Prepare implements Callable<Integer>
+{
+    @CommandLine.ParentCommand
+    private MandrelRelease parent;
+
+    public Integer call() throws IOException
+    {
+        parent.phase = "prepare";
+        return parent.call();
+    }
+}
+
+@Command(name = "release", description = "Release a new version.")
+class Release implements Callable<Integer>
+{
+    public static final int UNDEFINED = -1;
+
+    @CommandLine.Option(names = {"-d", "--download"}, description = "Download built artifacts")
+    boolean download;
+    @CommandLine.Option(names = {"-O", "--download-dir"}, description = "Directory for artifacts download and upload", defaultValue = "./artifacts")
+    String downloadDir;
+    @CommandLine.Option(names = {"--linux-job-build-number"}, description = "The build number of the complete, tested matrix job run.", defaultValue = "" + UNDEFINED)
+    int linuxBuildNumber;
+    @CommandLine.Option(names = {"--windows-job-build-number"}, description = "The build number of the complete, tested matrix job run.", defaultValue = "" + UNDEFINED)
+    int windowsBuildNumber;
+
+    @CommandLine.ParentCommand
+    private MandrelRelease parent;
+
+    @Override
+    public Integer call() throws IOException
+    {
+        parent.download = download;
+        parent.downloadDir = downloadDir;
+        parent.linuxBuildNumber = linuxBuildNumber;
+        parent.windowsBuildNumber = windowsBuildNumber;
+        parent.phase = "release";
+        return parent.call();
     }
 }
