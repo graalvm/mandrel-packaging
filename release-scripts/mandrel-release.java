@@ -229,14 +229,14 @@ class MandrelRelease implements Callable<Integer>
         final String forkURL = GITFORGE_URL + forkName;
         final URIish forkURI = new URIish(forkURL);
         RemoteConfig remote = getRemoteConfig(git);
-        if (remote != null && !remote.getURIs().stream().anyMatch(u -> forkURI.equals(u)))
+        if (remote != null && remote.getURIs().stream().noneMatch(forkURI::equals))
         {
             error("Remote " + REMOTE_NAME + " already exists and does not point to " + forkURL +
                 "\nPlease remove with `git remote remove " + REMOTE_NAME + "` and try again.");
         }
         git.remoteAdd().setName(REMOTE_NAME).setUri(forkURI).call();
         remote = getRemoteConfig(git);
-        if (remote != null && remote.getURIs().stream().anyMatch(u -> forkURI.equals(u)))
+        if (remote != null && remote.getURIs().stream().anyMatch(forkURI::equals))
         {
             info("Git remote " + REMOTE_NAME + " points to " + forkURL);
         }
@@ -249,16 +249,12 @@ class MandrelRelease implements Callable<Integer>
     private RemoteConfig getRemoteConfig(Git git) throws GitAPIException
     {
         final List<RemoteConfig> remotes = git.remoteList().call();
-        RemoteConfig remote = null;
-        for (int i = 0; i < remotes.size(); i++)
-        {
-            if (remotes.get(i).getName().equals(REMOTE_NAME))
-            {
-                remote = remotes.get(i);
-                break;
+        for (RemoteConfig remoteConfig : remotes) {
+            if (remoteConfig.getName().equals(REMOTE_NAME)) {
+                return remoteConfig;
             }
         }
-        return remote;
+        return null;
     }
 
     /**
@@ -737,7 +733,7 @@ class MandrelRelease implements Callable<Integer>
 
     private String parseSmallRemoteTextFile(String sourceURL, Pattern pattern, String groupName)
     {
-        try (final Scanner scanner = new Scanner(new URL(sourceURL).openConnection().getInputStream(), StandardCharsets.UTF_8.toString()))
+        try (final Scanner scanner = new Scanner(new URL(sourceURL).openConnection().getInputStream(), StandardCharsets.UTF_8))
         {
             scanner.useDelimiter("\\A");
             if (scanner.hasNext())
