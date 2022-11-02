@@ -126,7 +126,7 @@ class MandrelRelease
     {
         checkOptions();
         // Prepare version
-        version = getCurrentVersion();
+        version = MandrelVersion.ofRepository(mandrelRepo);
         Log.info("Current version is " + version);
         version.suffix = suffix; // TODO: if Alpha/Beta autobump suffix number?
 
@@ -457,36 +457,6 @@ class MandrelRelease
             e.printStackTrace();
             Log.error(e.getMessage());
         }
-    }
-
-    /**
-     * Returns current version of substratevm
-     *
-     * @return
-     */
-    private MandrelVersion getCurrentVersion()
-    {
-        final Path substrateSuite = Path.of(mandrelRepo, "substratevm", "mx.substratevm", "suite.py");
-        try
-        {
-            final List<String> lines = Files.readAllLines(substrateSuite);
-            final Pattern versionPattern = Pattern.compile("\"version\" : \"([\\d.]+)\"");
-            for (String line : lines)
-            {
-                final Matcher versionMatcher = versionPattern.matcher(line);
-                if (versionMatcher.find())
-                {
-                    final String version = versionMatcher.group(1);
-                    return new MandrelVersion(version);
-                }
-            }
-        }
-        catch (IOException e)
-        {
-            e.printStackTrace();
-            Log.error(e.getMessage());
-        }
-        return null;
     }
 
     private void createGHRelease() throws IOException
@@ -969,6 +939,36 @@ class MandrelVersion implements Comparable<MandrelVersion>
         micro = Integer.parseInt(versionMatcher.group(3));
         pico = Integer.parseInt(versionMatcher.group(4));
         suffix = versionMatcher.group(6);
+    }
+
+    /**
+     * Returns current version of substratevm
+     *
+     * @return
+     */
+    static MandrelVersion ofRepository(String mandrelRepo)
+    {
+        final Path substrateSuite = Path.of(mandrelRepo, "substratevm", "mx.substratevm", "suite.py");
+        try
+        {
+            final List<String> lines = Files.readAllLines(substrateSuite);
+            final Pattern versionPattern = Pattern.compile("\"version\" : \"([\\d.]+)\"");
+            for (String line : lines)
+            {
+                final Matcher versionMatcher = versionPattern.matcher(line);
+                if (versionMatcher.find())
+                {
+                    final String version = versionMatcher.group(1);
+                    return new MandrelVersion(version);
+                }
+            }
+        }
+        catch (IOException e)
+        {
+            e.printStackTrace();
+            Log.error(e.getMessage());
+        }
+        return null;
     }
 
     /**
