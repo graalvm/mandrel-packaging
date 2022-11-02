@@ -917,151 +917,152 @@ class MandrelRelease implements Callable<Integer>
         return github;
     }
 
-    class MandrelVersion implements Comparable<MandrelVersion>
+}
+
+class MandrelVersion implements Comparable<MandrelVersion>
+{
+    final static String MANDREL_VERSION_REGEX = "(\\d+)\\.(\\d+)\\.(\\d+)\\.(\\d+)(-(Final|(Alpha|Beta)\\d*))?";
+
+    int major;
+    int minor;
+    int micro;
+    int pico;
+    String suffix;
+
+    public MandrelVersion(MandrelVersion mandrelVersion)
     {
-        final static String MANDREL_VERSION_REGEX = "(\\d+)\\.(\\d+)\\.(\\d+)\\.(\\d+)(-(Final|(Alpha|Beta)\\d*))?";
+        this.major = mandrelVersion.major;
+        this.minor = mandrelVersion.minor;
+        this.micro = mandrelVersion.micro;
+        this.pico = mandrelVersion.pico;
+        this.suffix = mandrelVersion.suffix;
+    }
 
-        int major;
-        int minor;
-        int micro;
-        int pico;
-        String suffix;
-
-        public MandrelVersion(MandrelVersion mandrelVersion)
+    public MandrelVersion(String version)
+    {
+        final Pattern versionPattern = Pattern.compile(MandrelVersion.MANDREL_VERSION_REGEX);
+        final Matcher versionMatcher = versionPattern.matcher(version);
+        boolean found = versionMatcher.find();
+        if (!found)
         {
-            this.major = mandrelVersion.major;
-            this.minor = mandrelVersion.minor;
-            this.micro = mandrelVersion.micro;
-            this.pico = mandrelVersion.pico;
-            this.suffix = mandrelVersion.suffix;
+            Log.error("Wrong version format! " + version + " does not match pattern: " + MandrelVersion.MANDREL_VERSION_REGEX);
         }
+        major = Integer.parseInt(versionMatcher.group(1));
+        minor = Integer.parseInt(versionMatcher.group(2));
+        micro = Integer.parseInt(versionMatcher.group(3));
+        pico = Integer.parseInt(versionMatcher.group(4));
+        suffix = versionMatcher.group(6);
+    }
 
-        public MandrelVersion(String version)
+    /**
+     * Calculates the new version by bumping pico in major.minor.micro.pico
+     *
+     * @return The new version
+     */
+    MandrelVersion getNewVersion()
+    {
+        final MandrelVersion mandrelVersion = new MandrelVersion(this);
+        mandrelVersion.pico++;
+        return mandrelVersion;
+    }
+
+    /**
+     * Calculates the latest final version by checking major.minor.micro.pico
+     *
+     * @param tags
+     * @return The latest final version
+     */
+    String getLatestReleasedTag(List<GHTag> tags)
+    {
+        final String tagPrefix = "mandrel-";
+        List<MandrelVersion> finalVersions = tags.stream()
+            .filter(x -> x.getName().startsWith(tagPrefix + majorMinorMicro()) && x.getName().endsWith("Final"))
+            .map(x -> new MandrelVersion(x.getName().substring(tagPrefix.length())))
+            .sorted(Comparator.reverseOrder())
+            .collect(Collectors.toList());
+        for (MandrelVersion mandrelVersion : finalVersions)
         {
-            final Pattern versionPattern = Pattern.compile(MandrelVersion.MANDREL_VERSION_REGEX);
-            final Matcher versionMatcher = versionPattern.matcher(version);
-            boolean found = versionMatcher.find();
-            if (!found)
+            System.out.println(mandrelVersion);
+        }
+        assert !finalVersions.isEmpty() :
+            "Tag for " + this + " is missing, please make sure the tag has been pushed before releasing.";
+        assert compareTo(finalVersions.get(0)) == 0 :
+            "Latest tag (" + finalVersions.get(0) + ") does not match the version of the current branch (" + this + "). " +
+                "Please make sure you are on the correct branch and that you have created a tag for the release.";
+        if (finalVersions.size() == 1)
+        {
+            // There is no Mandrel release before that major.minor.micro, return upstream graal tag instead
+            final String upstreamTag = "vm-" + majorMinorMicro();
+            if (tags.stream().noneMatch(x -> x.getName().equals(upstreamTag)))
             {
-                Log.error("Wrong version format! " + version + " does not match pattern: " + MandrelVersion.MANDREL_VERSION_REGEX);
+                Log.warn("Upstream tag " + upstreamTag + " not found in " + MandrelRelease.REPOSITORY_NAME + " please add the upstream tag manually in the release text.");
+                return null;
             }
-            major = Integer.parseInt(versionMatcher.group(1));
-            minor = Integer.parseInt(versionMatcher.group(2));
-            micro = Integer.parseInt(versionMatcher.group(3));
-            pico = Integer.parseInt(versionMatcher.group(4));
-            suffix = versionMatcher.group(6);
+            return upstreamTag;
         }
+        return tagPrefix + finalVersions.get(1).toString();
+    }
 
-        /**
-         * Calculates the new version by bumping pico in major.minor.micro.pico
-         *
-         * @return The new version
-         */
-        private MandrelVersion getNewVersion()
+    String majorMinor()
+    {
+        return major + "." + minor;
+    }
+
+    String majorMinorMicro()
+    {
+        return major + "." + minor + "." + micro;
+    }
+
+    String majorMinorMicroPico()
+    {
+        return major + "." + minor + "." + micro + "." + pico;
+    }
+
+    @Override
+    public String toString()
+    {
+        String version = majorMinorMicroPico();
+        if (suffix != null)
         {
-            final MandrelVersion mandrelVersion = new MandrelVersion(this);
-            mandrelVersion.pico++;
-            return mandrelVersion;
+            version += "-" + suffix;
         }
+        return version;
+    }
 
-        /**
-         * Calculates the latest final version by checking major.minor.micro.pico
-         *
-         * @param tags
-         * @return The latest final version
-         */
-        private String getLatestReleasedTag(List<GHTag> tags)
+    @Override
+    public int compareTo(MandrelVersion o)
+    {
+        assert suffix.equals(o.suffix);
+        if (major > o.major)
         {
-            final String tagPrefix = "mandrel-";
-            List<MandrelVersion> finalVersions = tags.stream()
-                .filter(x -> x.getName().startsWith(tagPrefix + majorMinorMicro()) && x.getName().endsWith("Final"))
-                .map(x -> new MandrelVersion(x.getName().substring(tagPrefix.length())))
-                .sorted(Comparator.reverseOrder())
-                .collect(Collectors.toList());
-            for (MandrelVersion mandrelVersion : finalVersions)
-            {
-                System.out.println(mandrelVersion);
-            }
-            assert !finalVersions.isEmpty() :
-                "Tag for " + this + " is missing, please make sure the tag has been pushed before releasing.";
-            assert compareTo(finalVersions.get(0)) == 0 :
-                "Latest tag (" + finalVersions.get(0) + ") does not match the version of the current branch (" + this + "). " +
-                    "Please make sure you are on the correct branch and that you have created a tag for the release.";
-            if (finalVersions.size() == 1)
-            {
-                // There is no Mandrel release before that major.minor.micro, return upstream graal tag instead
-                final String upstreamTag = "vm-" + majorMinorMicro();
-                if (tags.stream().noneMatch(x -> x.getName().equals(upstreamTag)))
-                {
-                    Log.warn("Upstream tag " + upstreamTag + " not found in " + REPOSITORY_NAME + " please add the upstream tag manually in the release text.");
-                    return null;
-                }
-                return upstreamTag;
-            }
-            return tagPrefix + finalVersions.get(1).toString();
+            return 1;
         }
-
-        private String majorMinor()
+        else if (major == o.major)
         {
-            return major + "." + minor;
-        }
-
-        private String majorMinorMicro()
-        {
-            return major + "." + minor + "." + micro;
-        }
-
-        private String majorMinorMicroPico()
-        {
-            return major + "." + minor + "." + micro + "." + pico;
-        }
-
-        @Override
-        public String toString()
-        {
-            String version = majorMinorMicroPico();
-            if (suffix != null)
-            {
-                version += "-" + suffix;
-            }
-            return version;
-        }
-
-        @Override
-        public int compareTo(MandrelVersion o)
-        {
-            assert suffix.equals(o.suffix);
-            if (major > o.major)
+            if (minor > o.minor)
             {
                 return 1;
             }
-            else if (major == o.major)
+            else if (minor == o.minor)
             {
-                if (minor > o.minor)
+                if (micro > o.micro)
                 {
                     return 1;
                 }
-                else if (minor == o.minor)
+                else if (micro == o.micro)
                 {
-                    if (micro > o.micro)
+                    if (pico > o.pico)
                     {
                         return 1;
                     }
-                    else if (micro == o.micro)
+                    else if (pico == o.pico)
                     {
-                        if (pico > o.pico)
-                        {
-                            return 1;
-                        }
-                        else if (pico == o.pico)
-                        {
-                            return 0;
-                        }
+                        return 0;
                     }
                 }
             }
-            return -1;
         }
+        return -1;
     }
 }
 
