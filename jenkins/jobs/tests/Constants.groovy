@@ -8,8 +8,14 @@ class Constants {
     static final ArrayList<String> QUARKUS_VERSION_SHORT =
             [
                     '2.13.4.Final',
+                    '2.7.6.Final'
                     'main'
             ]
+
+    static final String QUARKUS_VERSION_SHORT_COMBINATION_FILTER =
+            '((QUARKUS_VERSION.startsWith("2.7") || QUARKUS_VERSION.startsWith("2.13")) && MANDREL_BUILD.startsWith("mandrel-21"))' +
+            '|| (QUARKUS_VERSION.startsWith("2.13") && MANDREL_BUILD.startsWith("mandrel-22") && JDK_VERSION.equals("17"))' +
+            '|| (QUARKUS_VERSION.equals("main") && !MANDREL_BUILD.startsWith("mandrel-21") && JDK_VERSION.equals("17"))'
 
     static final ArrayList<String> QUARKUS_VERSION_BUILDER_IMAGE =
             [
