@@ -1,19 +1,19 @@
 class Constants {
     static final ArrayList<String> QUARKUS_VERSION_RELEASED =
             [
-                    '2.13.3.Final',
+                    '2.13.4.Final',
                     '2.7.6.Final'
             ]
 
     static final ArrayList<String> QUARKUS_VERSION_SHORT =
             [
-                    '2.13.3.Final',
+                    '2.13.4.Final',
                     'main'
             ]
 
     static final ArrayList<String> QUARKUS_VERSION_BUILDER_IMAGE =
             [
-                    '2.13.3.Final',
+                    '2.13.4.Final',
                     '2.7.6.Final'
             ]
 
