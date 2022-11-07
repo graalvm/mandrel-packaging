@@ -200,7 +200,7 @@ public class build
             }
 
             logger.debugf("Patch native image...");
-            patchNativeImageLauncher(nativeImage, options.mandrelVersion);
+            patchNativeImageLauncher(nativeImage, options.mandrelVersion, options.vendor, options.vendorUrl);
 
             if (!options.skipNativeAgents)
             {
@@ -288,7 +288,7 @@ public class build
     }
 
 
-    private static void patchNativeImageLauncher(Path nativeImage, String mandrelVersion) throws IOException
+    private static void patchNativeImageLauncher(Path nativeImage, String mandrelVersion, String vendor, String vendorUrl) throws IOException
     {
         final List<String> lines = Files.readAllLines(nativeImage);
         // This is jamming two sets of parameters in between three sections of command line.
@@ -303,9 +303,11 @@ public class build
                 logger.debugf("Launcher line BEFORE: %s", lines.get(i));
                 logger.debugf("launcherMatcher.group(1): %s", launcherMatcher.group(1));
                 logger.debugf("launcherMatcher.group(2): %s", launcherMatcher.group(2));
-                String launcherLine = launcherMatcher.group(1) +
+                final String launcherLine = launcherMatcher.group(1) +
                     " -Dorg.graalvm.version=\"" + mandrelVersion + "\"" +
                     " -Dorg.graalvm.config=\"Mandrel Distribution\"" +
+                    ((vendor != null) ? " -Dorg.graalvm.vendor=\"" + vendor + "\"" : "") +
+                    ((vendorUrl != null) ? " -Dorg.graalvm.vendorurl=\"" + vendorUrl + "\"" : "") +
                     launcherMatcher.group(2);
                 lines.set(i, launcherLine);
                 logger.debugf("Launcher line AFTER: %s", lines.get(i));
@@ -375,6 +377,8 @@ class Options
     final boolean skipNativeAgents;
     final String mavenHome;
     final String archiveSuffix;
+    final String vendor;
+    final String vendorUrl;
 
     Options(
         boolean mavenDeploy
@@ -394,6 +398,8 @@ class Options
         , boolean skipNativeAgents
         , String mavenHome
         , String archiveSuffix
+        , String vendor
+        , String vendorUrl
     )
     {
         this.mavenDeploy = mavenDeploy;
@@ -413,6 +419,8 @@ class Options
         this.skipNativeAgents = skipNativeAgents;
         this.mavenHome = mavenHome;
         this.archiveSuffix = archiveSuffix;
+        this.vendor = vendor;
+        this.vendorUrl = vendorUrl;
     }
 
     public static Options from(Map<String, List<String>> args)
@@ -429,6 +437,8 @@ class Options
         final String mandrelVersion = optional("mandrel-version", args);
         final String mandrelHome = optional("mandrel-home", args);
         final String mandrelRepo = optional("mandrel-repo", args);
+        final String vendor = optional("vendor", args);
+        final String vendorUrl = optional("vendor-url", args);
 
         final boolean verbose = args.containsKey("verbose");
         Logger.debug = verbose;
@@ -465,6 +475,8 @@ class Options
             , skipNativeAgents
             , mavenHome
             , archiveSuffix
+            , vendor
+            , vendorUrl
         );
     }
 
