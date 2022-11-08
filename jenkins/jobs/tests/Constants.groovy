@@ -39,21 +39,6 @@ class Constants {
                     '2.7.6.Final'
             ]
 
-    static final String QUARKUS_MODULES_TESTS = '' +
-            '!bouncycastle-fips-jsse,' +
-            '!container-image/quarkus-standard-way,' +
-            '!devtools,' +
-            '!google-cloud-functions,' +
-            '!google-cloud-functions-http,' +
-            '!gradle,' +
-            '!kubernetes-client,' +
-            '!kubernetes/maven-invoker-way,' +
-            '!maven,' +
-            '!mongodb-rest-data-panache,' +
-            '!liquibase-mongodb,' +
-            '!mongodb-client,' +
-            '!smallrye-opentracing'
-
     static final String QUARKUS_MODULES_SUBSET_TESTS = '' +
             'bouncycastle-jsse,' +
             'bouncycastle'
@@ -61,7 +46,7 @@ class Constants {
     static final String LINUX_PREPARE_MANDREL = '''
     # Prepare Mandrel
     wget --quiet "https://ci.modcluster.io/view/Mandrel/job/${MANDREL_BUILD}/JDK_VERSION=${JDK_VERSION},JDK_RELEASE=${JDK_RELEASE},LABEL=${LABEL}/${MANDREL_BUILD_NUMBER}/artifact/*zip*/archive.zip"
-    if [[ ! -f "archive.zip" ]]; then 
+    if [[ ! -f "archive.zip" ]]; then
         echo "Download failed. Quitting..."
         exit 1
     fi
@@ -106,11 +91,14 @@ class Constants {
     df -h
     ps aux | grep java
     git clone --depth 1 --branch ${QUARKUS_VERSION} ${QUARKUS_REPO}
-    cd quarkus
+    cd ${QUARKUS_REPO}
     export MAVEN_OPTS="-Xmx5g -XX:MaxMetaspaceSize=3g"
     ./mvnw --batch-mode install -Dquickly
+    if [ -n "${QUARKUS_MODULES}" ]
+        export QUARKUS_MODULES=$(jq -r '.include | map(."test-modules") | join(", ")' ${QUARKUS_REPO}.github/native-tests.json)
+    fi
     ./mvnw verify -fae -f integration-tests/pom.xml -Dmaven.test.failure.ignore=true --batch-mode -Dno-format \\
-        -DfailIfNoTests=false -Dnative -pl ${QUARKUS_MODULES} \\
+        -DfailIfNoTests=false -Dnative -pl "${QUARKUS_MODULES}" \\
         -Dquarkus.native.native-image-xmx=6g
     '''
 
@@ -160,6 +148,9 @@ class Constants {
         echo There was a problem pulling the image ${BUILDER_IMAGE}. We cannot proceed.
         exit 1
     fi
+    if [ -n "${QUARKUS_MODULES}" ]
+        export QUARKUS_MODULES=$(jq -r '.include | map(."test-modules") | join(", ")' ${QUARKUS_REPO}.github/native-tests.json)
+    fi
     export PATH="${JAVA_HOME}/bin:${PATH}"
     export MAVEN_OPTS="-Xmx5g -XX:MaxMetaspaceSize=3g"
     ./mvnw --batch-mode install -Dquickly
@@ -179,7 +170,7 @@ class Constants {
         $url = 'https://ci.modcluster.io/view/Mandrel/job/%MANDREL_BUILD%/JDK_VERSION=%JDK_VERSION%,JDK_RELEASE=%JDK_RELEASE%,LABEL=%LABEL%/%MANDREL_BUILD_NUMBER%/artifact/*zip*/archive.zip'; $file = 'archive.zip'; ^
         Write-Host $url; ^
         $c.DownloadFile($url, $file);
-    
+
     powershell -Command "%downloadCommand%"
     if not exist archive.zip exit 1
     powershell -c "Expand-Archive -Path archive.zip -DestinationPath . -Force"
@@ -209,7 +200,12 @@ class Constants {
     git clone --depth 1 --branch %QUARKUS_VERSION% %QUARKUS_REPO%
     cd quarkus
     set "MAVEN_OPTS=-Xmx5g -XX:MaxMetaspaceSize=3g"
+    if "%QUARKUS_MODULES%"=="" (
+        jq -r ".include | map(.\"test-modules\") | join(\", \")" %QUARKUS_REPO%/.github/native-tests.json > modules.txt
+        set /p QUARKUS_MODULES=<modules.txt
+        rm modules.txt
+    )
     mvnw --batch-mode install -Dquickly & mvnw verify -f integration-tests/pom.xml --fail-at-end ^
-        --batch-mode -Dno-format -DfailIfNoTests=false -Dnative -Dquarkus.native.native-image-xmx=6g -pl %QUARKUS_MODULES%
+        --batch-mode -Dno-format -DfailIfNoTests=false -Dnative -Dquarkus.native.native-image-xmx=6g -pl "%QUARKUS_MODULES%"
     '''
 }
