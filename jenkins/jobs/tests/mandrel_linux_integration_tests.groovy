@@ -61,11 +61,21 @@ matrixJob('mandrel-linux-integration-tests') {
         }
     }
     steps {
-        shell('echo DESCRIPTION_STRING=Q:${QUARKUS_VERSION},M:${MANDREL_BUILD},J:${JDK_VERSION}-${JDK_RELEASE}')
-        buildDescription(/DESCRIPTION_STRING=([^\s]*)/, '\\1')
-        shell {
-            command(Constants.LINUX_INTEGRATION_TESTS)
-            unstableReturn(1)
+        conditionalSteps {
+            condition {
+                shell {
+                    command(Constants.LINUX_CHECK_MANDREL_BUILD_AVAILABILITY)
+                }
+            }
+            runner('DontRun')
+            steps {
+                shell('echo DESCRIPTION_STRING=Q:${QUARKUS_VERSION},M:${MANDREL_BUILD},J:${JDK_VERSION}-${JDK_RELEASE}')
+                buildDescription(/DESCRIPTION_STRING=([^\s]*)/, '\\1')
+                shell {
+                    command(Constants.LINUX_INTEGRATION_TESTS)
+                    unstableReturn(1)
+                }
+            }
         }
     }
     publishers {
