@@ -46,9 +46,19 @@ matrixJob('mandrel-linux-quarkus-subset-tests') {
         )
     }
     steps {
-        shell {
-            command(Constants.LINUX_QUARKUS_TESTS)
-            unstableReturn(1)
+        conditionalSteps {
+            condition {
+                shell {
+                    command(Constants.LINUX_CHECK_MANDREL_BUILD_AVAILABILITY)
+                }
+            }
+            runner('DontRun')
+            steps {
+                shell {
+                    command(Constants.LINUX_QUARKUS_TESTS)
+                    unstableReturn(1)
+                }
+            }
         }
     }
     publishers {

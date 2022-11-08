@@ -36,6 +36,10 @@ class Constants {
             'bouncycastle-jsse,' +
             'bouncycastle'
 
+    static final String LINUX_CHECK_MANDREL_BUILD_AVAILABILITY = '''
+    wget --quiet --spider "https://ci.modcluster.io/view/Mandrel/job/${MANDREL_BUILD}/JDK_VERSION=${JDK_VERSION},JDK_RELEASE=${JDK_RELEASE},LABEL=${LABEL}/${MANDREL_BUILD_NUMBER}/artifact/*zip*/archive.zip"
+    '''
+
     static final String LINUX_PREPARE_MANDREL = '''
     # Prepare Mandrel
     wget --quiet "https://ci.modcluster.io/view/Mandrel/job/${MANDREL_BUILD}/JDK_VERSION=${JDK_VERSION},JDK_RELEASE=${JDK_RELEASE},LABEL=${LABEL}/${MANDREL_BUILD_NUMBER}/artifact/*zip*/archive.zip"
@@ -136,6 +140,14 @@ class Constants {
         -Dquarkus.native.builder-image="${BUILDER_IMAGE}" \\
         -Dquarkus.native.container-runtime=${CONTAINER_RUNTIME} \\
         -Dquarkus.native.native-image-xmx=6g
+    '''
+
+    static final String WINDOWS_CHECK_MANDREL_BUILD_AVAILABILITY = '''
+    $url = 'https://ci.modcluster.io/view/Mandrel/job/%MANDREL_BUILD%/JDK_VERSION=%JDK_VERSION%,JDK_RELEASE=%JDK_RELEASE%,LABEL=%LABEL%/%MANDREL_BUILD_NUMBER%/artifact/*zip*/archive.zip';
+    $statusCode = (Invoke-WebRequest "https://ci.modcluster.io/view/Mandrel/job/${MANDREL_BUILD}/JDK_VERSION=${JDK_VERSION},JDK_RELEASE=${JDK_RELEASE},LABEL=${LABEL}/${MANDREL_BUILD_NUMBER}/artifact/*zip*/archive.zip" -DisableKeepAlive -UseBasicParsing -Method head -SkipHttpErrorCheck).StatusCode
+    if ( $statusCode -ne 200 ) {
+        exit 1
+    }
     '''
 
     static final String WINDOWS_PREPARE_MANDREL = '''
