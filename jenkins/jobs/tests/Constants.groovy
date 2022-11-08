@@ -8,7 +8,7 @@ class Constants {
     static final ArrayList<String> QUARKUS_VERSION_SHORT =
             [
                     '2.13.4.Final',
-                    '2.7.6.Final'
+                    '2.7.6.Final',
                     'main'
             ]
 
