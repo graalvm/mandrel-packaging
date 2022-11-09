@@ -61,21 +61,11 @@ matrixJob('mandrel-windows-integration-tests') {
         }
     }
     steps {
-        conditionalSteps {
-            condition {
-                shell {
-                    command(Constants.WINDOWS_CHECK_MANDREL_BUILD_AVAILABILITY)
-                }
-            }
-            runner('DontRun')
-            steps {
-                batchFile('echo DESCRIPTION_STRING=Q:%QUARKUS_VERSION%,M:%MANDREL_BUILD%,J:%JDK_VERSION%-%JDK_RELEASE%')
-                buildDescription(/DESCRIPTION_STRING=([^\s]*)/, '\\1')
-                batchFile {
-                    command(Constants.WINDOWS_INTEGRATION_TESTS)
-                    unstableReturn(1)
-                }
-            }
+        batchFile('echo DESCRIPTION_STRING=Q:%QUARKUS_VERSION%,M:%MANDREL_BUILD%,J:%JDK_VERSION%-%JDK_RELEASE%')
+        buildDescription(/DESCRIPTION_STRING=([^\s]*)/, '\\1')
+        batchFile {
+            command(Constants.WINDOWS_INTEGRATION_TESTS)
+            unstableReturn(1)
         }
     }
     publishers {

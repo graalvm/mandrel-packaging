@@ -44,19 +44,9 @@ matrixJob('mandrel-windows-quarkus-tests') {
         )
     }
     steps {
-        conditionalSteps {
-            condition {
-                shell {
-                    command(Constants.WINDOWS_CHECK_MANDREL_BUILD_AVAILABILITY)
-                }
-            }
-            runner('DontRun')
-            steps {
-                batchFile {
-                    command(Constants.WINDOWS_QUARKUS_TESTS)
-                    unstableReturn(1)
-                }
-            }
+        batchFile {
+            command(Constants.WINDOWS_QUARKUS_TESTS)
+            unstableReturn(1)
         }
     }
     publishers {
