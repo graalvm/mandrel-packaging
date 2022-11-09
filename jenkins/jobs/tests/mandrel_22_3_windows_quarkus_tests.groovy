@@ -44,7 +44,9 @@ matrixJob('mandrel-22-3-windows-quarkus-tests') {
     steps {
         conditionalSteps {
             condition {
-                batch(Constants.WINDOWS_CHECK_MANDREL_BUILD_AVAILABILITY)
+                shell {
+                    command(Constants.WINDOWS_CHECK_MANDREL_BUILD_AVAILABILITY)
+                }
             }
             runner('DontRun')
             steps {

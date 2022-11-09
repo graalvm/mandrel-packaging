@@ -149,14 +149,11 @@ class Constants {
     '''
 
     static final String WINDOWS_CHECK_MANDREL_BUILD_AVAILABILITY = '''
-    set checkCommand= ^
-        $url = 'https://ci.modcluster.io/view/Mandrel/job/%MANDREL_BUILD%/JDK_VERSION=%JDK_VERSION%,JDK_RELEASE=%JDK_RELEASE%,LABEL=%LABEL%/%MANDREL_BUILD_NUMBER%/artifact/*zip*/archive.zip'; ^
-        $statusCode = (Invoke-WebRequest "https://ci.modcluster.io/view/Mandrel/job/${MANDREL_BUILD}/JDK_VERSION=${JDK_VERSION},JDK_RELEASE=${JDK_RELEASE},LABEL=${LABEL}/${MANDREL_BUILD_NUMBER}/artifact/*zip*/archive.zip" -DisableKeepAlive -UseBasicParsing -Method head -SkipHttpErrorCheck).StatusCode ^
-        if ( $statusCode -eq 200 ) { ^
-            New-Item -Path '200.txt' -ItemType File ^
-        }
-    powershell -Command "%checkCommand%"
-    if not exist 200.txt exit 1
+    $url = 'https://ci.modcluster.io/view/Mandrel/job/%MANDREL_BUILD%/JDK_VERSION=%JDK_VERSION%,JDK_RELEASE=%JDK_RELEASE%,LABEL=%LABEL%/%MANDREL_BUILD_NUMBER%/artifact/*zip*/archive.zip';
+    $statusCode = (Invoke-WebRequest "https://ci.modcluster.io/view/Mandrel/job/${MANDREL_BUILD}/JDK_VERSION=${JDK_VERSION},JDK_RELEASE=${JDK_RELEASE},LABEL=${LABEL}/${MANDREL_BUILD_NUMBER}/artifact/*zip*/archive.zip" -DisableKeepAlive -UseBasicParsing -Method head -SkipHttpErrorCheck).StatusCode
+    if ( $statusCode -ne 200 ) {
+        exit 1
+    }
     '''
 
     static final String WINDOWS_PREPARE_MANDREL = '''
