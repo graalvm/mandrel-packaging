@@ -546,7 +546,7 @@ class SequentialBuild
             mx.artifacts.forEach((artifact, paths) ->
             {
                 final String jarPath = PathFinder.getFirstExisting(fs.mandrelRepo().resolve(paths[0]).toString(), artifact).toString();
-                exec.exec.accept(Tasks.Exec.of(List.of("jar", "uvfm", jarPath, manifest.getPath()), fs.mandrelRepo()));
+                exec.exec.accept(Tasks.Exec.of(List.of(os.javaHome() + "/bin/jar", "uvfm", jarPath, manifest.getPath()), fs.mandrelRepo()));
             });
             LOG.debugf("Deploy maven artifacts...");
             Mx.mavenDeploy(options, exec, fs.mxHome(), fs.mandrelRepo(), os.javaHome());
