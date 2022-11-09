@@ -63,7 +63,9 @@ matrixJob('mandrel-linux-integration-tests') {
     steps {
         conditionalSteps {
             condition {
-                shell(Constants.LINUX_CHECK_MANDREL_BUILD_AVAILABILITY)
+                shell {
+                    command(Constants.LINUX_CHECK_MANDREL_BUILD_AVAILABILITY)
+                }
             }
             runner('DontRun')
             steps {
