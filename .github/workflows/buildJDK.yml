@@ -38,26 +38,26 @@ jobs:
       matrix:
         mandrel-ref: [graal/master]
     steps:
-    - uses: actions/checkout@v2
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v3
+    - uses: actions/checkout@v3
       with:
         repository: graalvm/mandrel.git
         fetch-depth: 1
         ref: ${{ matrix.mandrel-ref }}
         path: ${{ github.workspace }}/mandrel
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v3
       with:
         repository: graalvm/mx.git
         fetch-depth: 1
         ref: master
         path: ${{ github.workspace }}/mx
-    - uses: actions/cache@v2.1.5
+    - uses: actions/cache@v3
       with:
         path: ~/.mx
         key: ${{ runner.os }}-mx-${{ hashFiles('**/suite.py') }}
         restore-keys: |
           ${{ runner.os }}-mx-
-    - uses: actions/cache@v2.1.5
+    - uses: actions/cache@v3
       with:
         path: ~/.m2/repository
         key: ${{ runner.os }}-mx-${{ hashFiles('**/suite.py') }}
@@ -103,7 +103,7 @@ jobs:
         diff java.txt native.txt
         ${MANDREL_HOME}/bin/native-image --macro:native-image-launcher
     - name: Upload Mandrel build
-      uses: actions/upload-artifact@v1
+      uses: actions/upload-artifact@v3
       with:
         name: mandrel-java11-linux-amd64-test-build
         path: mandrel-java11-linux-amd64.tar.gz
@@ -114,7 +114,7 @@ jobs:
         export ARCHIVE_NAME="mandrel-java11-linux-amd64-${MANDREL_VERSION_UNTIL_SPACE}.tarxz"
         mv ${ARCHIVE_NAME} mandrel-java11-linux-amd64.tarxz
     - name: Upload tarxz Mandrel build
-      uses: actions/upload-artifact@v1
+      uses: actions/upload-artifact@v3
       with:
         name: mandrel-java11-linux-amd64-test-build-tarxz
         path: mandrel-java11-linux-amd64.tarxz
@@ -127,26 +127,26 @@ jobs:
       matrix:
         mandrel-ref: [graal/master]
     steps:
-    - uses: actions/checkout@v2
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v3
+    - uses: actions/checkout@v3
       with:
         repository: graalvm/mandrel.git
         fetch-depth: 1
         ref: ${{ matrix.mandrel-ref }}
         path: ${{ github.workspace }}/mandrel
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v3
       with:
         repository: graalvm/mx.git
         fetch-depth: 1
         ref: master
         path: ${{ github.workspace }}/mx
-    - uses: actions/cache@v2.1.5
+    - uses: actions/cache@v3
       with:
         path: ~/.mx
         key: ${{ runner.os }}-mx-${{ hashFiles('**/suite.py') }}
         restore-keys: |
           ${{ runner.os }}-mx-
-    - uses: actions/cache@v2.1.5
+    - uses: actions/cache@v3
       with:
         path: ~/.m2/repository
         key: ${{ runner.os }}-mx-${{ hashFiles('**/suite.py') }}
@@ -221,7 +221,7 @@ jobs:
         export ARCHIVE_NAME="mandrel-java11-windows-amd64-${MANDREL_VERSION_UNTIL_SPACE}.zip"
         mv ${ARCHIVE_NAME} mandrel-java11-windows-amd64.zip
     - name: Upload Mandrel build
-      uses: actions/upload-artifact@v1
+      uses: actions/upload-artifact@v3
       with:
         name: mandrel-java11-windows-amd64-test-build
         path: mandrel-java11-windows-amd64.zip
@@ -234,26 +234,26 @@ jobs:
       matrix:
         mandrel-ref: [graal/master]
     steps:
-    - uses: actions/checkout@v2
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v3
+    - uses: actions/checkout@v3
       with:
         repository: graalvm/mandrel.git
         fetch-depth: 1
         ref: ${{ matrix.mandrel-ref }}
         path: ${{ github.workspace }}/mandrel
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v3
       with:
         repository: graalvm/mx.git
         fetch-depth: 1
         ref: master
         path: ${{ github.workspace }}/mx
-    - uses: actions/cache@v2.1.5
+    - uses: actions/cache@v3
       with:
         path: ~/.mx
         key: ${{ runner.os }}-mx-${{ hashFiles('**/suite.py') }}
         restore-keys: |
           ${{ runner.os }}-mx-
-    - uses: actions/cache@v2.1.5
+    - uses: actions/cache@v3
       with:
         path: ~/.m2/repository
         key: ${{ runner.os }}-mx-${{ hashFiles('**/suite.py') }}
@@ -319,7 +319,7 @@ jobs:
         diff java.txt native.txt
         ${MANDREL_HOME}/bin/native-image --macro:native-image-launcher
     - name: Upload Mandrel build
-      uses: actions/upload-artifact@v1
+      uses: actions/upload-artifact@v3
       with:
         name: mandrel-java11-linux-amd64-2step-test-build
         path: mandrel-java11-linux-amd64.tar.gz
