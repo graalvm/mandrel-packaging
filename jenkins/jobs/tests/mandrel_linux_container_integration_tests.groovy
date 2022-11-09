@@ -37,6 +37,7 @@ matrixJob('mandrel-linux-container-integration-tests') {
                 'Choose "heads" if you want to build from a branch, or "tags" if you want to build from a tag.'
         )
         stringParam('MANDREL_INTEGRATION_TESTS_REF', 'master', 'Branch or tag.')
+        matrixCombinationsParam('MATRIX_COMBINATIONS_FILTER', "", 'Choose which combinations to run')
     }
     scm {
         git {

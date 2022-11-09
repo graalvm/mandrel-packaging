@@ -40,6 +40,7 @@ matrixJob('mandrel-22-3-windows-quarkus-tests') {
                 'lastSuccessfulBuild',
                 'Pick a build number from MANDREL_BUILD or leave the default latest.'
         )
+        matrixCombinationsParam('MATRIX_COMBINATIONS_FILTER', "", 'Choose which combinations to run')
     }
     steps {
         batchFile {
