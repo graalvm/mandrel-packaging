@@ -63,9 +63,7 @@ matrixJob('mandrel-windows-integration-tests') {
     steps {
         conditionalSteps {
             condition {
-                shell {
-                    command(Constants.WINDOWS_CHECK_MANDREL_BUILD_AVAILABILITY)
-                }
+                batch(Constants.WINDOWS_CHECK_MANDREL_BUILD_AVAILABILITY)
             }
             runner('DontRun')
             steps {
