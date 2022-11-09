@@ -61,44 +61,42 @@ import java.util.stream.Stream;
     description = "Script automating part of the Mandrel release process")
 class MandrelRelease
 {
-    @CommandLine.Option(names = {"-m", "--mandrel-repo"},
-        scope = CommandLine.ScopeType.INHERIT,
-        description = "The path to the mandrel repository",
-        defaultValue = "./")
-    String mandrelRepo;
-
-    @CommandLine.Option(names = {"-s", "--suffix"},
-        scope = CommandLine.ScopeType.INHERIT,
-        description = "The release suffix, e.g, Final, Alpha2, Beta1, etc. (default: \"${DEFAULT-VALUE}\")",
-        defaultValue = "Final")
-    String suffix;
-
-    @CommandLine.Option(names = {"-f", "--fork-name"},
-        scope = CommandLine.ScopeType.INHERIT,
-        description = "The repository name of the github fork to push the changes to (default: \"${DEFAULT-VALUE}\")",
-        defaultValue = "zakkak/mandrel")
-    String forkName;
-
-    @CommandLine.Option(names = {"-S", "--sign-commits"},
-        scope = CommandLine.ScopeType.INHERIT,
-        description = "Sign commits")
-    boolean signCommits;
-
-    @CommandLine.Option(names = {"-D", "--dry-run"},
-        scope = CommandLine.ScopeType.INHERIT,
-        description = "Perform a dry run (no remote pushes and PRs)")
-    boolean dryRun;
-
-    @CommandLine.Option(names = {"--verbose"},
-        scope = CommandLine.ScopeType.INHERIT,
-        description = "Prints verbose debug info")
-    boolean verbose;
-
     public static void main(String... args)
     {
         int exitCode = new CommandLine(new MandrelRelease()).execute(args);
         System.exit(exitCode);
     }
+}
+
+@Command()
+class ReusableOptions
+{
+    @CommandLine.Option(names = {"-m", "--mandrel-repo"},
+        description = "The path to the mandrel repository",
+        defaultValue = "./")
+    String mandrelRepo;
+
+    @CommandLine.Option(names = {"-s", "--suffix"},
+        description = "The release suffix, e.g, Final, Alpha2, Beta1, etc. (default: \"${DEFAULT-VALUE}\")",
+        defaultValue = "Final")
+    String suffix;
+
+    @CommandLine.Option(names = {"-f", "--fork-name"},
+        description = "The repository name of the github fork to push the changes to (default: \"${DEFAULT-VALUE}\")",
+        defaultValue = "zakkak/mandrel")
+    String forkName;
+
+    @CommandLine.Option(names = {"-S", "--sign-commits"},
+        description = "Sign commits")
+    boolean signCommits;
+
+    @CommandLine.Option(names = {"-D", "--dry-run"},
+        description = "Perform a dry run (no remote pushes and PRs)")
+    boolean dryRun;
+
+    @CommandLine.Option(names = {"--verbose"},
+        description = "Prints verbose debug info")
+    boolean verbose;
 
     void checkOptions()
     {
@@ -990,19 +988,16 @@ class Log
 }
 
 @Command(name = "prepare", description = "Prepare repository for release.")
-class Prepare implements Callable<Integer>
+class Prepare extends ReusableOptions implements Callable<Integer>
 {
-    @CommandLine.ParentCommand
-    private MandrelRelease parent;
-
     public Integer call()
     {
-        parent.checkOptions();
+        checkOptions();
         // Prepare version
-        MandrelVersion version = MandrelVersion.ofRepository(parent.mandrelRepo);
+        MandrelVersion version = MandrelVersion.ofRepository(mandrelRepo);
         assert version != null;
         Log.info("Current version is " + version);
-        version.suffix = parent.suffix; // TODO: if Alpha/Beta autobump suffix number?
+        version.suffix = suffix; // TODO: if Alpha/Beta autobump suffix number?
 
         if (!version.suffix.equals("Final"))
         {
@@ -1011,9 +1006,9 @@ class Prepare implements Callable<Integer>
 
         Log.info("New version will be " + version.getNewVersion().majorMinorMicroPico());
 
-        GitOps gitOps = new GitOps(version, parent.mandrelRepo, parent.forkName, parent.signCommits, parent.dryRun, false);
+        GitOps gitOps = new GitOps(version, mandrelRepo, forkName, signCommits, dryRun, false);
         gitOps.checkAndPrepareRepository();
-        MxSuiteUtils.updateSuites(parent.mandrelRepo, MxSuiteUtils::markSuiteAsRelease);
+        MxSuiteUtils.updateSuites(mandrelRepo, MxSuiteUtils::markSuiteAsRelease);
         final String authorEmail = gitOps.commitAndPushChanges();
         gitOps.openPR(authorEmail);
         return 0;
@@ -1021,7 +1016,7 @@ class Prepare implements Callable<Integer>
 }
 
 @Command(name = "release", description = "Release a new version.")
-class Release implements Callable<Integer>
+class Release extends ReusableOptions implements Callable<Integer>
 {
     public static final int UNDEFINED = -1;
 
@@ -1034,21 +1029,18 @@ class Release implements Callable<Integer>
     @CommandLine.Option(names = {"--windows-job-build-number"}, description = "The build number of the complete, tested matrix job run.", defaultValue = "" + UNDEFINED)
     int windowsBuildNumber;
 
-    @CommandLine.ParentCommand
-    private MandrelRelease parent;
-
     @Override
     public Integer call() throws IOException
     {
-        parent.checkOptions();
+        checkOptions();
         // Prepare version
-        MandrelVersion version = MandrelVersion.ofRepository(parent.mandrelRepo);
+        MandrelVersion version = MandrelVersion.ofRepository(mandrelRepo);
         assert version != null;
         Log.info("Current version is " + version);
-        version.suffix = parent.suffix; // TODO: if Alpha/Beta autobump suffix number?
+        version.suffix = suffix; // TODO: if Alpha/Beta autobump suffix number?
 
         final Set<String> jdkVersionsUsed = maybeDownloadBuildsAndGetJdkVersions(version);
-        GitHubOps gitHubOps = new GitHubOps(version, parent.dryRun, downloadDir);
+        GitHubOps gitHubOps = new GitHubOps(version, dryRun, downloadDir);
         gitHubOps.createGHRelease(jdkVersionsUsed);
         if (!version.suffix.equals("Final"))
         {
@@ -1057,9 +1049,9 @@ class Release implements Callable<Integer>
 
         Log.info("New version will be " + version.getNewVersion().majorMinorMicroPico());
 
-        GitOps gitOps = new GitOps(version, parent.mandrelRepo, parent.forkName, parent.signCommits, parent.dryRun, true);
+        GitOps gitOps = new GitOps(version, mandrelRepo, forkName, signCommits, dryRun, true);
         gitOps.checkAndPrepareRepository();
-        MxSuiteUtils.updateSuites(parent.mandrelRepo, suite -> MxSuiteUtils.updateReleaseAndBumpVersionInSuite(version, suite));
+        MxSuiteUtils.updateSuites(mandrelRepo, suite -> MxSuiteUtils.updateReleaseAndBumpVersionInSuite(version, suite));
         final String authorEmail = gitOps.commitAndPushChanges();
         gitOps.openPR(authorEmail);
         return 0;
@@ -1115,7 +1107,7 @@ class Release implements Callable<Integer>
             if (scanner.hasNext())
             {
                 final String c = scanner.next();
-                Log.debug("URL: " + sourceURL + " file contents: " + c, parent.verbose);
+                Log.debug("URL: " + sourceURL + " file contents: " + c, verbose);
                 final Matcher m = pattern.matcher(c);
                 if (m.matches())
                 {
