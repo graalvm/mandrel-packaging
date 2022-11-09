@@ -46,9 +46,7 @@ matrixJob('mandrel-linux-quarkus-tests') {
     steps {
         conditionalSteps {
             condition {
-                shell {
-                    command(Constants.LINUX_CHECK_MANDREL_BUILD_AVAILABILITY)
-                }
+                shell(Constants.LINUX_CHECK_MANDREL_BUILD_AVAILABILITY)
             }
             runner('DontRun')
             steps {
