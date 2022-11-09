@@ -63,10 +63,10 @@ jobs:
         key: ${{ runner.os }}-mx-${{ hashFiles('**/suite.py') }}
         restore-keys: |
           ${{ runner.os }}-${{ matrix.quarkus-name }}-maven-
-    - name: Get latest openJDK11 with static libs
+    - name: Get latest openJDK17 with static libs
       run: |
-        curl -sL https://api.adoptium.net/v3/binary/latest/11/ea/linux/x64/jdk/hotspot/normal/eclipse -o jdk.tar.gz
-        curl -sL https://api.adoptium.net/v3/binary/latest/11/ea/linux/x64/staticlibs/hotspot/normal/eclipse -o jdk-static-libs.tar.gz
+        curl -sL https://api.adoptium.net/v3/binary/latest/17/ea/linux/x64/jdk/hotspot/normal/eclipse -o jdk.tar.gz
+        curl -sL https://api.adoptium.net/v3/binary/latest/17/ea/linux/x64/staticlibs/hotspot/normal/eclipse -o jdk-static-libs.tar.gz
         mkdir -p ${JAVA_HOME}
         tar xf jdk.tar.gz -C ${JAVA_HOME} --strip-components=1
         tar xf jdk-static-libs.tar.gz -C ${JAVA_HOME} --strip-components=1
@@ -76,12 +76,12 @@ jobs:
       run: |
         ${JAVA_HOME}/bin/java -ea build.java --verbose --mx-home ${MX_HOME} --mandrel-repo ${MANDREL_REPO} --mandrel-version "${MANDREL_VERSION}" --archive-suffix tar.gz
         export MANDREL_VERSION_UNTIL_SPACE="$( echo ${MANDREL_VERSION} | sed -e 's/\([^ ]*\).*/\1/;t' )"
-        export ARCHIVE_NAME="mandrel-java11-linux-amd64-${MANDREL_VERSION_UNTIL_SPACE}.tar.gz"
-        mv ${ARCHIVE_NAME} mandrel-java11-linux-amd64.tar.gz
+        export ARCHIVE_NAME="mandrel-java17-linux-amd64-${MANDREL_VERSION_UNTIL_SPACE}.tar.gz"
+        mv ${ARCHIVE_NAME} mandrel-java17-linux-amd64.tar.gz
     - name: Smoke tests
       run: |
         export MANDREL_VERSION_UNTIL_SPACE="$( echo ${MANDREL_VERSION} | sed -e 's/\([^ ]*\).*/\1/;t' )"
-        export MANDREL_HOME=${PWD}/mandrel-java11-${MANDREL_VERSION_UNTIL_SPACE}
+        export MANDREL_HOME=${PWD}/mandrel-java17-${MANDREL_VERSION_UNTIL_SPACE}
         ${MANDREL_HOME}/bin/native-image --version
         ${MANDREL_HOME}/bin/native-image --version | grep "${MANDREL_VERSION}"
         echo "
@@ -105,19 +105,19 @@ jobs:
     - name: Upload Mandrel build
       uses: actions/upload-artifact@v3
       with:
-        name: mandrel-java11-linux-amd64-test-build
-        path: mandrel-java11-linux-amd64.tar.gz
+        name: mandrel-java17-linux-amd64-test-build
+        path: mandrel-java17-linux-amd64.tar.gz
     - name: Build Mandrel JDK with tarxz suffix
       run: |
         ${JAVA_HOME}/bin/java -ea build.java --mx-home ${MX_HOME} --mandrel-repo ${MANDREL_REPO} --mandrel-version "${MANDREL_VERSION}" --archive-suffix tarxz --skip-clean --skip-java --skip-native
         export MANDREL_VERSION_UNTIL_SPACE="$( echo ${MANDREL_VERSION} | sed -e 's/\([^ ]*\).*/\1/;t' )"
-        export ARCHIVE_NAME="mandrel-java11-linux-amd64-${MANDREL_VERSION_UNTIL_SPACE}.tarxz"
-        mv ${ARCHIVE_NAME} mandrel-java11-linux-amd64.tarxz
+        export ARCHIVE_NAME="mandrel-java17-linux-amd64-${MANDREL_VERSION_UNTIL_SPACE}.tarxz"
+        mv ${ARCHIVE_NAME} mandrel-java17-linux-amd64.tarxz
     - name: Upload tarxz Mandrel build
       uses: actions/upload-artifact@v3
       with:
-        name: mandrel-java11-linux-amd64-test-build-tarxz
-        path: mandrel-java11-linux-amd64.tarxz
+        name: mandrel-java17-linux-amd64-test-build-tarxz
+        path: mandrel-java17-linux-amd64.tarxz
 
   build-and-test-on-windows:
     name: Windows Build and test ${{ matrix.mandrel-ref }} branch/tag
@@ -152,13 +152,13 @@ jobs:
         key: ${{ runner.os }}-mx-${{ hashFiles('**/suite.py') }}
         restore-keys: |
           ${{ runner.os }}-${{ matrix.quarkus-name }}-maven-
-    - name: Get latest openJDK11 with static libs
+    - name: Get latest openJDK17 with static libs
       run: |
         $wc = New-Object System.Net.WebClient
-        $wc.DownloadFile("https://api.adoptium.net/v3/binary/latest/11/ea/windows/x64/jdk/hotspot/normal/eclipse", "$Env:temp\jdk.zip")
+        $wc.DownloadFile("https://api.adoptium.net/v3/binary/latest/17/ea/windows/x64/jdk/hotspot/normal/eclipse", "$Env:temp\jdk.zip")
         Expand-Archive "$Env:temp\jdk.zip" -DestinationPath "$Env:temp"
         Move-Item -Path "$Env:temp\jdk-*" -Destination $Env:JAVA_HOME
-        $wc.DownloadFile("https://api.adoptium.net/v3/binary/latest/11/ea/windows/x64/staticlibs/hotspot/normal/eclipse", "$Env:temp\jdk-staticlibs.zip")
+        $wc.DownloadFile("https://api.adoptium.net/v3/binary/latest/17/ea/windows/x64/staticlibs/hotspot/normal/eclipse", "$Env:temp\jdk-staticlibs.zip")
         Expand-Archive "$Env:temp\jdk-staticlibs.zip" -DestinationPath "$Env:temp"
         Move-Item -Path "$Env:temp\jdk-*\lib\static" -Destination $Env:JAVA_HOME\lib\
         Remove-Item -Recurse "$Env:temp\jdk-*"
@@ -186,7 +186,7 @@ jobs:
           }
         }
         $MANDREL_VERSION_UNTIL_SPACE=$Env:MANDREL_VERSION -replace "^(.*?) .*$","`$1"
-        $MANDREL_HOME=".\mandrel-java11-$MANDREL_VERSION_UNTIL_SPACE"
+        $MANDREL_HOME=".\mandrel-java17-$MANDREL_VERSION_UNTIL_SPACE"
         $VERSION=(& $MANDREL_HOME\bin\native-image.cmd --version)
         Write-Host $VERSION
         if ("$VERSION" -NotMatch "$Env:MANDREL_VERSION") {
@@ -218,13 +218,13 @@ jobs:
       shell: bash
       run: |
         export MANDREL_VERSION_UNTIL_SPACE="$( echo ${MANDREL_VERSION} | sed -e 's/\([^ ]*\).*/\1/;t' )"
-        export ARCHIVE_NAME="mandrel-java11-windows-amd64-${MANDREL_VERSION_UNTIL_SPACE}.zip"
-        mv ${ARCHIVE_NAME} mandrel-java11-windows-amd64.zip
+        export ARCHIVE_NAME="mandrel-java17-windows-amd64-${MANDREL_VERSION_UNTIL_SPACE}.zip"
+        mv ${ARCHIVE_NAME} mandrel-java17-windows-amd64.zip
     - name: Upload Mandrel build
       uses: actions/upload-artifact@v3
       with:
-        name: mandrel-java11-windows-amd64-test-build
-        path: mandrel-java11-windows-amd64.zip
+        name: mandrel-java17-windows-amd64-test-build
+        path: mandrel-java17-windows-amd64.zip
 
   build-and-test-2-step:
     name: 2-step Linux Build and test ${{ matrix.mandrel-ref }} branch/tag
@@ -259,10 +259,10 @@ jobs:
         key: ${{ runner.os }}-mx-${{ hashFiles('**/suite.py') }}
         restore-keys: |
           ${{ runner.os }}-${{ matrix.quarkus-name }}-maven-
-    - name: Get latest openJDK11 with static libs
+    - name: Get latest openJDK17 with static libs
       run: |
-        curl -sL https://api.adoptium.net/v3/binary/latest/11/ea/linux/x64/jdk/hotspot/normal/eclipse -o jdk.tar.gz
-        curl -sL https://api.adoptium.net/v3/binary/latest/11/ea/linux/x64/staticlibs/hotspot/normal/eclipse -o jdk-static-libs.tar.gz
+        curl -sL https://api.adoptium.net/v3/binary/latest/17/ea/linux/x64/jdk/hotspot/normal/eclipse -o jdk.tar.gz
+        curl -sL https://api.adoptium.net/v3/binary/latest/17/ea/linux/x64/staticlibs/hotspot/normal/eclipse -o jdk-static-libs.tar.gz
         mkdir -p ${JAVA_HOME}
         tar xf jdk.tar.gz -C ${JAVA_HOME} --strip-components=1
         tar xf jdk-static-libs.tar.gz -C ${JAVA_HOME} --strip-components=1
@@ -292,12 +292,12 @@ jobs:
         --skip-java \
         --archive-suffix tar.gz
         export MANDREL_VERSION_UNTIL_SPACE="$( echo ${MANDREL_VERSION} | sed -e 's/\([^ ]*\).*/\1/;t' )"
-        export ARCHIVE_NAME="mandrel-java11-linux-amd64-${MANDREL_VERSION_UNTIL_SPACE}.tar.gz"
-        mv ${ARCHIVE_NAME} mandrel-java11-linux-amd64.tar.gz
+        export ARCHIVE_NAME="mandrel-java17-linux-amd64-${MANDREL_VERSION_UNTIL_SPACE}.tar.gz"
+        mv ${ARCHIVE_NAME} mandrel-java17-linux-amd64.tar.gz
     - name: Smoke tests
       run: |
         export MANDREL_VERSION_UNTIL_SPACE="$( echo ${MANDREL_VERSION} | sed -e 's/\([^ ]*\).*/\1/;t' )"
-        export MANDREL_HOME=${PWD}/mandrel-java11-${MANDREL_VERSION_UNTIL_SPACE}
+        export MANDREL_HOME=${PWD}/mandrel-java17-${MANDREL_VERSION_UNTIL_SPACE}
         ${MANDREL_HOME}/bin/native-image --version
         ${MANDREL_HOME}/bin/native-image --version | grep "${MANDREL_VERSION}"
         echo "
@@ -321,5 +321,5 @@ jobs:
     - name: Upload Mandrel build
       uses: actions/upload-artifact@v3
       with:
-        name: mandrel-java11-linux-amd64-2step-test-build
-        path: mandrel-java11-linux-amd64.tar.gz
+        name: mandrel-java17-linux-amd64-2step-test-build
+        path: mandrel-java17-linux-amd64.tar.gz
