@@ -52,6 +52,7 @@ matrixJob('mandrel-22-1-windows-build-matrix') {
                 '22.1-SNAPSHOT',
                 'It must not contain spaces as it is used in tarball name too.'
         )
+        matrixCombinationsParam('MATRIX_COMBINATIONS_FILTER', "", 'Choose which combinations to run')
     }
     multiscm {
         git {

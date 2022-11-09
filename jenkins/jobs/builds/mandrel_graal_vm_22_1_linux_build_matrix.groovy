@@ -54,6 +54,7 @@ matrixJob('mandrel-graal-vm-22-1-linux-build-matrix') {
                 '22.1-SNAPSHOT',
                 'It must not contain spaces as it is used in tarball name too.'
         )
+        matrixCombinationsParam('MATRIX_COMBINATIONS_FILTER', "", 'Choose which combinations to run')
     }
     multiscm {
         git {
