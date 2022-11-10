@@ -204,6 +204,10 @@ class MandrelVersion implements Comparable<MandrelVersion>
         return major + "." + minor + "." + micro + "." + pico;
     }
 
+    boolean isFinal() {
+        return suffix.equals("Final");
+    }
+
     @Override
     public String toString()
     {
@@ -280,7 +284,7 @@ class GitHubOps
             {
                 Log.error("No milestone titled " + version.majorMinorMicroPico() + "-Final! Can't produce changelog without it!");
             }
-            if (version.suffix.equals("Final") && milestone.getOpenIssues() != 0)
+            if (version.isFinal() && milestone.getOpenIssues() != 0)
             {
                 Log.error("There are still open issues in milestone " + milestone.getTitle() + ". Please take care of them and try again.");
             }
@@ -308,7 +312,7 @@ class GitHubOps
 
             final GHRelease ghRelease = repository.createRelease(tag)
                 .name("Mandrel " + version)
-                .prerelease(!version.suffix.equals("Final"))
+                .prerelease(!version.isFinal())
                 .body(releaseMainBody(changelog, jdkVersionsUsed))
                 .draft(true)
                 .create();
@@ -510,7 +514,7 @@ class GitHubOps
     {
         // Figuring out the last released Tag for pre-releases is not trivial so
         // just return null and let the user manually update the release notes
-        if (!version.suffix.equals("Final"))
+        if (!version.isFinal())
         {
             return null;
         }
@@ -518,8 +522,7 @@ class GitHubOps
         List<MandrelVersion> finalVersions = tags.stream()
             .filter(x -> x.getName().startsWith(tagPrefix + version.majorMinorMicro()) && x.getName().endsWith("Final"))
             .map(x -> new MandrelVersion(x.getName().substring(tagPrefix.length())))
-            .sorted(Comparator.reverseOrder())
-            .collect(Collectors.toList());
+            .sorted(Comparator.reverseOrder()).toList();
         for (MandrelVersion mandrelVersion : finalVersions)
         {
             System.out.println(mandrelVersion);
@@ -546,7 +549,7 @@ class GitHubOps
     private void manageMilestones(GHRepository repository, PagedIterable<GHMilestone> ghMilestones, GHMilestone milestone) throws IOException
     {
         assert !dryRun : "Milestones should not be touched in dry runs";
-        if (!version.suffix.equals("Final"))
+        if (!version.isFinal())
         {
             return;
         }
@@ -1005,7 +1008,7 @@ class Prepare extends ReusableOptions implements Callable<Integer>
         Log.info("Current version is " + version);
         version.suffix = suffix; // TODO: if Alpha/Beta autobump suffix number?
 
-        if (!version.suffix.equals("Final"))
+        if (!version.isFinal())
         {
             return 0;
         }
@@ -1048,7 +1051,7 @@ class Release extends ReusableOptions implements Callable<Integer>
         final Set<String> jdkVersionsUsed = maybeDownloadBuildsAndGetJdkVersions(version);
         GitHubOps gitHubOps = new GitHubOps(version, dryRun, downloadDir);
         gitHubOps.createGHRelease(jdkVersionsUsed);
-        if (!version.suffix.equals("Final"))
+        if (!version.isFinal())
         {
             return 0;
         }
