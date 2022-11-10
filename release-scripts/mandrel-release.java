@@ -508,6 +508,12 @@ class GitHubOps
      */
     private String getLatestReleasedTag(List<GHTag> tags)
     {
+        // Figuring out the last released Tag for pre-releases is not trivial so
+        // just return null and let the user manually update the release notes
+        if (!version.suffix.equals("Final"))
+        {
+            return null;
+        }
         final String tagPrefix = "mandrel-";
         List<MandrelVersion> finalVersions = tags.stream()
             .filter(x -> x.getName().startsWith(tagPrefix + version.majorMinorMicro()) && x.getName().endsWith("Final"))
