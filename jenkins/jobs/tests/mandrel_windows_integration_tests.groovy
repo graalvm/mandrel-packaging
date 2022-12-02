@@ -32,11 +32,7 @@ matrixJob('mandrel-windows-integration-tests') {
         }
     }
     combinationFilter(
-            '!(' +
-                    'QUARKUS_VERSION.startsWith("2.7") && (' +
-                    '   MANDREL_BUILD.contains("mandrel-master") || ' +
-                    '   MANDREL_BUILD.contains("mandrel-22")' +
-                    '))'
+            Constants.QUARKUS_VERSION_SHORT_COMBINATION_FILTER
     )
     parameters {
         stringParam(
