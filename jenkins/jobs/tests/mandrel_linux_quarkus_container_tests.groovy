@@ -5,7 +5,6 @@ matrixJob('mandrel-linux-quarkus-container-tests') {
         text('BUILDER_IMAGE',
                 'quay.io/quarkus/ubi-quarkus-mandrel:21.3-java11',
                 'quay.io/quarkus/ubi-quarkus-mandrel:21.3-java17',
-                'quay.io/quarkus/ubi-quarkus-mandrel:22.3-java11',
                 'quay.io/quarkus/ubi-quarkus-mandrel:22.3-java17'
         )
         text('QUARKUS_VERSION', Constants.QUARKUS_VERSION_BUILDER_IMAGE)
