@@ -4,7 +4,6 @@ matrixJob('mandrel-master-windows-build-matrix') {
     axes {
         labelExpression('LABEL', ['w2k19'])
         text('JDK_VERSION',
-                '11',
                 '17'
         )
         text('JDK_RELEASE',

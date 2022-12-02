@@ -4,7 +4,6 @@ matrixJob('mandrel-master-linux-build-matrix') {
     axes {
         labelExpression('LABEL', ['el8_aarch64', 'el8'])
         text('JDK_VERSION',
-                '11',
                 '17'
         )
         text('JDK_RELEASE',
