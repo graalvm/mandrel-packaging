@@ -5,7 +5,10 @@ matrixJob('mandrel-linux-container-integration-tests') {
         text('BUILDER_IMAGE',
                 'quay.io/quarkus/ubi-quarkus-mandrel:21.3-java11',
                 'quay.io/quarkus/ubi-quarkus-mandrel:21.3-java17',
-                'quay.io/quarkus/ubi-quarkus-mandrel:22.3-java17'
+                'quay.io/quarkus/ubi-quarkus-mandrel:22.3-java17',
+                'quay.io/quarkus/ubi-quarkus-mandrel:21.3.5.1-Final-java11-arm64',
+                'quay.io/quarkus/ubi-quarkus-mandrel:21.3.5.1-Final-java17-arm64',
+                'quay.io/quarkus/ubi-quarkus-mandrel:22.3.1.0-Final-java17-arm64'
         )
         text('QUARKUS_VERSION', Constants.QUARKUS_VERSION_RELEASED)
         labelExpression('LABEL', ['el8', 'el8_aarch64'])
@@ -24,7 +27,8 @@ matrixJob('mandrel-linux-container-integration-tests') {
         }
     }
     combinationFilter(
-            '!(BUILDER_IMAGE.contains("21") && (!QUARKUS_VERSION.contains("2.7") || LABEL.contains("aarch64")))'
+            '!( (BUILDER_IMAGE.contains("21") && (!QUARKUS_VERSION.contains("2.7") || LABEL.contains("aarch64"))) || ' +
+               '(BUILDER_IMAGE.contains("arm64") && !LABEL.contains("aarch64")))'
     )
     parameters {
         stringParam('MANDREL_INTEGRATION_TESTS_REPO', 'https://github.com/Karm/mandrel-integration-tests.git', 'Test suite repository.')
