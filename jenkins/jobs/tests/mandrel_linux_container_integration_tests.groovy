@@ -27,8 +27,11 @@ matrixJob('mandrel-linux-container-integration-tests') {
         }
     }
     combinationFilter(
-            '!( (BUILDER_IMAGE.contains("21") && (!QUARKUS_VERSION.contains("2.7") || LABEL.contains("aarch64"))) || ' +
-               '(BUILDER_IMAGE.contains("arm64") && !LABEL.contains("aarch64")))'
+            '(' +
+              '(LABEL.contains("aarch64") && BUILDER_IMAGE.contains("arm64")) || ((!LABEL.contains("aarch64") && !BUILDER_IMAGE.contains("arm64")))) ' +
+                    '&& ' +
+              '(!BUILDER_IMAGE.contains("21") || (BUILDER_IMAGE.contains("21") && QUARKUS_VERSION.contains("2.7"))' +
+             ')'
     )
     parameters {
         stringParam('MANDREL_INTEGRATION_TESTS_REPO', 'https://github.com/Karm/mandrel-integration-tests.git', 'Test suite repository.')
