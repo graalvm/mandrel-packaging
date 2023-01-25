@@ -448,7 +448,7 @@ class GitHubOps
             "curl -O -J  https://code.quarkus.io/d?e=io.quarkus:quarkus-resteasy-reactive\n" +
             "unzip code-with-quarkus.zip\n" +
             "cd code-with-quarkus\n" +
-            "        ./mvnw package -Pnative -Dquarkus.native.container-build=true -Dquarkus.native.builder-image=quay.io/quarkus/ubi-quarkus-mandrel:" + version + "-java17\n" +
+            "        ./mvnw package -Pnative -Dquarkus.native.container-build=true -Dquarkus.native.builder-image=quay.io/quarkus/ubi-quarkus-mandrel-builder-image:" + version + "-java17\n" +
             "        ./target/code-with-quarkus-1.0.0-SNAPSHOT-runner\n" +
             "```\n" +
             "\n" +
@@ -458,7 +458,7 @@ class GitHubOps
             "powershell -c \"Invoke-WebRequest -OutFile quarkus.zip -Uri https://code.quarkus.io/d?e=io.quarkus:quarkus-resteasy-reactive\"\n" +
             "powershell -c \"Expand-Archive -Path quarkus.zip -DestinationPath . -Force\n" +
             "cd code-with-quarkus\n" +
-            "mvnw package -Pnative -Dquarkus.native.container-build=true -Dquarkus.native.builder-image=quay.io/quarkus/ubi-quarkus-mandrel:" + version + "-java17\n" +
+            "mvnw package -Pnative -Dquarkus.native.container-build=true -Dquarkus.native.builder-image=quay.io/quarkus/ubi-quarkus-mandrel-builder-image:" + version + "-java17\n" +
             "docker build -f src/main/docker/Dockerfile.native -t my-quarkus-mandrel-app .\n" +
             "        docker run -i --rm -p 8080:8080 my-quarkus-mandrel-app\n" +
             "```\n" +
