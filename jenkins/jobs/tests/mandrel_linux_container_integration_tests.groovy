@@ -24,7 +24,7 @@ matrixJob('mandrel-linux-container-integration-tests') {
         }
     }
     combinationFilter(
-            '(!BUILDER_IMAGE.contains("21") || (BUILDER_IMAGE.contains("21") && QUARKUS_VERSION.contains("2.7"))'
+            '!BUILDER_IMAGE.contains("21") || (BUILDER_IMAGE.contains("21") && QUARKUS_VERSION.contains("2.7"))'
     )
     parameters {
         stringParam('MANDREL_INTEGRATION_TESTS_REPO', 'https://github.com/Karm/mandrel-integration-tests.git', 'Test suite repository.')
