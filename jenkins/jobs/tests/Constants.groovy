@@ -55,7 +55,7 @@ class Constants {
     export MANDREL_TAR=`ls -1 mandrel*.tar.gz`
     tar -xvf "${MANDREL_TAR}"
     source /etc/profile.d/jdks.sh
-    export JAVA_HOME="$( pwd )/$( echo mandrel-java1*-*/ )"
+    export JAVA_HOME="$( pwd )/$( echo mandrel-java*-*/ )"
     export GRAALVM_HOME="${JAVA_HOME}"
     export PATH="${JAVA_HOME}/bin:${PATH}"
     if [[ ! -e "${JAVA_HOME}/bin/native-image" ]]; then
@@ -106,7 +106,6 @@ class Constants {
         echo There was a problem pulling the image ${BUILDER_IMAGE}. We cannot proceed.
         exit 1
     fi
-    export JAVA_HOME="/usr/java/openjdk-11"
     export PATH="${JAVA_HOME}/bin:${PATH}"
     mvn --batch-mode clean verify -Ptestsuite-builder-image -Dquarkus.version=${QUARKUS_VERSION} \\
         -Dquarkus.native.container-runtime=${CONTAINER_RUNTIME} -Dquarkus.native.builder-image=${BUILDER_IMAGE}
@@ -133,7 +132,6 @@ class Constants {
         echo There was a problem pulling the image ${BUILDER_IMAGE}. We cannot proceed.
         exit 1
     fi
-    export JAVA_HOME="/usr/java/openjdk-11"
     export PATH="${JAVA_HOME}/bin:${PATH}"
     export MAVEN_OPTS="-Xmx5g -XX:MaxMetaspaceSize=3g"
     ./mvnw --batch-mode install -Dquickly
