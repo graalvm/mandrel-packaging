@@ -1,6 +1,8 @@
+package jenkins.jobs.tests
+
 final Class Constants = new GroovyClassLoader(getClass().getClassLoader())
         .parseClass(readFileFromWorkspace("jenkins/jobs/tests/Constants.groovy"))
-matrixJob('mandrel-linux-integration-tests') {
+matrixJob('mandrel-linux-integration-tests-perf') {
     axes {
         text('JDK_VERSION',
                 '11',
@@ -17,19 +19,19 @@ matrixJob('mandrel-linux-integration-tests') {
                 'mandrel-master-linux-build-matrix'
         )
         text('QUARKUS_VERSION', Constants.QUARKUS_VERSION_RELEASED)
-        labelExpression('LABEL', ['el8_aarch64', 'el8'])
+        labelExpression('LABEL', ['el9_aarch64', 'el8_aarch64', 'el8'])
     }
-    description('Run Mandrel integration tests')
-    displayName('Linux :: Integration tests')
+    description('Run Mandrel integration tests perf profile DEBUG')
+    displayName('Linux :: Integration tests :: Perf sandbox playground')
     logRotator {
-        numToKeep(300)
+        numToKeep(30)
     }
     childCustomWorkspace('${SHORT_COMBINATION}')
     wrappers {
         preBuildCleanup()
         timestamps()
         timeout {
-            absolute(120)
+            absolute(60)
         }
     }
     combinationFilter(
@@ -89,15 +91,6 @@ matrixJob('mandrel-linux-integration-tests') {
             cleaner {
                 psCleaner {
                     killerType('org.jenkinsci.plugins.proccleaner.PsRecursiveKiller')
-                }
-            }
-        }
-        downstreamParameterized {
-            trigger(['mandrel-linux-quarkus-tests']) {
-                condition('ALWAYS')
-                parameters {
-                    predefinedProp('MANDREL_BUILD_NUMBER', '${MANDREL_BUILD_NUMBER}')
-                    matrixSubset('(MANDREL_BUILD=="${MANDREL_BUILD}" && JDK_VERSION=="${JDK_VERSION}" && JDK_RELEASE=="${JDK_RELEASE}" && LABEL=="${LABEL}")')
                 }
             }
         }
