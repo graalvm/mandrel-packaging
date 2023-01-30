@@ -14,9 +14,24 @@ class Constants {
             ]
 
     static final String QUARKUS_VERSION_SHORT_COMBINATION_FILTER =
-            '((QUARKUS_VERSION.startsWith("2.7") || QUARKUS_VERSION.startsWith("2.13")) && MANDREL_BUILD.startsWith("mandrel-21"))' +
-            '|| (QUARKUS_VERSION.startsWith("2.13") && MANDREL_BUILD.startsWith("mandrel-22") && JDK_VERSION.equals("17"))' +
-            '|| (QUARKUS_VERSION.equals("main") && !MANDREL_BUILD.startsWith("mandrel-21") && JDK_VERSION.equals("17"))'
+            //@formatter:off
+            '(QUARKUS_VERSION.startsWith("2.7") && MANDREL_BUILD.startsWith("mandrel-21")) ||' +
+            '(QUARKUS_VERSION.startsWith("2.13") && MANDREL_BUILD.startsWith("mandrel-22") && JDK_VERSION.equals("17")) ||' +
+            '(QUARKUS_VERSION.equals("main") && !MANDREL_BUILD.startsWith("mandrel-21") && JDK_VERSION.equals("17"))'
+            //@formatter:on
+
+    static final String QUARKUS_VERSION_RELEASED_COMBINATION_FILTER =
+            //@formatter:off
+            '(' +
+                '(MANDREL_BUILD.startsWith("mandrel-21") && QUARKUS_VERSION.startsWith("2.7")) ||' +
+                '(MANDREL_BUILD.startsWith("mandrel-22") && QUARKUS_VERSION.startsWith("2.13")) ||' +
+                '(MANDREL_BUILD.startsWith("mandrel-master") && (QUARKUS_VERSION.startsWith("2.16") || QUARKUS_VERSION.startsWith("3")))' +
+            ') && (' +
+                '(JDK_VERSION.equals("20") && JDK_RELEASE.equals("ea") && MANDREL_BUILD.startsWith("mandrel-master")) ||' +
+                '(JDK_VERSION.equals("11") && MANDREL_BUILD.startsWith("mandrel-21")) ||' +
+                'JDK_VERSION.equals("17")' +
+            ')'
+            //@formatter:on
 
     static final ArrayList<String> QUARKUS_VERSION_BUILDER_IMAGE =
             [
