@@ -88,6 +88,13 @@ class Constants {
     mvn --batch-mode clean verify -Ptestsuite -Dquarkus.version=${QUARKUS_VERSION}
     '''
 
+    static final String LINUX_INTEGRATION_TESTS_PERF = LINUX_PREPARE_MANDREL + '''
+    free -h
+    df -h
+    ps aux | grep java
+    mvn --batch-mode clean verify -Ptestsuite -Dtest=RuntimesSmokeTest#quarkusFullMicroProfile -Dquarkus.version=${QUARKUS_VERSION}
+    '''
+
     static final String LINUX_QUARKUS_TESTS = LINUX_PREPARE_MANDREL + '''
     free -h
     df -h

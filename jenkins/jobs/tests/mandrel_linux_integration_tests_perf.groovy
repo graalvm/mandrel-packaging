@@ -19,7 +19,7 @@ matrixJob('mandrel-linux-integration-tests-perf') {
                 'mandrel-master-linux-build-matrix'
         )
         text('QUARKUS_VERSION', Constants.QUARKUS_VERSION_RELEASED)
-        labelExpression('LABEL', ['el9_aarch64', 'el8_aarch64', 'el8'])
+        labelExpression('LABEL', ['el9_aarch64_perf', 'el8_aarch64_perf', 'el8'])
     }
     description('Run Mandrel integration tests perf profile DEBUG')
     displayName('Linux :: Integration tests :: Perf sandbox playground')
@@ -65,9 +65,12 @@ matrixJob('mandrel-linux-integration-tests-perf') {
         buildDescription(/DESCRIPTION_STRING=([^\s]*)/, '\\1')
         shell {
             command(
-                    // We can run on el9, but we build on el8 only atm.
-                    'export LABEL=${LABEL/9/8};\n'
-                            + Constants.LINUX_INTEGRATION_TESTS)
+                // The LABEL for downloading Mandrel builds is el8_aarch64
+                '''
+                if [[ "${LABEL}" == *aarch64* ]]; then
+                    export LABEL=el8_aarch64
+                fi
+                ''' + Constants.LINUX_INTEGRATION_TESTS_PERF)
             unstableReturn(1)
         }
     }
