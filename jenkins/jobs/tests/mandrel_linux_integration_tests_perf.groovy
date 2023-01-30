@@ -64,7 +64,10 @@ matrixJob('mandrel-linux-integration-tests-perf') {
         shell('echo DESCRIPTION_STRING=Q:${QUARKUS_VERSION},M:${MANDREL_BUILD},J:${JDK_VERSION}-${JDK_RELEASE}')
         buildDescription(/DESCRIPTION_STRING=([^\s]*)/, '\\1')
         shell {
-            command(Constants.LINUX_INTEGRATION_TESTS)
+            command(
+                    // We can run on el9, but we build on el8 only atm.
+                    'export LABEL=${LABEL/9/8};\n'
+                            + Constants.LINUX_INTEGRATION_TESTS)
             unstableReturn(1)
         }
     }
