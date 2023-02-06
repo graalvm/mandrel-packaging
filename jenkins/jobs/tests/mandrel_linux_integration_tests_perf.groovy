@@ -54,8 +54,8 @@ matrixJob('mandrel-linux-integration-tests-perf') {
         )
         choiceParam(
                 'PERF_APP_ENDPOINT',
-                ['https://stage-collector.foci.life/api/v1/perfstats/perf',
-                 'https://collector.foci.life/api/v1/perfstats/perf'],
+                ['https://stage-collector.foci.life',
+                 'https://collector.foci.life'],
                 'Collector endpoint.'
         )
         booleanParam('PERF_APP_REPORT', true, 'Whether the JSON perf report should be actually uploaded.')
