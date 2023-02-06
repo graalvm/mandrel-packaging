@@ -33,10 +33,8 @@ matrixJob('mandrel-linux-integration-tests-perf') {
         timeout {
             absolute(60)
         }
-        wrappers {
-            credentialsBinding {
-                string("WRITE_stage-collector.foci.life", "PERF_APP_SECRET_TOKEN")
-            }
+        credentialsBinding {
+            string("PERF_APP_SECRET_TOKEN", "WRITE_stage-collector.foci.life")
         }
     }
     combinationFilter(
