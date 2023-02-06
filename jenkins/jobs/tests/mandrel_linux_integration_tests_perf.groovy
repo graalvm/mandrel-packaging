@@ -19,7 +19,7 @@ matrixJob('mandrel-linux-integration-tests-perf') {
                 'mandrel-master-linux-build-matrix'
         )
         text('QUARKUS_VERSION', Constants.QUARKUS_VERSION_RELEASED)
-        labelExpression('LABEL', ['el9_aarch64_perf', 'el8_aarch64_perf', 'el8'])
+        labelExpression('LABEL', ['el9_aarch64_perf', 'el8_aarch64_perf', 'el8_amd64_perf'])
     }
     description('Run Mandrel integration tests perf profile DEBUG')
     displayName('Linux :: Integration tests :: Perf sandbox playground')
@@ -32,6 +32,11 @@ matrixJob('mandrel-linux-integration-tests-perf') {
         timestamps()
         timeout {
             absolute(60)
+        }
+        wrappers {
+            credentialsBinding {
+                string("WRITE_stage-collector.foci.life", "PERF_APP_SECRET_TOKEN")
+            }
         }
     }
     combinationFilter(
@@ -49,7 +54,14 @@ matrixJob('mandrel-linux-integration-tests-perf') {
                 ['heads', 'tags'],
                 'Choose "heads" if you want to build from a branch, or "tags" if you want to build from a tag.'
         )
-        stringParam('MANDREL_INTEGRATION_TESTS_REF', 'master', 'Branch or tag.')
+        choiceParam(
+                'PERF_APP_ENDPOINT',
+                ['https://stage-collector.foci.life/api/v1/perfstats/perf',
+                 'https://collector.foci.life/api/v1/perfstats/perf'],
+                'Collector endpoint.'
+        )
+        booleanParam('PERF_APP_REPORT', true, 'Whether the JSON perf report should be actually uploaded.')
+        stringParam('MANDREL_INTEGRATION_TESTS_REF', 'q-json', 'Branch or tag.')
         matrixCombinationsParam('MATRIX_COMBINATIONS_FILTER', "", 'Choose which combinations to run')
     }
     scm {
