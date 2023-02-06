@@ -75,10 +75,12 @@ matrixJob('mandrel-linux-integration-tests-perf') {
         buildDescription(/DESCRIPTION_STRING=([^\s]*)/, '\\1')
         shell {
             command(
-                // The LABEL for downloading Mandrel builds is el8_aarch64
+                // The LABEL for downloading Mandrel builds is el8_aarch64 or el8 as we don't build on el9.
                 '''
                 if [[ "${LABEL}" == *aarch64* ]]; then
                     export LABEL=el8_aarch64
+                else
+                    export LABEL=el8
                 fi
                 ''' + Constants.LINUX_INTEGRATION_TESTS_PERF)
             unstableReturn(1)
