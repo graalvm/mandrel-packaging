@@ -98,7 +98,7 @@ class Constants {
     export PERFCHECK_TEST_REQUESTS_MX_HEAP_MB=2560
     export PERFCHECK_TEST_HEAVY_REQUESTS=2
     export PERFCHECK_TEST_LIGHT_REQUESTS=100
-    mvn --batch-mode clean verify -Ptestsuite -Dtest=PerfCheckTest -Dquarkus.version=${QUARKUS_VERSION}
+    mvn --batch-mode clean verify -Ptestsuite -DexcludeTags=all -DincludeTags=perfcheck -Dtest=PerfCheckTest -Dquarkus.version=${QUARKUS_VERSION}
     '''
 
     static final String LINUX_QUARKUS_TESTS = LINUX_PREPARE_MANDREL + '''
