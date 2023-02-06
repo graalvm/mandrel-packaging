@@ -92,7 +92,13 @@ class Constants {
     free -h
     df -h
     ps aux | grep java
-    mvn --batch-mode clean verify -Ptestsuite -Dtest=RuntimesSmokeTest#quarkusFullMicroProfile -Dquarkus.version=${QUARKUS_VERSION}
+    export PERF_APP_RUNNER_DESCRIPTION=${NODE_NAME}
+    #export PERFCHECK_TEST_REQUESTS_MX_HEAP_MB=20480
+    #export PERFCHECK_TEST_HEAVY_REQUESTS=10
+    export PERFCHECK_TEST_REQUESTS_MX_HEAP_MB=2560
+    export PERFCHECK_TEST_HEAVY_REQUESTS=2
+    export PERFCHECK_TEST_LIGHT_REQUESTS=100
+    mvn --batch-mode clean verify -Ptestsuite -Dtest=PerfCheckTest -Dquarkus.version=${QUARKUS_VERSION}
     '''
 
     static final String LINUX_QUARKUS_TESTS = LINUX_PREPARE_MANDREL + '''
