@@ -32,8 +32,8 @@ class Constants {
             //@formatter:off
             '(' +
                 '(MANDREL_BUILD.startsWith("mandrel-21") && QUARKUS_VERSION.startsWith("2.7")) ||' +
-                '(MANDREL_BUILD.startsWith("mandrel-22") && QUARKUS_VERSION.matches("/^2.13.*|^2.16.*|^3.*|^main.*/")) ||' +
-                '(MANDREL_BUILD.startsWith("mandrel-master") && QUARKUS_VERSION.matches("/^2.16.*|^3.*|^main.*/"))' +
+                '(MANDREL_BUILD.startsWith("mandrel-22") && QUARKUS_VERSION.trim().matches("^2.13.*|^2.16.*|^3.*|^main.*")) ||' +
+                '(MANDREL_BUILD.startsWith("mandrel-master") && QUARKUS_VERSION.trim().matches("^2.16.*|^3.*|^main.*"))' +
             ') && (' +
                 '(JDK_VERSION.equals("20") && JDK_RELEASE.equals("ea") && MANDREL_BUILD.startsWith("mandrel-master")) ||' +
                 '(JDK_VERSION.equals("11") && MANDREL_BUILD.startsWith("mandrel-21")) ||' +
