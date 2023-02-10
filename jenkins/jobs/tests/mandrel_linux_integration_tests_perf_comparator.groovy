@@ -18,7 +18,7 @@ matrixJob('mandrel-linux-integration-tests-perf-comparator') {
                 'mandrel-22-3-linux-build-matrix',
                 'mandrel-master-linux-build-matrix'
         )
-        text('QUARKUS_OPTION', ['main_A', 'main_B'])
+        text('QUARKUS_VERSION', ['main_A', 'main_B'])
         labelExpression('LABEL', ['el9_aarch64_perf', 'el8_aarch64_perf', 'el8_amd64_perf'])
     }
     description('Run Mandrel integration tests perf profile DEBUG')
@@ -74,7 +74,7 @@ matrixJob('mandrel-linux-integration-tests-perf-comparator') {
         }
     }
     steps {
-        shell('echo DESCRIPTION_STRING=Q:${QUARKUS_OPTION},M:${MANDREL_BUILD},J:${JDK_VERSION}-${JDK_RELEASE}')
+        shell('echo DESCRIPTION_STRING=Q:${QUARKUS_VERSION},M:${MANDREL_BUILD},J:${JDK_VERSION}-${JDK_RELEASE}')
         buildDescription(/DESCRIPTION_STRING=([^\s]*)/, '\\1')
         shell {
             command(
