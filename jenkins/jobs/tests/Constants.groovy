@@ -109,6 +109,26 @@ class Constants {
     mvn --batch-mode clean verify -Ptestsuite -DexcludeTags=all -DincludeTags=perfcheck -Dtest=PerfCheckTest -Dquarkus.version=${QUARKUS_VERSION}
     '''
 
+    static final String LINUX_INTEGRATION_TESTS_PERF_COMPARATOR = LINUX_PREPARE_MANDREL + '''
+    free -h
+    df -h
+    ps aux | grep java
+    git clone https://github.com/quarkusio/quarkus.git
+    pushd quarkus
+    if [ ${QUARKUS_VERSION} == "A" ]; then
+        git checkout ${QUARKUS_COMMIT_A}
+    else
+        git checkout ${QUARKUS_COMMIT_B}
+    fi
+    ./mvnw clean install -Dquickly
+    popd
+    export PERF_APP_RUNNER_DESCRIPTION=${NODE_NAME}
+    export PERFCHECK_TEST_REQUESTS_MX_HEAP_MB=20480
+    export PERFCHECK_TEST_HEAVY_REQUESTS=10
+    export PERFCHECK_TEST_LIGHT_REQUESTS=500
+    mvn --batch-mode clean verify -Ptestsuite -DexcludeTags=all -DincludeTags=perfcheck -Dtest=PerfCheckTest -Dquarkus.version=999-SNAPSHOT
+    '''
+
     static final String LINUX_QUARKUS_TESTS = LINUX_PREPARE_MANDREL + '''
     free -h
     df -h
