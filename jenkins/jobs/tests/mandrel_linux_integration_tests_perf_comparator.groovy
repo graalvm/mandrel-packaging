@@ -18,7 +18,7 @@ matrixJob('mandrel-linux-integration-tests-perf-comparator') {
                 'mandrel-22-3-linux-build-matrix',
                 'mandrel-master-linux-build-matrix'
         )
-        text('QUARKUS_VERSION', ['A', 'B'])
+        text('QUARKUS_VERSION', ['main_A', 'main_B'])
         labelExpression('LABEL', ['el9_aarch64_perf', 'el8_aarch64_perf', 'el8_amd64_perf'])
     }
     description('Run Mandrel integration tests perf profile DEBUG')
@@ -43,6 +43,7 @@ matrixJob('mandrel-linux-integration-tests-perf-comparator') {
     parameters {
         stringParam('QUARKUS_COMMIT_A', 'ca155cae76', 'commit sha')
         stringParam('QUARKUS_COMMIT_B', 'ca96ab2c1a', 'commit sha')
+        stringParam('QUARKUS_REPO', 'https://github.com/quarkusio/quarkus.git', 'Repo containing both commits')
         stringParam(
                 'MANDREL_BUILD_NUMBER',
                 'lastSuccessfulBuild',
