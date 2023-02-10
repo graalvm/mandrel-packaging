@@ -74,7 +74,7 @@ matrixJob('mandrel-linux-integration-tests-perf-comparator') {
         }
     }
     steps {
-        shell('echo DESCRIPTION_STRING=Q:${QUARKUS_VERSION},M:${MANDREL_BUILD},J:${JDK_VERSION}-${JDK_RELEASE}')
+        shell('echo DESCRIPTION_STRING=Q:${QUARKUS_OPTION},M:${MANDREL_BUILD},J:${JDK_VERSION}-${JDK_RELEASE}')
         buildDescription(/DESCRIPTION_STRING=([^\s]*)/, '\\1')
         shell {
             command(
