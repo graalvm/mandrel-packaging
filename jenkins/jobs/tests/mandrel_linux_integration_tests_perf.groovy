@@ -18,7 +18,7 @@ matrixJob('mandrel-linux-integration-tests-perf') {
                 'mandrel-22-3-linux-build-matrix',
                 'mandrel-master-linux-build-matrix'
         )
-        text('QUARKUS_VERSION', Constants.QUARKUS_VERSION_RELEASED)
+        text('QUARKUS_VERSION', Constants.QUARKUS_VERSION_RELEASED_PERF)
         labelExpression('LABEL', ['el9_aarch64_perf', 'el8_aarch64_perf', 'el8_amd64_perf'])
     }
     description('Run Mandrel integration tests perf profile DEBUG')
