@@ -117,8 +117,10 @@ class Constants {
     pushd quarkus
     if [ ${QUARKUS_OPTION} == "A" ]; then
         git checkout ${QUARKUS_COMMIT_A}
+        export QUARKUS_VERSION_GITSHA=${QUARKUS_COMMIT_A}
     else
         git checkout ${QUARKUS_COMMIT_B}
+        export QUARKUS_VERSION_GITSHA=${QUARKUS_COMMIT_B}
     fi
     ./mvnw clean install -Dquickly
     popd
