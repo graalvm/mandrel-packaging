@@ -115,7 +115,7 @@ class Constants {
     ps aux | grep java
     git clone ${QUARKUS_REPO}
     pushd quarkus
-    if [ ${QUARKUS_OPTION} == "A" ]; then
+    if [ "${QUARKUS_VERSION}" == "main_A" ]; then
         git checkout ${QUARKUS_COMMIT_A}
         export QUARKUS_VERSION_GITSHA=${QUARKUS_COMMIT_A}
     else
