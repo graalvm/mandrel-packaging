@@ -2,6 +2,15 @@ diff --git a/sdk/mx.sdk/mx_sdk_vm_impl.py b/sdk/mx.sdk/mx_sdk_vm_impl.py
 index 43456a4778a..23763ed758b 100644
 --- a/sdk/mx.sdk/mx_sdk_vm_impl.py
 +++ b/sdk/mx.sdk/mx_sdk_vm_impl.py
+@@ -1150,7 +1150,7 @@ def remove_lib_prefix_suffix(libname, require_suffix_prefix=True):
+ class SvmSupport(object):
+     def __init__(self):
+         self._svm_supported = has_component('svm', stage1=True)
+-        self._debug_supported = self._svm_supported and has_component('svmee', stage1=True) and not mx.is_darwin()  # GR-37542
++        self._debug_supported = self._svm_supported and not mx.is_darwin()  # GR-37542
+         self._pgo_supported = self._svm_supported and has_component('svmee', stage1=True)
+ 
+     def is_supported(self):
 @@ -1296,7 +1296,6 @@ class NativePropertiesBuildTask(mx.ProjectBuildTask):
              build_args = [
                  '--no-fallback',
