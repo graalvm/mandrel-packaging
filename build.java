@@ -537,7 +537,7 @@ class SequentialBuild
     {
         final Tasks.Exec.Effects exec = new Tasks.Exec.Effects(task -> os.exec(task, false));
         final Tasks.FileReplace.Effects replace = Tasks.FileReplace.Effects.ofSystem();
-        LOG.debugf("Patch sources to remove dependency on truffle-api.jar ...");
+        LOG.debugf("Patch sources to remove dependency on truffle-api.jar and enable debug info generation...");
         final Path resourcesPath;
         if (options.mandrelPackagingHome == null)
         {
@@ -547,6 +547,7 @@ class SequentialBuild
         {
             resourcesPath = Path.of(options.mandrelPackagingHome, "resources");
         }
+        // NOTE: This patch also enables debug info generation by virtue of removing the has_component('svmee') condition
         exec.exec.accept(Tasks.Exec.of(List.of("git", "apply", resourcesPath.resolve("truffle-api-removal.patch").toString()), fs.mandrelRepo()));
         Mx.build(options, exec, replace, fs.mxHome(), fs.mandrelRepo(), os.javaHome());
         if (options.mavenDeploy && !options.skipJava)
