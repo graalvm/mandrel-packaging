@@ -552,21 +552,28 @@ class SequentialBuild
             LOG.debugf("Patch sdk suite.py ...");
             String patchPath = fs.workingDir().resolve(Path.of("resources", "mandrel-packaging-wrapper.patch")).toString();
             exec.exec.accept(Tasks.Exec.of(List.of("git", "apply", patchPath), fs.mandrelRepo()));
-            LOG.debugf("Build Mandrel's wrapper jar...");
-            Mx.BuildArgs buildArgs = Mx.BuildArgs.of("--only", "MANDREL_PACKAGING_WRAPPER");
-            exec.exec.accept(Mx.mxbuild(options, fs.mxHome(), fs.mandrelRepo(), os.javaHome()).apply(buildArgs));
-            // Add Specification-Version and Implementation-Version to jars' manifests.
-            // These attributes are access by Red Hat Build of Quarkus to verify that the correct artifacts are being used.
-            // The value of Specification-Version is not that important, but the Implementation-Version should match the version of the native-image.
-            LOG.debugf("Patch jars' manifests with Specification-Version and Implementation-Version...");
-            File manifest = createTempManifest(options);
-            mx.artifacts.forEach((artifact, paths) ->
+            try
             {
-                final String jarPath = PathFinder.getFirstExisting(fs.mandrelRepo().resolve(paths[0]).toString(), artifact).toString();
-                exec.exec.accept(Tasks.Exec.of(List.of(os.javaHome() + "/bin/jar", "uvfm", jarPath, manifest.getPath()), fs.mandrelRepo()));
-            });
-            LOG.debugf("Deploy maven artifacts...");
-            Mx.mavenDeploy(options, exec, fs.mxHome(), fs.mandrelRepo(), os.javaHome());
+                LOG.debugf("Build Mandrel's wrapper jar...");
+                Mx.BuildArgs buildArgs = Mx.BuildArgs.of("--only", "MANDREL_PACKAGING_WRAPPER");
+                exec.exec.accept(Mx.mxbuild(options, fs.mxHome(), fs.mandrelRepo(), os.javaHome()).apply(buildArgs));
+                // Add Specification-Version and Implementation-Version to jars' manifests.
+                // These attributes are access by Red Hat Build of Quarkus to verify that the correct artifacts are being used.
+                // The value of Specification-Version is not that important, but the Implementation-Version should match the version of the native-image.
+                LOG.debugf("Patch jars' manifests with Specification-Version and Implementation-Version...");
+                File manifest = createTempManifest(options);
+                mx.artifacts.forEach((artifact, paths) ->
+                {
+                    final String jarPath = PathFinder.getFirstExisting(fs.mandrelRepo().resolve(paths[0]).toString(), artifact).toString();
+                    exec.exec.accept(Tasks.Exec.of(List.of(os.javaHome() + "/bin/jar", "uvfm", jarPath, manifest.getPath()), fs.mandrelRepo()));
+                });
+                LOG.debugf("Deploy maven artifacts...");
+                Mx.mavenDeploy(options, exec, fs.mxHome(), fs.mandrelRepo(), os.javaHome());
+            }
+            finally
+            {
+                exec.exec.accept(Tasks.Exec.of(List.of("git", "apply", "-R", patchPath), fs.mandrelRepo()));
+            }
         }
     }
 
