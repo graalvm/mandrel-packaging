@@ -299,6 +299,8 @@ public class build
         // It is fragile at best. We should probably just generate the line fresh.
         final Pattern launcherPattern = Pattern.compile("(.*EnableJVMCI)(.*)");
         logger.debugf("mandrelVersion: %s", mandrelVersion);
+        String defaultVendor = "GraalVM Community";
+        String defaultVendorUrl = "https://github.com/graalvm/mandrel/issues";
         for (int i = 0; i < lines.size(); i++)
         {
             final Matcher launcherMatcher = launcherPattern.matcher(lines.get(i));
@@ -308,10 +310,9 @@ public class build
                 logger.debugf("launcherMatcher.group(1): %s", launcherMatcher.group(1));
                 logger.debugf("launcherMatcher.group(2): %s", launcherMatcher.group(2));
                 final String launcherLine = launcherMatcher.group(1) +
-                    " -Dorg.graalvm.version=\"" + mandrelVersion + "\"" +
-                    " -Dorg.graalvm.config=\"Mandrel Distribution\"" +
-                    ((vendor != null) ? " -Dorg.graalvm.vendor=\"" + vendor + "\"" : "") +
-                    ((vendorUrl != null) ? " -Dorg.graalvm.vendorurl=\"" + vendorUrl + "\"" : "") +
+                    " -Dorg.graalvm.vendorversion=\"Mandrel-" + mandrelVersion + "\"" +
+                    " -Dorg.graalvm.vendor=\"" + (vendor != null ? vendor : defaultVendor) + "\"" +
+                    " -Dorg.graalvm.vendorurl=\"" + (vendorUrl != null ? vendorUrl : defaultVendorUrl ) + "\"" +
                     launcherMatcher.group(2);
                 lines.set(i, launcherLine);
                 logger.debugf("Launcher line AFTER: %s", lines.get(i));
