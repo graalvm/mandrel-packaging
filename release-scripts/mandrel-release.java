@@ -1,10 +1,10 @@
 //usr/bin/env jbang --ea "$0" "$@" ; exit $?
 //JAVA 11+
-//DEPS org.eclipse.jgit:org.eclipse.jgit:5.9.0.202009080501-r
-//DEPS org.eclipse.jgit:org.eclipse.jgit.pgm:5.9.0.202009080501-r
-//DEPS org.eclipse.jgit:org.eclipse.jgit.gpg.bc:5.9.0.202009080501-r
+//DEPS org.eclipse.jgit:org.eclipse.jgit:5.13.0.202109080827-r
+//DEPS org.eclipse.jgit:org.eclipse.jgit.pgm:5.13.0.202109080827-r
+//DEPS org.eclipse.jgit:org.eclipse.jgit.gpg.bc:5.13.0.202109080827-r
 //DEPS info.picocli:picocli:4.5.0
-//DEPS org.kohsuke:github-api:1.116
+//DEPS org.kohsuke:github-api:1.307
 
 import org.eclipse.jgit.api.Git;
 import org.eclipse.jgit.api.ResetCommand;
@@ -573,16 +573,11 @@ class MandrelRelease implements Callable<Integer> {
     }
 
     private Integer getGroup(GHPullRequest pr) {
-        try {
-            if (pr.getLabels().stream().anyMatch(l -> l.getName().equals("release/noteworthy-feature"))) {
-                return 0;
-            }
-            if (pr.getLabels().stream().anyMatch(l -> l.getName().equals("backport"))) {
-                return 1;
-            }
-        } catch (IOException e) {
-            e.printStackTrace();
-            error(e.getMessage());
+        if (pr.getLabels().stream().anyMatch(l -> l.getName().equals("release/noteworthy-feature"))) {
+            return 0;
+        }
+        if (pr.getLabels().stream().anyMatch(l -> l.getName().equals("backport"))) {
+            return 1;
         }
         return 2;
     }
