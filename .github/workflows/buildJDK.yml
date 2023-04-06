@@ -14,7 +14,8 @@ env:
   JAVA_HOME: /opt/jdk
   MANDREL_REPO: ${{ github.workspace }}/mandrel
   MX_HOME: ${{ github.workspace }}/mx
-  MANDREL_VERSION: 10.9.8.7 test-build
+  # This ought to be a valid version parseable by Version.parse()
+  MANDREL_VERSION: 10.9.8.7-dev
 
 # The following aims to reduce CI CPU cycles by:
 # 1. Cancelling any previous builds of this PR when pushing new changes to it
@@ -101,6 +102,18 @@ jobs:
         ${MANDREL_HOME}/bin/native-image HelloStrict
         ./hellostrict | tee native.txt
         diff java.txt native.txt
+        echo "
+        import org.graalvm.home.Version;
+        public class VersionTest {
+            private static final String VERSION = Version.getCurrent().toString();
+            public static void main(String[] args) {
+                System.out.println(VERSION);
+            }
+        }
+        " > VersionTest.java
+        ${MANDREL_HOME}/bin/javac -cp ${MANDREL_HOME}/lib/jvmci/graal-sdk.jar VersionTest.java
+        ${MANDREL_HOME}/bin/native-image --no-fallback --initialize-at-build-time=. --features=org.graalvm.home.HomeFinderFeature VersionTest
+        ./versiontest | grep "${MANDREL_VERSION}" || ( echo "got '$(./versiontest)' but expected '${MANDREL_VERSION}'" && exit 1 )
         ${MANDREL_HOME}/bin/native-image --macro:native-image-launcher
     - name: Upload Mandrel build
       uses: actions/upload-artifact@v3
@@ -213,6 +226,22 @@ jobs:
           Write-Host $DIFF
           exit 1
         }
+        Set-Content -Path 'VersionTest.java' -Value "
+        import org.graalvm.home.Version;
+        public class VersionTest {
+            private static final String VERSION = Version.getCurrent().toString();
+            public static void main(String[] args) {
+                System.out.println(VERSION);
+            }
+        }
+        "
+        & $MANDREL_HOME\bin\javac -cp $MANDREL_HOME\lib\jvmci\graal-sdk.jar VersionTest.java
+        & $MANDREL_HOME\bin\native-image.cmd --no-fallback --initialize-at-build-time=. --features=org.graalvm.home.HomeFinderFeature VersionTest
+        $VERSION=(& ./versiontest)
+        if ("$VERSION" -NotMatch "$Env:MANDREL_VERSION") {
+          Write-Host got $VERSION but expected $Env:MANDREL_VERSION
+          exit 1
+        }
         # $PREFIX && ${MANDREL_HOME}/bin/native-image.cmd --macro:native-image-launcher
     - name: Rename mandrel archive
       shell: bash
@@ -317,6 +346,18 @@ jobs:
         ${MANDREL_HOME}/bin/native-image HelloStrict
         ./hellostrict | tee native.txt
         diff java.txt native.txt
+        echo "
+        import org.graalvm.home.Version;
+        public class VersionTest {
+            private static final String VERSION = Version.getCurrent().toString();
+            public static void main(String[] args) {
+                System.out.println(VERSION);
+            }
+        }
+        " > VersionTest.java
+        ${MANDREL_HOME}/bin/javac -cp ${MANDREL_HOME}/lib/jvmci/graal-sdk.jar VersionTest.java
+        ${MANDREL_HOME}/bin/native-image --no-fallback --initialize-at-build-time=. --features=org.graalvm.home.HomeFinderFeature VersionTest
+        ./versiontest | grep "${MANDREL_VERSION}" || ( echo "got '$(./versiontest)' but expected '${MANDREL_VERSION}'" && exit 1 )
         ${MANDREL_HOME}/bin/native-image --macro:native-image-launcher
     - name: Upload Mandrel build
       uses: actions/upload-artifact@v3
