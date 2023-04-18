@@ -1,24 +1,24 @@
 class Constants {
     static final ArrayList<String> QUARKUS_VERSION_RELEASED =
             [
-                    '2.16.2.Final',
-                    '2.13.7.Final',
+                    '3.0.0.Final',
+                    '2.16.6.Final',
                     '2.7.7.Final'
             ]
 
     static final ArrayList<String> QUARKUS_VERSION_RELEASED_PERF =
             [
-                    '2.16.2.Final',
+                    '3.0.0.Final',
+                    '2.16.6.Final',
                     '2.13.7.Final',
-                    '2.7.7.Final',
-                    '3.0.0.Alpha4'
+                    '2.7.7.Final'
             ]
 
     static final ArrayList<String> QUARKUS_VERSION_SHORT =
             [
-                    '2.13.7.Final',
-                    '2.7.7.Final',
-                    'main'
+                    'main',
+                    '2.16.6.Final',
+                    '2.7.7.Final'
             ]
 
     static final String QUARKUS_VERSION_SHORT_COMBINATION_FILTER =
@@ -43,7 +43,8 @@ class Constants {
 
     static final ArrayList<String> QUARKUS_VERSION_BUILDER_IMAGE =
             [
-                    '2.13.7.Final',
+                    '3.0.0.Final',
+                    '2.16.6.Final',
                     '2.7.7.Final'
             ]
 

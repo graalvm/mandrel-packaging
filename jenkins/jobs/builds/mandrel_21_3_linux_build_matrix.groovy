@@ -29,7 +29,7 @@ matrixJob('mandrel-21-3-linux-build-matrix') {
         )
         stringParam(
                 'BRANCH_OR_TAG',
-                'mandrel/21.3-dev',
+                'mandrel/21.3',
                 'e.g. your PR branch or a specific tag.'
         )
         choiceParam('PACKAGING_REPOSITORY', Constants.PACKAGING_REPOSITORY, 'Mandrel packaging scripts.')

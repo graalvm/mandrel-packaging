@@ -6,6 +6,7 @@ matrixJob('mandrel-linux-container-integration-tests') {
                 'quay.io/quarkus/ubi-quarkus-mandrel-builder-image:21.3-java11',
                 'quay.io/quarkus/ubi-quarkus-mandrel-builder-image:21.3-java17',
                 'quay.io/quarkus/ubi-quarkus-mandrel-builder-image:22.3-java17',
+                'quay.io/quarkus/ubi-quarkus-mandrel-builder-image:22.3-java20',
         )
         text('QUARKUS_VERSION', Constants.QUARKUS_VERSION_RELEASED)
         labelExpression('LABEL', ['el8', 'el8_aarch64'])
@@ -13,14 +14,14 @@ matrixJob('mandrel-linux-container-integration-tests') {
     description('Run Mandrel container integration tests')
     displayName('Linux :: Container Integration tests')
     logRotator {
-        numToKeep(300)
+        numToKeep(100)
     }
     childCustomWorkspace('${SHORT_COMBINATION}')
     wrappers {
         preBuildCleanup()
         timestamps()
         timeout {
-            absolute(120)
+            absolute(240)
         }
     }
     combinationFilter(

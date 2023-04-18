@@ -17,9 +17,9 @@ matrixJob('mandrel-master-linux-build-matrix') {
     logRotator {
         numToKeep(5)
     }
-    combinationFilter(
-            '!(JDK_VERSION=="20" && JDK_RELEASE=="ga")'
-    )
+    //combinationFilter(
+    //        '!(JDK_VERSION=="20" && JDK_RELEASE=="ga")'
+    //)
     parameters {
         choiceParam('REPOSITORY', Constants.REPOSITORY, 'Mandrel repo')
         choiceParam(
