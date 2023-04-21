@@ -1100,10 +1100,10 @@ class Release extends ReusableOptions implements Callable<Integer>
             {
                 Log.error("At least one of --windows-job-build-number, --linux-job-build-number must be specified. Terminating.");
             }
-            if (jdkVersionsUsed.size() != 2)
+            if (jdkVersionsUsed.isEmpty() || (jdkVersionsUsed.size() == 1 && version.major != 22) || jdkVersionsUsed.size() > 2)
             {
-                Log.warn("There are supposed to be 2 distinct JDK versions used, one for JDK 17 and one for JDK 11." +
-                    "This is unexpected: " + String.join(",", jdkVersionsUsed));
+                Log.warn("The list of distinct JDK versions used looks weird. " +
+                    "Is this really expected?: " + String.join(",", jdkVersionsUsed));
             }
         }
         if (jdkVersionsUsed.isEmpty())
