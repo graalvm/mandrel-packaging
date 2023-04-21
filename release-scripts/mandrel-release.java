@@ -331,29 +331,37 @@ class GitHubOps
         }
     }
 
-    private File[] assets(String fullVersion)
+    private List<File> assets(String fullVersion)
     {
-        final File[] assets = new File[6];
-        assets[0] = new File(downloadDir, "mandrel-java17-linux-amd64-" + fullVersion + ".tar.gz");
-        assets[1] = new File(downloadDir, "mandrel-java17-linux-aarch64-" + fullVersion + ".tar.gz");
-        assets[2] = new File(downloadDir, "mandrel-java17-windows-amd64-" + fullVersion + ".zip");
+        final List<File> assets = List.of(
+            new File(downloadDir, "mandrel-java17-linux-amd64-" + fullVersion + ".tar.gz"),
+            new File(downloadDir, "mandrel-java17-linux-aarch64-" + fullVersion + ".tar.gz"),
+            new File(downloadDir, "mandrel-java17-windows-amd64-" + fullVersion + ".zip")
+        );
         final int major = Integer.parseInt(fullVersion.substring(0, 2));
         if (major == 21)
         {
-            assets[3] = new File(downloadDir, "mandrel-java11-linux-amd64-" + fullVersion + ".tar.gz");
-            assets[4] = new File(downloadDir, "mandrel-java11-linux-aarch64-" + fullVersion + ".tar.gz");
-            assets[5] = new File(downloadDir, "mandrel-java11-windows-amd64-" + fullVersion + ".zip");
+            assets.add(new File(downloadDir, "mandrel-java11-linux-amd64-" + fullVersion + ".tar.gz"));
+            assets.add(new File(downloadDir, "mandrel-java11-linux-aarch64-" + fullVersion + ".tar.gz"));
+            assets.add(new File(downloadDir, "mandrel-java11-windows-amd64-" + fullVersion + ".zip"));
             return assets;
         }
-        assets[3] = new File(downloadDir, "mandrel-java20-linux-amd64-" + fullVersion + ".tar.gz");
-        assets[4] = new File(downloadDir, "mandrel-java20-linux-aarch64-" + fullVersion + ".tar.gz");
-        assets[5] = new File(downloadDir, "mandrel-java20-windows-amd64-" + fullVersion + ".zip");
+        if (major == 22)
+        {
+            return assets;
+        }
+        if (major == 23)
+        {
+            assets.add(new File(downloadDir, "mandrel-java20-linux-amd64-" + fullVersion + ".tar.gz"));
+            assets.add(new File(downloadDir, "mandrel-java20-linux-aarch64-" + fullVersion + ".tar.gz"));
+            assets.add(new File(downloadDir, "mandrel-java20-windows-amd64-" + fullVersion + ".zip"));
+        }
         return assets;
     }
 
     private void uploadAssets(String fullVersion, GHRelease ghRelease) throws IOException
     {
-        final File[] assets = assets(fullVersion);
+        final List<File> assets = assets(fullVersion);
 
         for (File f : assets)
         {
@@ -1155,7 +1163,20 @@ class Release extends ReusableOptions implements Callable<Integer>
     private Set<String> downloadAssets(MandrelVersion mandrelVersion) throws IOException
     {
         final Pattern jdkVersionPattern = Pattern.compile(".*OpenJDK *used: *(?<jdk>.*)", Pattern.DOTALL);
-        final int[] jdkMajorVersions = (mandrelVersion.major == 21) ? new int[]{11, 17} : new int[]{17, 20};
+        final int[] jdkMajorVersions;
+        if (mandrelVersion.major == 21)
+        {
+            jdkMajorVersions = new int[]{11, 17};
+        }
+        else if (mandrelVersion.major == 22)
+        {
+            jdkMajorVersions = new int[]{17};
+        }
+        else
+        {
+            jdkMajorVersions = new int[]{17, 20};
+        }
+
         final String jenkinsURL = "https://ci.modcluster.io";
 
         final File df = new File(downloadDir);

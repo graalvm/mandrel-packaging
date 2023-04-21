@@ -6,7 +6,8 @@ matrixJob('mandrel-linux-quarkus-subset-tests') {
     axes {
         text('JDK_VERSION',
                 '11',
-                '17'
+                '17',
+                '20'
         )
         text('JDK_RELEASE',
                 'ea',
@@ -15,6 +16,7 @@ matrixJob('mandrel-linux-quarkus-subset-tests') {
         text('MANDREL_BUILD',
                 'mandrel-21-3-linux-build-matrix',
                 'mandrel-22-3-linux-build-matrix',
+                'mandrel-23-0-linux-build-matrix',
                 'mandrel-master-linux-build-matrix'
         )
         text('QUARKUS_VERSION', Constants.QUARKUS_VERSION_SHORT)
