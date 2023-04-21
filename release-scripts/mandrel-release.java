@@ -204,7 +204,8 @@ class MandrelVersion implements Comparable<MandrelVersion>
         return major + "." + minor + "." + micro + "." + pico;
     }
 
-    boolean isFinal() {
+    boolean isFinal()
+    {
         return suffix.equals("Final");
     }
 
@@ -284,9 +285,12 @@ class GitHubOps
             {
                 Log.error("No milestone titled " + version.majorMinorMicroPico() + "-Final! Can't produce changelog without it!");
             }
-            if (version.isFinal() && milestone.getOpenIssues() != 0)
+            else
             {
-                Log.error("There are still open issues in milestone " + milestone.getTitle() + ". Please take care of them and try again.");
+                if (version.isFinal() && milestone.getOpenIssues() != 0)
+                {
+                    Log.error("There are still open issues in milestone " + milestone.getTitle() + ". Please take care of them and try again.");
+                }
             }
 
             final List<GHTag> tags = repository.listTags().toList();
@@ -329,14 +333,22 @@ class GitHubOps
 
     private File[] assets(String fullVersion)
     {
-        return new File[]{
-            new File(downloadDir, "mandrel-java11-linux-amd64-" + fullVersion + ".tar.gz"),
-            new File(downloadDir, "mandrel-java11-linux-aarch64-" + fullVersion + ".tar.gz"),
-            new File(downloadDir, "mandrel-java11-windows-amd64-" + fullVersion + ".zip"),
-            new File(downloadDir, "mandrel-java17-linux-amd64-" + fullVersion + ".tar.gz"),
-            new File(downloadDir, "mandrel-java17-linux-aarch64-" + fullVersion + ".tar.gz"),
-            new File(downloadDir, "mandrel-java17-windows-amd64-" + fullVersion + ".zip"),
-        };
+        final File[] assets = new File[6];
+        assets[0] = new File(downloadDir, "mandrel-java17-linux-amd64-" + fullVersion + ".tar.gz");
+        assets[1] = new File(downloadDir, "mandrel-java17-linux-aarch64-" + fullVersion + ".tar.gz");
+        assets[2] = new File(downloadDir, "mandrel-java17-windows-amd64-" + fullVersion + ".zip");
+        final int major = Integer.parseInt(fullVersion.substring(0, 2));
+        if (major == 21)
+        {
+            assets[3] = new File(downloadDir, "mandrel-java11-linux-amd64-" + fullVersion + ".tar.gz");
+            assets[4] = new File(downloadDir, "mandrel-java11-linux-aarch64-" + fullVersion + ".tar.gz");
+            assets[5] = new File(downloadDir, "mandrel-java11-windows-amd64-" + fullVersion + ".zip");
+            return assets;
+        }
+        assets[3] = new File(downloadDir, "mandrel-java20-linux-amd64-" + fullVersion + ".tar.gz");
+        assets[4] = new File(downloadDir, "mandrel-java20-linux-aarch64-" + fullVersion + ".tar.gz");
+        assets[5] = new File(downloadDir, "mandrel-java20-windows-amd64-" + fullVersion + ".zip");
+        return assets;
     }
 
     private void uploadAssets(String fullVersion, GHRelease ghRelease) throws IOException
@@ -395,7 +407,7 @@ class GitHubOps
             "They do not include support for Polyglot programming via the Truffle interpreter and compiler framework.\n" +
             "In consequence, it is not possible to extend Mandrel by downloading languages from the Truffle language catalogue.\n" +
             "\n" +
-            "Mandrel is also built slightly differently to GraalVM, using the standard OpenJDK project release of jdk11u and jdk17u.\n" +
+            "Mandrel is also built slightly differently to GraalVM, using the standard OpenJDK project release of jdk " + String.join(" and ", jdkVersionsUsed) + ".\n" +
             "This means it does not profit from a few small enhancements that Oracle have added to the version of OpenJDK used to build their own GraalVM downloads.\n" +
             "Most of these enhancements are to the JVMCI module that allows the Graal compiler to be run inside OpenJDK.\n" +
             "The others are small cosmetic changes to behaviour.\n" +
@@ -466,7 +478,7 @@ class GitHubOps
             changelog +
             "\n---\n" +
             "Mandrel " + version + "\n" +
-            "OpenJDK" + (jdkVersionsUsed.size() > 1 ? "s" : "") + " used: " + String.join(",", jdkVersionsUsed) + "\n";
+            "OpenJDK" + (jdkVersionsUsed.size() > 1 ? "s" : "") + " used: " + String.join(", ", jdkVersionsUsed) + "\n";
     }
 
     private String createChangelog(GHRepository repository, GHMilestone milestone, List<GHTag> tags) throws IOException
@@ -1143,7 +1155,7 @@ class Release extends ReusableOptions implements Callable<Integer>
     private Set<String> downloadAssets(MandrelVersion mandrelVersion) throws IOException
     {
         final Pattern jdkVersionPattern = Pattern.compile(".*OpenJDK *used: *(?<jdk>.*)", Pattern.DOTALL);
-        final int[] jdkMajorVersions = new int[]{11, 17};
+        final int[] jdkMajorVersions = (mandrelVersion.major == 21) ? new int[]{11, 17} : new int[]{17, 20};
         final String jenkinsURL = "https://ci.modcluster.io";
 
         final File df = new File(downloadDir);
