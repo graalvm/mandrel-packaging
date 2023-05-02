@@ -25,7 +25,7 @@ class Constants {
             //@formatter:off
             '(QUARKUS_VERSION.startsWith("2.7") && MANDREL_BUILD.startsWith("mandrel-21")) ||' +
             '(QUARKUS_VERSION.startsWith("2.13") && MANDREL_BUILD.startsWith("mandrel-22") && JDK_VERSION.equals("17")) ||' +
-            '(QUARKUS_VERSION.equals("main") && !MANDREL_BUILD.startsWith("mandrel-21") && JDK_VERSION.equals("17"))'
+            '(QUARKUS_VERSION.equals("main") && !MANDREL_BUILD.startsWith("mandrel-21") && !JDK_VERSION.equals("11"))'
             //@formatter:on
 
     static final String QUARKUS_VERSION_RELEASED_COMBINATION_FILTER =
