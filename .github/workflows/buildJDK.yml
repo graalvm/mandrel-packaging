@@ -11,11 +11,13 @@ on:
 
 env:
   MX_GIT_CACHE: refcache
-  JAVA_HOME: /opt/jdk
+  JAVA_HOME: ${{ github.workspace }}/jdk
+  MAC_JAVA_HOME: ${{ github.workspace }}/jdk/Contents/Home
   MANDREL_REPO: ${{ github.workspace }}/mandrel
   MX_HOME: ${{ github.workspace }}/mx
   # This ought to be a valid version parseable by Version.parse()
   MANDREL_VERSION: 10.9.8.7-dev
+  MX_PYTHON: python3
 
 # The following aims to reduce CI CPU cycles by:
 # 1. Cancelling any previous builds of this PR when pushing new changes to it
@@ -131,6 +133,97 @@ jobs:
       with:
         name: mandrel-java17-linux-amd64-test-build-tarxz
         path: mandrel-java17-linux-amd64.tarxz
+
+  build-and-test-on-mac:
+    name: MacOS Build and test ${{ matrix.mandrel-ref }} branch/tag
+    runs-on: macos-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        mandrel-ref: [graal/master]
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/checkout@v3
+        with:
+          repository: graalvm/mandrel.git
+          fetch-depth: 1
+          ref: ${{ matrix.mandrel-ref }}
+          path: ${{ github.workspace }}/mandrel
+      - uses: actions/checkout@v3
+        with:
+          repository: graalvm/mx.git
+          fetch-depth: 1
+          ref: master
+          path: ${{ github.workspace }}/mx
+      - uses: actions/cache@v3
+        with:
+          path: ~/.mx
+          key: ${{ runner.os }}-mx-${{ hashFiles('**/suite.py') }}
+          restore-keys: |
+            ${{ runner.os }}-mx-
+      - uses: actions/cache@v3
+        with:
+          path: ~/.m2/repository
+          key: ${{ runner.os }}-mx-${{ hashFiles('**/suite.py') }}
+          restore-keys: |
+            ${{ runner.os }}-${{ matrix.quarkus-name }}-maven-
+      - name: Get latest openJDK17 with static libs
+        run: |
+          curl -sL https://api.adoptium.net/v3/binary/latest/17/ea/mac/x64/jdk/hotspot/normal/eclipse -o jdk.tar.gz
+          curl -sL https://api.adoptium.net/v3/binary/latest/17/ea/mac/x64/staticlibs/hotspot/normal/eclipse -o jdk-static-libs.tar.gz
+          mkdir -p ${JAVA_HOME}
+          tar xf jdk.tar.gz -C ${JAVA_HOME} --strip-components=1
+          tar xf jdk-static-libs.tar.gz -C ${JAVA_HOME} --strip-components=1
+          echo ${MAC_JAVA_HOME}
+          ${MAC_JAVA_HOME}/bin/java --version
+      - name: Build Mandrel JDK
+        run: |
+          export JAVA_HOME=${MAC_JAVA_HOME}
+          ${MAC_JAVA_HOME}/bin/java -ea build.java --verbose --mx-home ${MX_HOME} --mandrel-repo ${MANDREL_REPO} --mandrel-version "${MANDREL_VERSION}" --archive-suffix tar.gz
+          export MANDREL_VERSION_UNTIL_SPACE="$( echo ${MANDREL_VERSION} | sed -e 's/\([^ ]*\).*/\1/;t' )"
+          export ARCHIVE_NAME="mandrel-java17-darwin-amd64-${MANDREL_VERSION_UNTIL_SPACE}.tar.gz"
+          mv ${ARCHIVE_NAME} mandrel-java17-darwin-amd64.tar.gz
+      - name: Smoke tests
+        run: |
+          export MANDREL_VERSION_UNTIL_SPACE="$( echo ${MANDREL_VERSION} | sed -e 's/\([^ ]*\).*/\1/;t' )"
+          export MANDREL_HOME=${PWD}/mandrel-java17-${MANDREL_VERSION_UNTIL_SPACE}/Contents/Home
+          ${MANDREL_HOME}/bin/native-image --version
+          ${MANDREL_HOME}/bin/native-image --version | grep "${MANDREL_VERSION}"
+          echo "
+          public class HelloStrict {
+              public static void main(String[] args) {
+                  System.out.printf(
+                      \"Hello %1$,.12f %2$,.12f %3$,.12f %n\"
+                      , StrictMath.cos(0.0)
+                      , StrictMath.IEEEremainder(3.0, 5.0)
+                      , StrictMath.IEEEremainder(-16.3, 4.1)
+                  );
+              }
+          }
+          " > HelloStrict.java
+          ${MANDREL_HOME}/bin/javac HelloStrict.java
+          ${MANDREL_HOME}/bin/java HelloStrict | tee java.txt
+          ${MANDREL_HOME}/bin/native-image HelloStrict
+          ./hellostrict | tee native.txt
+          diff java.txt native.txt
+          echo "
+          import org.graalvm.home.Version;
+          public class VersionTest {
+              private static final String VERSION = Version.getCurrent().toString();
+              public static void main(String[] args) {
+                  System.out.println(VERSION);
+              }
+          }
+          " > VersionTest.java
+          ${MANDREL_HOME}/bin/javac -cp ${MANDREL_HOME}/lib/jvmci/graal-sdk.jar VersionTest.java
+          ${MANDREL_HOME}/bin/native-image --no-fallback --initialize-at-build-time=. --features=org.graalvm.home.HomeFinderFeature VersionTest
+          ./versiontest | grep "${MANDREL_VERSION}" || ( echo "got '$(./versiontest)' but expected '${MANDREL_VERSION}'" && exit 1 )
+          ${MANDREL_HOME}/bin/native-image --macro:native-image-launcher
+      - name: Upload Mandrel build
+        uses: actions/upload-artifact@v3
+        with:
+          name: mandrel-java17-darwin-amd64-test-build
+          path: mandrel-java17-darwin-amd64.tar.gz
 
   build-and-test-on-windows:
     name: Windows Build and test ${{ matrix.mandrel-ref }} branch/tag
