@@ -42,6 +42,7 @@ public class build
 {
     static final Logger logger = LogManager.getLogger(build.class);
     public static final boolean IS_WINDOWS = System.getProperty("os.name").matches(".*[Ww]indows.*");
+    public static final boolean IS_MAC = System.getProperty("os.name").matches(".*[Mm]ac.*");
     public static final String JDK_VERSION = "jdk" + Runtime.version().feature();
 
     public static void main(String... args) throws IOException
@@ -72,13 +73,22 @@ public class build
 
         logger.debugf("Creating JDK...");
         final Path mandrelHome = FileSystem.mandrelHome(options);
+        final Path mandrelJavaHome = IS_MAC ? mandrelHome.resolve(Path.of("Contents", "Home")) : mandrelHome;
         FileSystem.deleteRecursively(mandrelHome);
-        fs.copyDirectory(os.javaHome(), mandrelHome);
+        if (IS_MAC)
+        {
+            fs.copyDirectory(os.javaHome().getParent().getParent(), mandrelHome);
+        } else
+        {
+            fs.copyDirectory(os.javaHome(), mandrelHome);
+        }
 
-        final String OS = System.getProperty("os.name").toLowerCase().split(" ")[0]; // We want "windows" not e.g. "windows 10"
-        final String ARCH = System.getProperty("os.arch");
+        String OS = System.getProperty("os.name").toLowerCase().split(" ")[0]; // We want "windows" not e.g. "windows 10"
+        OS = OS.replace("mac", "darwin");
+        String ARCH = System.getProperty("os.arch");
+        ARCH = ARCH.replace("x86_64", "amd64");
         final String PLATFORM = OS + "-" + ARCH;
-        final Path nativeImage = mandrelHome.resolve(Path.of("lib", "svm", "bin", IS_WINDOWS ? "native-image.cmd" : "native-image"));
+        final Path nativeImage = mandrelJavaHome.resolve(Path.of("lib", "svm", "bin", IS_WINDOWS ? "native-image.cmd" : "native-image"));
 
         if (!options.skipJava)
         {
@@ -86,7 +96,7 @@ public class build
             mx.artifacts.forEach((artifact, paths) ->
             {
                 final String source = PathFinder.getFirstExisting(mandrelRepo.resolve(paths[0]).toString(), artifact).toString();
-                final String destination = mandrelHome.resolve(paths[1]).toString();
+                final String destination = mandrelJavaHome.resolve(paths[1]).toString();
                 FileSystem.copy(Path.of(source), Path.of(destination));
                 FileSystem.copy(Path.of(source.replace(".jar", ".src.zip")), Path.of(destination.replace(".jar", ".src.zip")));
                 logger.debugf("Copying .jar and .src.zip for src: %s, dst: %s", source, destination);
@@ -96,7 +106,7 @@ public class build
             mx.macroPaths.forEach((macro, path) ->
             {
                 final Path source = PathFinder.getFirstExisting(mandrelRepo.resolve(path).toString(), macro);
-                final Path destination = mandrelHome.resolve(Path.of("lib", "svm", "macros", macro));
+                final Path destination = mandrelJavaHome.resolve(Path.of("lib", "svm", "macros", macro));
                 fs.copyDirectory(source, destination);
                 logger.debugf("Copying macro src: %s, dst: %s", source, destination);
             });
@@ -111,32 +121,32 @@ public class build
         {
             // Although docs are not native per se we chose to install them during the native part of the build
             logger.debugf("Copy docs...");
-            FileSystem.copy(mandrelRepo.resolve("LICENSE"), mandrelHome.resolve("LICENSE"));
-            FileSystem.copy(mandrelRepo.resolve("THIRD_PARTY_LICENSE.txt"), mandrelHome.resolve("THIRD_PARTY_LICENSE.txt"));
+            FileSystem.copy(mandrelRepo.resolve("LICENSE"), mandrelJavaHome.resolve("LICENSE"));
+            FileSystem.copy(mandrelRepo.resolve("THIRD_PARTY_LICENSE.txt"), mandrelJavaHome.resolve("THIRD_PARTY_LICENSE.txt"));
             if (mandrelRepo.resolve("README-Mandrel.md").toFile().exists())
             {
-                FileSystem.copy(mandrelRepo.resolve("README-Mandrel.md"), mandrelHome.resolve("README.md"));
+                FileSystem.copy(mandrelRepo.resolve("README-Mandrel.md"), mandrelJavaHome.resolve("README.md"));
             }
             else
             {
-                FileSystem.copy(mandrelRepo.resolve("README.md"), mandrelHome.resolve("README.md"));
+                FileSystem.copy(mandrelRepo.resolve("README.md"), mandrelJavaHome.resolve("README.md"));
             }
-            FileSystem.copy(mandrelRepo.resolve("SECURITY.md"), mandrelHome.resolve("SECURITY.md"));
+            FileSystem.copy(mandrelRepo.resolve("SECURITY.md"), mandrelJavaHome.resolve("SECURITY.md"));
 
             logger.debugf("Native bits...");
             FileSystem.copy(mandrelRepo.resolve(Path.of("substratevm", "src", "com.oracle.svm.native.libchelper", "include", "amd64cpufeatures.h")),
-                mandrelHome.resolve(Path.of("lib", "svm", "clibraries", PLATFORM, "include", "amd64cpufeatures.h")));
+                mandrelJavaHome.resolve(Path.of("lib", "svm", "clibraries", PLATFORM, "include", "amd64cpufeatures.h")));
             FileSystem.copy(mandrelRepo.resolve(Path.of("substratevm", "src", "com.oracle.svm.native.libchelper", "include", "aarch64cpufeatures.h")),
-                mandrelHome.resolve(Path.of("lib", "svm", "clibraries", PLATFORM, "include", "aarch64cpufeatures.h")));
+                mandrelJavaHome.resolve(Path.of("lib", "svm", "clibraries", PLATFORM, "include", "aarch64cpufeatures.h")));
             Path riscv64headers = mandrelRepo.resolve(Path.of("substratevm", "src", "com.oracle.svm.native.libchelper", "include", "riscv64cpufeatures.h"));
             if (riscv64headers.toFile().exists())
             {
-                FileSystem.copy(riscv64headers, mandrelHome.resolve(Path.of("lib", "svm", "clibraries", PLATFORM, "include", "riscv64cpufeatures.h")));
+                FileSystem.copy(riscv64headers, mandrelJavaHome.resolve(Path.of("lib", "svm", "clibraries", PLATFORM, "include", "riscv64cpufeatures.h")));
             }
             FileSystem.copy(mandrelRepo.resolve(Path.of("substratevm", "src", "com.oracle.svm.libffi", "include", "svm_libffi.h")),
-                mandrelHome.resolve(Path.of("lib", "svm", "clibraries", PLATFORM, "include", "svm_libffi.h")));
+                mandrelJavaHome.resolve(Path.of("lib", "svm", "clibraries", PLATFORM, "include", "svm_libffi.h")));
             FileSystem.copy(mandrelRepo.resolve(Path.of("truffle", "src", "com.oracle.truffle.nfi.native", "include", "trufflenfi.h")),
-                mandrelHome.resolve(Path.of("lib", "svm", "clibraries", PLATFORM, "include", "trufflenfi.h")));
+                mandrelJavaHome.resolve(Path.of("lib", "svm", "clibraries", PLATFORM, "include", "trufflenfi.h")));
             String platformAndJDK = PLATFORM + "-" + JDK_VERSION;
             if (IS_WINDOWS)
             {
@@ -156,35 +166,49 @@ public class build
                     reporterchelperSource = Path.of("substratevm", "mxbuild", platformAndJDK, "com.oracle.svm.native.reporterchelper", ARCH, "reporterchelper.dll");
                 }
                 FileSystem.copy(mandrelRepo.resolve(libchelperSource),
-                    mandrelHome.resolve(Path.of("lib", "svm", "clibraries", PLATFORM, "libchelper.lib")));
+                    mandrelJavaHome.resolve(Path.of("lib", "svm", "clibraries", PLATFORM, "libchelper.lib")));
                 FileSystem.copy(mandrelRepo.resolve(jvmlibSource),
-                    mandrelHome.resolve(Path.of("lib", "svm", "clibraries", PLATFORM, "jvm.lib")));
+                    mandrelJavaHome.resolve(Path.of("lib", "svm", "clibraries", PLATFORM, "jvm.lib")));
                 FileSystem.copy(mandrelRepo.resolve(reporterchelperSource),
-                    mandrelHome.resolve(Path.of("lib", "svm", "builder", "lib", "reporterchelper.dll")));
+                    mandrelJavaHome.resolve(Path.of("lib", "svm", "builder", "lib", "reporterchelper.dll")));
             }
             else
             {
                 Path libchelperSource;
                 Path libjvmSource;
+                Path libdarwinSource = null;
                 Path reporterchelperSource;
                 if (MxVersion.mx5_313_0.compareTo(mx.version) > 0)
                 {
                     libchelperSource = Path.of("substratevm", "mxbuild", PLATFORM, "src", "com.oracle.svm.native.libchelper", ARCH, "liblibchelper.a");
                     libjvmSource = Path.of("substratevm", "mxbuild", PLATFORM, "src", "com.oracle.svm.native.jvm.posix", ARCH, "libjvm.a");
-                    reporterchelperSource = Path.of("substratevm", "mxbuild", PLATFORM, "src", "com.oracle.svm.native.reporterchelper", ARCH, "libreporterchelper.so");
+                    if (IS_MAC)
+                    {
+                        libdarwinSource = Path.of("substratevm", "mxbuild", PLATFORM, "src", "com.oracle.svm.native.darwin", ARCH, "libdarwin.a");
+                    }
+                    reporterchelperSource = Path.of("substratevm", "mxbuild", PLATFORM, "src", "com.oracle.svm.native.reporterchelper", ARCH, System.mapLibraryName("reporterchelper"));
                 }
                 else
                 {
                     libchelperSource = Path.of("substratevm", "mxbuild", PLATFORM, "com.oracle.svm.native.libchelper", ARCH, "liblibchelper.a");
                     libjvmSource = Path.of("substratevm", "mxbuild", platformAndJDK, "com.oracle.svm.native.jvm.posix", ARCH, "libjvm.a");
-                    reporterchelperSource = Path.of("substratevm", "mxbuild", platformAndJDK, "com.oracle.svm.native.reporterchelper", ARCH, "libreporterchelper.so");
+                    if (IS_MAC)
+                    {
+                        libdarwinSource = Path.of("substratevm", "mxbuild", PLATFORM, "com.oracle.svm.native.darwin", ARCH, "libdarwin.a");
+                    }
+                    reporterchelperSource = Path.of("substratevm", "mxbuild", platformAndJDK, "com.oracle.svm.native.reporterchelper", ARCH, System.mapLibraryName("reporterchelper"));
                 }
                 FileSystem.copy(mandrelRepo.resolve(libchelperSource),
-                    mandrelHome.resolve(Path.of("lib", "svm", "clibraries", PLATFORM, "liblibchelper.a")));
+                    mandrelJavaHome.resolve(Path.of("lib", "svm", "clibraries", PLATFORM, "liblibchelper.a")));
                 FileSystem.copy(mandrelRepo.resolve(libjvmSource),
-                    mandrelHome.resolve(Path.of("lib", "svm", "clibraries", PLATFORM, "libjvm.a")));
+                    mandrelJavaHome.resolve(Path.of("lib", "svm", "clibraries", PLATFORM, "libjvm.a")));
+                if (IS_MAC)
+                {
+                    FileSystem.copy(mandrelRepo.resolve(libdarwinSource),
+                        mandrelJavaHome.resolve(Path.of("lib", "svm", "clibraries", PLATFORM, "libdarwin.a")));
+                }
                 FileSystem.copy(mandrelRepo.resolve(reporterchelperSource),
-                    mandrelHome.resolve(Path.of("lib", "svm", "builder", "lib", "libreporterchelper.so")));
+                    mandrelJavaHome.resolve(Path.of("lib", "svm", "builder", "lib", System.mapLibraryName("reporterchelper"))));
             }
             // We don't create symlink on Windows, See https://github.com/graalvm/mandrel-packaging/pull/71#discussion_r517268470
             if (IS_WINDOWS)
@@ -193,13 +217,13 @@ public class build
                 final String nativeImageCmd = Files.readString(mandrelRepo.resolve(
                         Path.of("sdk", "mx.sdk", "vm", "exe_link_template.cmd")), StandardCharsets.US_ASCII)
                     .replace("<target>", "..\\lib\\svm\\bin\\native-image.cmd");
-                Files.writeString(mandrelHome.resolve(
+                Files.writeString(mandrelJavaHome.resolve(
                     Path.of("bin", "native-image.cmd")), nativeImageCmd, StandardCharsets.US_ASCII, StandardOpenOption.CREATE_NEW);
             }
             else
             {
                 logger.debugf("Symlink native-image...");
-                Files.createSymbolicLink(mandrelHome.resolve(
+                Files.createSymbolicLink(mandrelJavaHome.resolve(
                     Path.of("bin", "native-image")), Path.of("..", "lib", "svm", "bin", "native-image"));
             }
 
@@ -313,7 +337,7 @@ public class build
                     " -Dorg.graalvm.version=\"" + mandrelVersion + "\"" +
                     " -Dorg.graalvm.vendorversion=\"Mandrel-" + mandrelVersion + "\"" +
                     " -Dorg.graalvm.vendor=\"" + (vendor != null ? vendor : defaultVendor) + "\"" +
-                    " -Dorg.graalvm.vendorurl=\"" + (vendorUrl != null ? vendorUrl : defaultVendorUrl ) + "\"" +
+                    " -Dorg.graalvm.vendorurl=\"" + (vendorUrl != null ? vendorUrl : defaultVendorUrl) + "\"" +
                     launcherMatcher.group(2);
                 lines.set(i, launcherLine);
                 logger.debugf("Launcher line AFTER: %s", lines.get(i));
@@ -789,17 +813,30 @@ class Mx
                     "native-image-diagnostics-agent-library_native-image.properties")
     );
 
-    static final List<BuildArgs> BUILD_NATIVE_STEPS = List.of(
-        BuildArgs.of("--projects",
-            build.IS_WINDOWS ?
-                "com.oracle.svm.native.libchelper," +
-                    "com.oracle.svm.native.reporterchelper," +
-                    "com.oracle.svm.native.jvm.windows," +
-                    "com.oracle.svm.core.windows" :
-                "com.oracle.svm.native.libchelper," +
-                    "com.oracle.svm.native.reporterchelper," +
-                    "com.oracle.svm.native.jvm.posix")
-    );
+    static final List<BuildArgs> BUILD_NATIVE_STEPS;
+
+    static
+    {
+        String projects;
+        if (build.IS_WINDOWS)
+        {
+            projects = "com.oracle.svm.native.libchelper," +
+                "com.oracle.svm.native.reporterchelper," +
+                "com.oracle.svm.native.jvm.windows," +
+                "com.oracle.svm.core.windows";
+        }
+        else
+        {
+            projects = "com.oracle.svm.native.libchelper," +
+                "com.oracle.svm.native.reporterchelper," +
+                "com.oracle.svm.native.jvm.posix";
+            if (build.IS_MAC)
+            {
+                projects += ",com.oracle.svm.native.darwin";
+            }
+        }
+        BUILD_NATIVE_STEPS = List.of(BuildArgs.of("--projects", projects));
+    }
 
     Mx(FileSystem fs, OperatingSystem os)
     {
