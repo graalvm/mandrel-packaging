@@ -1112,6 +1112,7 @@ class Mx
             new SimpleEntry<>("^ +\"com.oracle.svm.truffle.api                   to org.graalvm.truffle\",", ""),
             new SimpleEntry<>("^ +\"com.oracle.truffle.api.TruffleLanguage.Provider\",", ""),
             new SimpleEntry<>("^ +\"com.oracle.truffle.api.instrumentation.TruffleInstrument.Provider\",", ""),
+            new SimpleEntry<>("^ +\"com.oracle.truffle.api.instrumentation.provider.TruffleInstrumentProvider\",", ""),
             new SimpleEntry<>("^ +\"com.oracle.svm.truffle.nfi\",", ""),
             new SimpleEntry<>("^ +\"com.oracle.svm.truffle.nfi.posix\",", ""),
             new SimpleEntry<>("^ +\"com.oracle.svm.truffle.nfi.windows\",", ""),
@@ -1197,6 +1198,8 @@ class Mx
             new SimpleEntry<>("^ +\"com.oracle.truffle.api.frame\",", ""),
             // new SimpleEntry<>("^ +\"com.oracle.truffle.api.object\",", " ),// Keep as it brings com.oracle.truffle.api.interop
             new SimpleEntry<>("^ +\"com.oracle.truffle.api.instrumentation\",", ""),
+            new SimpleEntry<>("^ +\"com.oracle.truffle.api.instrumentation.provider\",", ""),
+            new SimpleEntry<>("^ +\"com.oracle.truffle.api.instrumentation.provider.TruffleInstrumentProvider\",", ""),
             new SimpleEntry<>("^ +\"com.oracle.truffle.api.exception\",", ""), // alternative that brings com.oracle.truffle.api.interop
             // new SimpleEntry<>("^ +\"com.oracle.truffle.api.dsl\",", " ),// Keep as it's needed by com.oracle.truffle.api.library
             // new SimpleEntry<>("^ +\"com.oracle.truffle.api.profiles\",", " ),// Keep as it's needed by com.oracle.truffle.api.interop
