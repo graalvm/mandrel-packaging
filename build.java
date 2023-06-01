@@ -161,7 +161,7 @@ public class build
                 }
                 else
                 {
-                    libchelperSource = Path.of("substratevm", "mxbuild", platformAndJDK, "com.oracle.svm.native.libchelper", ARCH, "libchelper.lib");
+                    libchelperSource = Path.of("substratevm", "mxbuild", PLATFORM, "com.oracle.svm.native.libchelper", ARCH, "libchelper.lib");
                     jvmlibSource = Path.of("substratevm", "mxbuild", platformAndJDK, "com.oracle.svm.native.jvm.windows", ARCH, "jvm.lib");
                     reporterchelperSource = Path.of("substratevm", "mxbuild", platformAndJDK, "com.oracle.svm.native.reporterchelper", ARCH, "reporterchelper.dll");
                 }
