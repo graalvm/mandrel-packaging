@@ -71,3 +71,30 @@ After the last step you can delete the intermediate JDK with:
 ```shell
 rm -rf /tmp/java_step
 ```
+
+## Building mandrelJDK on a Mac using a custom build of OpenJDK
+
+Mandrel can be built on a Mac using a custom build of OpenJDK that contains static libraries.
+
+If you want to base Mandrel on a custom JDK,
+it's important to build the JDK's macOS bundles first,
+and then extract them into a directory structure that mirrors pre-built JDKs.
+For example:
+
+```shell
+$ make bundles
+$ cd build/<conf-name>/bundles
+$ tar -xzvpf *_bin.tar.gz
+$ tar -xzvpf *_bin-static-libs.tar.gz
+$ ./<jdk-folder>/Contents/Home/bin/java --version
+...
+OpenJDK 64-Bit Server VM (...)
+```
+
+Mandrel should then be built setting `JAVA_HOME` to the macOS-specific java home directory.
+E.g.
+
+```shell
+export JAVA_HOME=<path-to-jdk-source>/build/<conf-name>/bundles/<jdk-folder>/Contents/Home
+$JAVA_HOME/bin/java -ea build.java --mx-home ~/code/mx --mandrel-repo ~/code/mandrel
+```
