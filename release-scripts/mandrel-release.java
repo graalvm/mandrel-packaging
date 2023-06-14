@@ -333,11 +333,11 @@ class GitHubOps
 
     private List<File> assets(String fullVersion)
     {
-        final List<File> assets = List.of(
-            new File(downloadDir, "mandrel-java17-linux-amd64-" + fullVersion + ".tar.gz"),
-            new File(downloadDir, "mandrel-java17-linux-aarch64-" + fullVersion + ".tar.gz"),
-            new File(downloadDir, "mandrel-java17-windows-amd64-" + fullVersion + ".zip")
-        );
+        final List<File> assets = new ArrayList<>(List.of(
+                new File(downloadDir, "mandrel-java17-linux-amd64-" + fullVersion + ".tar.gz"),
+                new File(downloadDir, "mandrel-java17-linux-aarch64-" + fullVersion + ".tar.gz"),
+                new File(downloadDir, "mandrel-java17-windows-amd64-" + fullVersion + ".zip")
+        ));
         final int major = Integer.parseInt(fullVersion.substring(0, 2));
         if (major == 21)
         {
