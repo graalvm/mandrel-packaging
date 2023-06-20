@@ -53,29 +53,29 @@ class Constants {
     static final String WINDOWS_BUILD_CMD = '''
     setx MX_PYTHON C:\\Python310\\python.exe
     set MX_PYTHON=C:\\Python310\\python.exe
+    set JAVA_HOME=%WORKSPACE%\\JDK
+    powershell -Command "Remove-Item -ErrorAction Ignore -Recurse \\"$Env:JAVA_HOME\\";"
     set downloadCmd=^
-    $wc = New-Object System.Net.WebClient;^
-    $urls = @(;^
-        \\"https://api.adoptium.net/v3/binary/latest/%JDK_VERSION%/%JDK_RELEASE%/windows/x64/jdk/hotspot/normal/eclipse\\";^
-        \\"https://api.adoptium.net/v3/binary/latest/%JDK_VERSION%/%JDK_RELEASE%/windows/x64/staticlibs/hotspot/normal/eclipse\\";^
-    );^
-    foreach($url in $urls) {;^
-        $ProgressPreference = 'SilentlyContinue';^
-        $headers = Invoke-WebRequest -Uri $url  -Method HEAD -UseBasicParsing;^
-        $fileName = [System.Net.Mime.ContentDisposition]::new($headers.Headers[\\"Content-Disposition\\"]).FileName;^
-        $wc.DownloadFile($url, $fileName);^
-        Expand-Archive $fileName -DestinationPath '.';^
-    };^
-    $src = Get-Item .\\jdk-*-static-libs\\lib\\static;^
-    $dst = Get-Item .\\jdk-*\\lib\\ -Exclude '*static*';^
-    Copy-Item -Path $src -Destination $dst -Recurse;
-
+        $wc = New-Object System.Net.WebClient;^
+        $wc.DownloadFile(\\"https://api.adoptium.net/v3/binary/latest/$Env:JDK_VERSION/$Env:JDK_RELEASE/windows/x64/jdk/hotspot/normal/eclipse\\", \\"$Env:temp\\jdk.zip\\");^
+        Expand-Archive \\"$Env:temp\\jdk.zip\\" -DestinationPath \\"$Env:temp\\";^
+        Move-Item -Path \\"$Env:temp\\jdk-*\\" -Destination $Env:JAVA_HOME;^
+        $wc.DownloadFile(\\"https://api.adoptium.net/v3/binary/latest/$Env:JDK_VERSION/$Env:JDK_RELEASE/windows/x64/staticlibs/hotspot/normal/eclipse\\", \\"$Env:temp\\jdk-staticlibs.zip\\");^
+        Expand-Archive \\"$Env:temp\\jdk-staticlibs.zip\\" -DestinationPath \\"$Env:temp\\";^
+        Move-Item -Path \\"$Env:temp\\jdk-*\\lib\\static\\" -Destination $Env:JAVA_HOME\\lib\\;^
+        Remove-Item -Recurse \\"$Env:temp\\jdk-*\\";
     powershell -Command "%downloadCmd%"
-    for /f "tokens=5" %%g in ('dir .\\jdk-* ^| findstr /R jdk-.* ^| findstr /V static') do set JAVA_HOME=%WORKSPACE:/=\\%\\%%g
     echo JAVA_HOME is %JAVA_HOME%
     if not exist "%JAVA_HOME%\\bin\\java.exe" (
         echo "Cannot find downloaded JDK. Quitting..."
-        exit 1
+    )
+    if NOT "%BRANCH_OR_TAG%"=="%BRANCH_OR_TAG:23=%" (
+        echo "USE VS 2022"
+        set "PATH=C:\\Program Files\\Microsoft Visual Studio\\2022\\Community\\Common7\\IDE;C:\\Program Files\\Microsoft Visual Studio\\2022\\Community\\VC\\Auxiliary\\Build;C:\\Program Files\\Microsoft Visual Studio\\2022\\Community\\Common7\\Tools;%PATH%"
+    )
+    if NOT "%BRANCH_OR_TAG%"=="%BRANCH_OR_TAG:master=%" (
+        echo "USE VS 2022"
+        set "PATH=C:\\Program Files\\Microsoft Visual Studio\\2022\\Community\\Common7\\IDE;C:\\Program Files\\Microsoft Visual Studio\\2022\\Community\\VC\\Auxiliary\\Build;C:\\Program Files\\Microsoft Visual Studio\\2022\\Community\\Common7\\Tools;%PATH%"
     )
     pushd mandrel
         for /F "tokens=*" %%i in (\'"git describe --always --long"\') do set M_DESCRIBE=%%i
