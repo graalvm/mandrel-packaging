@@ -13,7 +13,7 @@ jobs:
   mark-stale-issues-and-prs:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/stale@v3
+    - uses: actions/stale@v8
       with:
         repo-token: ${{ secrets.GITHUB_TOKEN }}
         stale-issue-message: 'This issue appears to be stale because it has been open 30 days with no activity. This issue will be closed in 7 days unless `Stale` label is removed or a new comment is made.'
@@ -21,3 +21,4 @@ jobs:
         days-before-stale: 30
         days-before-close: 7
         exempt-issue-labels: not-stale
+        exempt-pr-labels: not-stale
