@@ -7,7 +7,8 @@ matrixJob('mandrel-23-0-windows-build-matrix') {
         labelExpression('LABEL', ['w2k19'])
         text('JDK_VERSION',
                 '17',
-                '20'
+                '20',
+                '21'
         )
         text('JDK_RELEASE',
                 'ea',
@@ -19,6 +20,9 @@ matrixJob('mandrel-23-0-windows-build-matrix') {
     logRotator {
         numToKeep(10)
     }
+    combinationFilter(
+            '!(JDK_VERSION=="21" && JDK_RELEASE=="ga")'
+    )
     parameters {
         choiceParam('REPOSITORY', Constants.REPOSITORY, 'Mandrel repo')
         choiceParam(
@@ -45,7 +49,7 @@ matrixJob('mandrel-23-0-windows-build-matrix') {
         )
         stringParam(
                 'PACKAGING_REPOSITORY_BRANCH_OR_TAG',
-                'master',
+                '23.0',
                 'e.g. master if you use heads or some tag if you use tags.'
         )
         stringParam(

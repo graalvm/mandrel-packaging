@@ -34,25 +34,7 @@ class Constants {
     ./jenkins/jobs/scripts/mandrel_linux_build.sh
     '''
 
-    static final String LINUX_GRAAL_VM_BRANCH_BUILD_CMD = '''
-    pushd mandrel
-        git config --global user.email "karm@redhat.com"
-        git config --global user.name "Karm"
-        git remote add upstream ${GRAALVM_REPO}
-        git fetch upstream ${GRAALVM_BRANCH}
-        git config --global merge.ours.driver true
-        echo -e \'\\n**/suite.py merge=ours\\n\' >> .gitattributes
-        git add .gitattributes
-        git commit -m x
-        git merge -s recursive -Xdiff-algorithm=patience --no-edit upstream/${GRAALVM_BRANCH}
-        echo MANDREL_DESCRIBE="$(git describe --always --long)"
-    popd
-    
-    ''' + LINUX_BUILD_CMD
-
     static final String WINDOWS_BUILD_CMD = '''
-    setx MX_PYTHON C:\\Python310\\python.exe
-    set MX_PYTHON=C:\\Python310\\python.exe
     set JAVA_HOME=%WORKSPACE%\\JDK
     powershell -Command "Remove-Item -ErrorAction Ignore -Recurse \\"$Env:JAVA_HOME\\";"
     set downloadCmd=^
@@ -69,14 +51,7 @@ class Constants {
     if not exist "%JAVA_HOME%\\bin\\java.exe" (
         echo "Cannot find downloaded JDK. Quitting..."
     )
-    if NOT "%BRANCH_OR_TAG%"=="%BRANCH_OR_TAG:23=%" (
-        echo "USE VS 2022"
-        set "PATH=C:\\Program Files\\Microsoft Visual Studio\\2022\\Community\\Common7\\IDE;C:\\Program Files\\Microsoft Visual Studio\\2022\\Community\\VC\\Auxiliary\\Build;C:\\Program Files\\Microsoft Visual Studio\\2022\\Community\\Common7\\Tools;%PATH%"
-    )
-    if NOT "%BRANCH_OR_TAG%"=="%BRANCH_OR_TAG:master=%" (
-        echo "USE VS 2022"
-        set "PATH=C:\\Program Files\\Microsoft Visual Studio\\2022\\Community\\Common7\\IDE;C:\\Program Files\\Microsoft Visual Studio\\2022\\Community\\VC\\Auxiliary\\Build;C:\\Program Files\\Microsoft Visual Studio\\2022\\Community\\Common7\\Tools;%PATH%"
-    )
+    set "PATH=C:\\Program Files\\Microsoft Visual Studio\\2022\\Community\\Common7\\IDE;C:\\Program Files\\Microsoft Visual Studio\\2022\\Community\\VC\\Auxiliary\\Build;C:\\Program Files\\Microsoft Visual Studio\\2022\\Community\\Common7\\Tools;%PATH%"
     pushd mandrel
         for /F "tokens=*" %%i in (\'"git describe --always --long"\') do set M_DESCRIBE=%%i
         powershell -Command "$c=(Select-String -Path \'%JAVA_HOME%\\release\' -Pattern \'^^SOURCE\').Line -replace \'SOURCE=.*:([a-z0-9]*).*\', \'$1\';Write-Host MANDREL_DESCRIBE=%M_DESCRIBE% JDK git: $c"
@@ -85,20 +60,4 @@ class Constants {
     jenkins\\jobs\\scripts\\mandrel_windows_build.bat
     '''
 
-    static final String WINDOWS_GRAAL_VM_BRANCH_BUILD_CMD = '''
-    pushd mandrel
-        git remote add upstream %GRAALVM_REPO%
-        git fetch upstream %GRAALVM_BRANCH%
-        git config --global merge.ours.driver true
-        @echo off
-        echo(>>.gitattributes
-        echo **/suite.py merge=ours>>.gitattributes
-        @echo on
-        type .gitattributes
-        git add .gitattributes
-        git commit -m x
-        git merge -s recursive -Xdiff-algorithm=patience --no-edit upstream/%GRAALVM_BRANCH%
-    popd
-    
-    ''' + WINDOWS_BUILD_CMD
 }

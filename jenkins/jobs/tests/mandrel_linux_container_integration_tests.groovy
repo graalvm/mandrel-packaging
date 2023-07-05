@@ -3,8 +3,6 @@ final Class Constants = new GroovyClassLoader(getClass().getClassLoader())
 matrixJob('mandrel-linux-container-integration-tests') {
     axes {
         text('BUILDER_IMAGE',
-                'quay.io/quarkus/ubi-quarkus-mandrel-builder-image:21.3-java11',
-                'quay.io/quarkus/ubi-quarkus-mandrel-builder-image:21.3-java17',
                 'quay.io/quarkus/ubi-quarkus-mandrel-builder-image:22.3-java17',
                 'quay.io/quarkus/ubi-quarkus-mandrel-builder-image:23.0-java17',
                 'quay.io/quarkus/ubi-quarkus-mandrel-builder-image:23.0-java20'
@@ -25,9 +23,9 @@ matrixJob('mandrel-linux-container-integration-tests') {
             absolute(240)
         }
     }
-    combinationFilter(
-            '!BUILDER_IMAGE.contains("21") || (BUILDER_IMAGE.contains("21") && QUARKUS_VERSION.contains("2.7"))'
-    )
+//    combinationFilter(
+//            '!BUILDER_IMAGE.contains("21") || (BUILDER_IMAGE.contains("21") && QUARKUS_VERSION.contains("2.7"))'
+//    )
     parameters {
         stringParam('MANDREL_INTEGRATION_TESTS_REPO', 'https://github.com/Karm/mandrel-integration-tests.git', 'Test suite repository.')
         choiceParam(

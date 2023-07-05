@@ -3,16 +3,15 @@ final Class Constants = new GroovyClassLoader(getClass().getClassLoader())
 matrixJob('mandrel-linux-integration-tests') {
     axes {
         text('JDK_VERSION',
-                '11',
                 '17',
-                '20'
+                '20',
+                '21'
         )
         text('JDK_RELEASE',
                 'ea',
                 'ga'
         )
         text('MANDREL_BUILD',
-                'mandrel-21-3-linux-build-matrix',
                 'mandrel-22-3-linux-build-matrix',
                 'mandrel-23-0-linux-build-matrix',
                 'mandrel-master-linux-build-matrix'
@@ -90,15 +89,6 @@ matrixJob('mandrel-linux-integration-tests') {
             cleaner {
                 psCleaner {
                     killerType('org.jenkinsci.plugins.proccleaner.PsRecursiveKiller')
-                }
-            }
-        }
-        downstreamParameterized {
-            trigger(['mandrel-linux-quarkus-tests']) {
-                condition('ALWAYS')
-                parameters {
-                    predefinedProp('MANDREL_BUILD_NUMBER', '${MANDREL_BUILD_NUMBER}')
-                    matrixSubset('(MANDREL_BUILD=="${MANDREL_BUILD}" && JDK_VERSION=="${JDK_VERSION}" && JDK_RELEASE=="${JDK_RELEASE}" && LABEL=="${LABEL}")')
                 }
             }
         }

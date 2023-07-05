@@ -3,8 +3,6 @@ final Class Constants = new GroovyClassLoader(getClass().getClassLoader())
 matrixJob('mandrel-linux-quarkus-container-tests') {
     axes {
         text('BUILDER_IMAGE',
-                'quay.io/quarkus/ubi-quarkus-mandrel-builder-image:21.3-java11',
-                'quay.io/quarkus/ubi-quarkus-mandrel-builder-image:21.3-java17',
                 'quay.io/quarkus/ubi-quarkus-mandrel-builder-image:22.3-java17',
                 'quay.io/quarkus/ubi-quarkus-mandrel-builder-image:23.0-java17',
                 'quay.io/quarkus/ubi-quarkus-mandrel-builder-image:23.0-java20'
