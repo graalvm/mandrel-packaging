@@ -5,21 +5,20 @@ final Class Constants = new GroovyClassLoader(getClass().getClassLoader())
 matrixJob('mandrel-linux-quarkus-subset-tests') {
     axes {
         text('JDK_VERSION',
-                '11',
                 '17',
-                '20'
+                '20',
+                '21'
         )
         text('JDK_RELEASE',
                 'ea',
                 'ga'
         )
         text('MANDREL_BUILD',
-                'mandrel-21-3-linux-build-matrix',
                 'mandrel-22-3-linux-build-matrix',
                 'mandrel-23-0-linux-build-matrix',
                 'mandrel-master-linux-build-matrix'
         )
-        text('QUARKUS_VERSION', Constants.QUARKUS_VERSION_SHORT)
+        text('QUARKUS_VERSION', Constants.QUARKUS_VERSION_RELEASED)
         labelExpression('LABEL', ['el8_aarch64', 'el8'])
     }
     description('Run Quarkus TS with Mandrel distros. Quarkus versions differ according to particular Mandrel versions.')
@@ -36,7 +35,7 @@ matrixJob('mandrel-linux-quarkus-subset-tests') {
         }
     }
     combinationFilter(
-            Constants.QUARKUS_VERSION_SHORT_COMBINATION_FILTER
+            Constants.QUARKUS_VERSION_RELEASED_COMBINATION_FILTER
     )
     parameters {
         stringParam('QUARKUS_REPO', 'https://github.com/quarkusio/quarkus.git', 'Quarkus repository.')
@@ -47,6 +46,11 @@ matrixJob('mandrel-linux-quarkus-subset-tests') {
                 'Pick a build number from MANDREL_BUILD or leave the default latest.'
         )
         matrixCombinationsParam('MATRIX_COMBINATIONS_FILTER', "", 'Choose which combinations to run')
+    }
+    triggers {
+        cron {
+            spec('0 1 * * 2,5')
+        }
     }
     steps {
         shell {
