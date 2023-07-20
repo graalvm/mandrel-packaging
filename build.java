@@ -1,5 +1,9 @@
+import static java.nio.charset.StandardCharsets.UTF_8;
+import static java.nio.file.StandardCopyOption.REPLACE_EXISTING;
+
 import java.io.File;
 import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.FileSystems;
 import java.nio.file.FileVisitOption;
@@ -35,15 +39,13 @@ import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
-import static java.nio.charset.StandardCharsets.UTF_8;
-import static java.nio.file.StandardCopyOption.REPLACE_EXISTING;
-
 public class build
 {
     static final Logger logger = LogManager.getLogger(build.class);
     public static final boolean IS_WINDOWS = System.getProperty("os.name").matches(".*[Ww]indows.*");
     public static final boolean IS_MAC = System.getProperty("os.name").matches(".*[Mm]ac.*");
     public static final String JDK_VERSION = "jdk" + Runtime.version().feature();
+    public static final String MAVEN_VERSION_FILE = ".maven-version";
     private static final String MANDREL_RELEASE_FILE = "mandrel.release";
 
     public static void main(String... args) throws IOException
@@ -68,6 +70,14 @@ public class build
         {
             options.mandrelVersion = getMandrelVersion(fs, os, mandrelRepo);
         }
+        if (options.deployLocally)
+        {
+            if (options.mavenVersion == null)
+            {
+                options.mavenVersion = deriveMavenVersion(options.mandrelVersion);
+            }
+            logger.debugf("Using maven version '%s' for local deploy.", options.mavenVersion);
+        }
         final String mandrelVersionUntilSpace = options.mandrelVersion.split(" ")[0];
 
         sequentialBuild.build(options);
@@ -82,6 +92,12 @@ public class build
         } else
         {
             fs.copyDirectory(os.javaHome(), mandrelHome);
+        }
+        // If deploying maven artifacts locally write a file '.maven-version' in mandrelHome
+        // with the version used for the local deploy
+        if (options.deployLocally)
+        {
+            writeMavenVersionFile(options, mandrelHome, options.mavenVersion);
         }
 
         String OS = System.getProperty("os.name").toLowerCase().split(" ")[0]; // We want "windows" not e.g. "windows 10"
@@ -265,6 +281,29 @@ public class build
         }
     }
 
+    private static void writeMavenVersionFile(Options options, Path mandrelHome, String mavenVersion)
+    {
+        Path mavenVersFile = mandrelHome.resolve(Paths.get(MAVEN_VERSION_FILE));
+        try
+        {
+            Files.writeString(mavenVersFile, String.format("%s%n", options.mavenVersion));
+        }
+        catch (IOException e)
+        {
+            throw new UncheckedIOException(e);
+        }
+    }
+
+    private static String deriveMavenVersion(String mandrelVersion)
+    {
+        if (!mandrelVersion.contains("-dev"))
+        {
+            return mandrelVersion; // use mandrel version verbatim
+        }
+        String baseVers = mandrelVersion.substring(0, mandrelVersion.indexOf("-dev"));
+        return baseVers + ".SNAPSHOT";
+    }
+
     private static void buildAgents(Path nativeImage, FileSystem fs, OperatingSystem os)
     {
         final Tasks.Exec agent = Tasks.Exec.of(Arrays.asList(nativeImage.toString(), "--macro:native-image-agent-library"), fs.workingDir());
@@ -408,7 +447,7 @@ class Dependency
 class Options
 {
     final boolean mavenDeploy;
-    final String mavenVersion;
+    String mavenVersion;
     String mandrelVersion;
     final boolean verbose;
     final String mavenProxy;
@@ -426,6 +465,7 @@ class Options
     final String archiveSuffix;
     final String vendor;
     final String vendorUrl;
+    final boolean deployLocally;
 
     Options(
         boolean mavenDeploy
@@ -447,6 +487,7 @@ class Options
         , String archiveSuffix
         , String vendor
         , String vendorUrl
+        , boolean deployLocally
     )
     {
         this.mavenDeploy = mavenDeploy;
@@ -468,17 +509,23 @@ class Options
         this.archiveSuffix = archiveSuffix;
         this.vendor = vendor;
         this.vendorUrl = vendorUrl;
+        this.deployLocally = deployLocally;
     }
 
     public static Options from(Map<String, List<String>> args)
     {
         // Maven related
         boolean mavenDeploy = args.containsKey("maven-deploy");
+        final boolean mavenDeployLocal = args.containsKey("maven-deploy-local");
+        if (mavenDeploy && mavenDeployLocal) {
+            // Only one of them is allowed
+            throw new IllegalArgumentException("Both deploy options specified: --maven-deploy AND --maven-deploy-local. Pick one of them!");
+        }
         final String mavenVersion = required("maven-version", args, mavenDeploy);
         final String mavenProxy = optional("maven-proxy", args);
+        final String mavenHome = optional("maven-home", args);
         final String mavenRepoId = required("maven-repo-id", args, mavenDeploy);
         final String mavenURL = required("maven-url", args, mavenDeploy);
-        final String mavenHome = optional("maven-home", args);
 
         // Mandrel related
         final String mandrelVersion = optional("mandrel-version", args);
@@ -524,6 +571,7 @@ class Options
             , archiveSuffix
             , vendor
             , vendorUrl
+            , mavenDeployLocal
         );
     }
 
@@ -588,7 +636,7 @@ class SequentialBuild
         final Tasks.Exec.Effects exec = new Tasks.Exec.Effects(task -> os.exec(task, false));
         final Tasks.FileReplace.Effects replace = Tasks.FileReplace.Effects.ofSystem();
         Mx.build(options, exec, replace, fs.mxHome(), fs.mandrelRepo(), os.javaHome());
-        if (options.mavenDeploy && !options.skipJava)
+        if ((options.mavenDeploy || options.deployLocally) && !options.skipJava)
         {
             // Create wrapper jar file for archiving resources (e.g. native image launcher script)
             LOG.debugf("Patch sdk suite.py ...");
@@ -922,7 +970,11 @@ class Mx
 
     static final List<BuildArgs> DEPLOY_ARTIFACTS_STEPS = List.of(
         BuildArgs.of("--only",
-            "GRAAL_SDK," +
+                "GRAAL_SDK," +
+                "sdk:NATIVEIMAGE," +
+                "sdk:COLLECTIONS," +
+                "sdk:POLYGLOT," +
+                "sdk:WORD," +
                 "SVM," +
                 "NATIVE_IMAGE_BASE," +
                 "POINTSTO," +
@@ -1012,24 +1064,35 @@ class Mx
         return buildArgs ->
         {
             final Path mx = mxHome.resolve(Paths.get("mx"));
+            final List<String> basicArgs = new ArrayList<>();
+            basicArgs.add(mx.toString());
+            if (options.verbose)
+            {
+                basicArgs.add("-V");
+            }
+            basicArgs.add("--trust-http");
+            basicArgs.add("--java-home");
+            basicArgs.add(javaHome.toString());
+            basicArgs.add("maven-deploy");
+            basicArgs.add("--all-suites");
+            basicArgs.add("--all-distribution-types");
+            basicArgs.add("--validate");
+            basicArgs.add("compat");
+            basicArgs.add("--licenses");
+            basicArgs.add("GPLv2-CPE,UPL");
+            basicArgs.add("--suppress-javadoc");
+            if (options.deployLocally)
+            {
+                basicArgs.add("--version-string");
+                basicArgs.add(options.mavenVersion);
+            }
+            else
+            {
+                basicArgs.add(options.mavenRepoId);
+                basicArgs.add(options.mavenURL);
+            }
             final List<String> args = Lists.concat(
-                List.of(
-                    mx.toString()
-                    , options.verbose ? "-V" : ""
-                    , "--trust-http"
-                    , "--java-home"
-                    , javaHome.toString()
-                    , "maven-deploy"
-                    , "--all-suites"
-                    , "--all-distribution-types"
-                    , "--validate"
-                    , "compat"
-                    , "--licenses"
-                    , "GPLv2-CPE,UPL"
-                    , "--suppress-javadoc"
-                    , options.mavenRepoId
-                    , options.mavenURL
-                )
+                basicArgs
                 , buildArgs.args
             );
 
