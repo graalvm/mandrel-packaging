@@ -44,6 +44,7 @@ public class build
     public static final boolean IS_WINDOWS = System.getProperty("os.name").matches(".*[Ww]indows.*");
     public static final boolean IS_MAC = System.getProperty("os.name").matches(".*[Mm]ac.*");
     public static final String JDK_VERSION = "jdk" + Runtime.version().feature();
+    private static final String MANDREL_RELEASE_FILE = "mandrel.release";
 
     public static void main(String... args) throws IOException
     {
@@ -235,6 +236,8 @@ public class build
                 logger.debugf("Build native agents...");
                 buildAgents(nativeImage, fs, os);
             }
+
+            generateMandrelReleaseFile(mandrelVersionUntilSpace, mandrelHome);
         }
 
         logger.info("Congratulations you successfully built Mandrel " + mandrelVersionUntilSpace + " based on Java " + System.getProperty("java.runtime.version"));
@@ -245,6 +248,20 @@ public class build
             String archiveName = "mandrel-java" + javaMajor + "-" + PLATFORM + "-" + mandrelVersionUntilSpace + "." + options.archiveSuffix;
             logger.info("Creating Archive " + archiveName);
             createArchive(fs, os, mandrelHome, archiveName);
+        }
+    }
+
+    private static void generateMandrelReleaseFile(String mandrelVersion, Path mandrelHome)
+    {
+        final String content = String.format("GRAALVM_VERSION=%s%nMANDREL_VERSION=%s%n", mandrelVersion, mandrelVersion);
+        final Path mandrelReleaseFile = mandrelHome.resolve(Path.of(MANDREL_RELEASE_FILE));
+        try
+        {
+            Files.writeString(mandrelReleaseFile, content, StandardCharsets.UTF_8);
+        }
+        catch (IOException e)
+        {
+            throw new RuntimeException("Failed to write " + MANDREL_RELEASE_FILE + " file", e);
         }
     }
 
