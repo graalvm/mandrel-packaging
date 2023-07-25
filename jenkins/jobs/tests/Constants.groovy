@@ -1,30 +1,28 @@
 class Constants {
     static final ArrayList<String> QUARKUS_VERSION_RELEASED =
             [
-                    '3.2.0.Final',
-                    '3.1.3.Final',
+                    '3.2.5.Final',
                     '2.16.8.Final'
             ]
 
     static final ArrayList<String> QUARKUS_VERSION_BUILDER_IMAGE =
             [
-                    '3.2.0.Final',
-                    '3.1.3.Final',
+                    '3.2.5.Final',
                     '2.16.8.Final'
             ]
 
     static final ArrayList<String> QUARKUS_VERSION_RELEASED_PERF =
             [
-                    '3.1.1.Final',
-                    '2.16.7.Final',
-                    '2.13.7.Final',
+                    '3.2.5.Final',
+                    '2.16.9.Final',
+                    '2.13.8.Final',
                     '2.7.7.Final'
             ]
 
     static final String QUARKUS_VERSION_RELEASED_COMBINATION_FILTER =
             //@formatter:off
             '(' +
-                '(MANDREL_BUILD.startsWith("mandrel-22") && QUARKUS_VERSION.trim().matches("^2.16.*|^3.1.*")) ||' +
+                '(MANDREL_BUILD.startsWith("mandrel-22") && QUARKUS_VERSION.trim().matches("^2.16.*")) ||' +
                 '(MANDREL_BUILD.startsWith("mandrel-23") && QUARKUS_VERSION.trim().matches("^3.2.*|^main.*")) ||' +
                 '(MANDREL_BUILD.startsWith("mandrel-master") && QUARKUS_VERSION.trim().matches("^3.2.*|^main.*"))' +
             ') && (' +
