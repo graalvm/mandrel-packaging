@@ -816,7 +816,7 @@ class Mx
         Pattern.compile("\"version\"\\s*:\\s*\"([0-9.]*)\"");
 
     static final List<BuildArgs> BUILD_JAVA_STEPS = List.of(
-        BuildArgs.of("--no-native", "--dependencies", "SVM,SVM_DRIVER,SVM_AGENT,SVM_DIAGNOSTICS_AGENT")
+        BuildArgs.of("--no-native", "--dependencies", "SVM,GRAAL_SDK,SVM_DRIVER,SVM_AGENT,SVM_DIAGNOSTICS_AGENT")
         , BuildArgs.of("--only",
             build.IS_WINDOWS ?
                 "native-image.exe.image-bash," +
@@ -880,6 +880,13 @@ class Mx
         artifacts = Map.ofEntries(
             new SimpleEntry<>("org.graalvm.sdk:graal-sdk.jar",
                 new Path[]{sdkDistPath.resolve("graal-sdk.jar"), Path.of("lib", "jvmci", "graal-sdk.jar")}),
+            // See https://github.com/oracle/graal/pull/7171 which split sdk jar into separate modules
+            new SimpleEntry<>("org.graalvm.sdk:nativeimage.jar",
+                new Path[]{sdkDistPath.resolve("nativeimage.jar"), Path.of("lib", "jvmci", "nativeimage.jar")}),
+            new SimpleEntry<>("org.graalvm.sdk:collections.jar",
+                new Path[]{sdkDistPath.resolve("collections.jar"), Path.of("lib", "jvmci", "collections.jar")}),
+            new SimpleEntry<>("org.graalvm.sdk:word.jar",
+                new Path[]{sdkDistPath.resolve("word.jar"), Path.of("lib", "jvmci", "word.jar")}),
             new SimpleEntry<>("org.graalvm.nativeimage:svm.jar",
                 new Path[]{substrateDistPath.resolve("svm.jar"), Path.of("lib", "svm", "builder", "svm.jar")}),
             new SimpleEntry<>("org.graalvm.nativeimage:native-image-base.jar",
@@ -1172,6 +1179,7 @@ class Mx
             "^ +\"org.graalvm.polyglot.proxy\",", "",
             "^ +\"org.graalvm.polyglot.io\",", "",
             "^ +\"org.graalvm.polyglot.management\",", "",
+            "^ +\"org.graalvm.options\",", "",
             "^ +\"org.graalvm.polyglot.impl to org.graalvm.truffle, com.oracle.truffle.enterprise\",", "",
             "^ +\"org.graalvm.polyglot.impl.AbstractPolyglotImpl\"", "",
             "^ +\"org.graalvm.polyglot to org.graalvm.truffle\"", "");
