@@ -878,8 +878,6 @@ class Mx
 
 
         artifacts = Map.ofEntries(
-            new SimpleEntry<>("org.graalvm.sdk:graal-sdk.jar",
-                new Path[]{sdkDistPath.resolve("graal-sdk.jar"), Path.of("lib", "jvmci", "graal-sdk.jar")}),
             new SimpleEntry<>("org.graalvm.nativeimage:svm.jar",
                 new Path[]{substrateDistPath.resolve("svm.jar"), Path.of("lib", "svm", "builder", "svm.jar")}),
             new SimpleEntry<>("org.graalvm.nativeimage:native-image-base.jar",
@@ -903,7 +901,13 @@ class Mx
             new SimpleEntry<>("org.graalvm.nativeimage:svm-diagnostics-agent.jar",
                 new Path[]{substrateDistPath.resolve("svm-diagnostics-agent.jar"), Path.of("lib", "graalvm", "svm-diagnostics-agent.jar")}),
             new SimpleEntry<>("org.graalvm.nativeimage:svm-configure.jar",
-                new Path[]{substrateDistPath.resolve("svm-configure.jar"), Path.of("lib", "graalvm", "svm-configure.jar")})
+                new Path[]{substrateDistPath.resolve("svm-configure.jar"), Path.of("lib", "graalvm", "svm-configure.jar")}),
+            new SimpleEntry<>("org.graalvm.nativeimage:nativeimage.jar",
+                new Path[]{sdkDistPath.resolve("nativeimage.jar"), Path.of("lib", "jvmci", "nativeimage.jar")}),
+            new SimpleEntry<>("org.graalvm.word:word.jar",
+                new Path[]{sdkDistPath.resolve("word.jar"), Path.of("lib", "jvmci", "word.jar")}),
+            new SimpleEntry<>("org.graalvm.word:collections.jar",
+                new Path[]{sdkDistPath.resolve("collections.jar"), Path.of("lib", "jvmci", "collections.jar")})
         );
 
         macroPaths = Map.ofEntries(
@@ -915,7 +919,7 @@ class Mx
 
     static final List<BuildArgs> DEPLOY_ARTIFACTS_STEPS = List.of(
         BuildArgs.of("--only",
-            "GRAAL_SDK," +
+            "NATIVEIMAGE," +
                 "SVM," +
                 "NATIVE_IMAGE_BASE," +
                 "POINTSTO," +
