@@ -816,7 +816,7 @@ class Mx
         Pattern.compile("\"version\"\\s*:\\s*\"([0-9.]*)\"");
 
     static final List<BuildArgs> BUILD_JAVA_STEPS = List.of(
-        BuildArgs.of("--no-native", "--dependencies", "SVM,SVM_DRIVER,SVM_AGENT,SVM_DIAGNOSTICS_AGENT")
+        BuildArgs.of("--no-native", "--dependencies", "GRAAL_SDK,SVM,SVM_DRIVER,SVM_AGENT,SVM_DIAGNOSTICS_AGENT")
         , BuildArgs.of("--only",
             build.IS_WINDOWS ?
                 "native-image.exe.image-bash," +
@@ -903,7 +903,13 @@ class Mx
             new SimpleEntry<>("org.graalvm.nativeimage:svm-diagnostics-agent.jar",
                 new Path[]{substrateDistPath.resolve("svm-diagnostics-agent.jar"), Path.of("lib", "graalvm", "svm-diagnostics-agent.jar")}),
             new SimpleEntry<>("org.graalvm.nativeimage:svm-configure.jar",
-                new Path[]{substrateDistPath.resolve("svm-configure.jar"), Path.of("lib", "graalvm", "svm-configure.jar")})
+                new Path[]{substrateDistPath.resolve("svm-configure.jar"), Path.of("lib", "graalvm", "svm-configure.jar")}),
+            new SimpleEntry<>("org.graalvm.nativeimage:nativeimage.jar",
+                    new Path[]{sdkDistPath.resolve("nativeimage.jar"), Path.of("lib", "jvmci", "nativeimage.jar")}),
+            new SimpleEntry<>("org.graalvm.word:word.jar",
+                    new Path[]{sdkDistPath.resolve("word.jar"), Path.of("lib", "jvmci", "word.jar")}),
+            new SimpleEntry<>("org.graalvm.word:collections.jar",
+                    new Path[]{sdkDistPath.resolve("collections.jar"), Path.of("lib", "jvmci", "collections.jar")})
         );
 
         macroPaths = Map.ofEntries(
@@ -1168,6 +1174,8 @@ class Mx
         path = mandrelRepo.resolve(suitePy);
         dependenciesToPatch = Map.of(
             // Mandrel doesn't use polyglot
+            "^ +\"sdk:POLYGLOT\",", "",
+            "^ +\"transitive org.graalvm.polyglot\",", "",
             "^ +\"org.graalvm.polyglot\",", "",
             "^ +\"org.graalvm.polyglot.proxy\",", "",
             "^ +\"org.graalvm.polyglot.io\",", "",
