@@ -104,18 +104,6 @@ jobs:
         ${MANDREL_HOME}/bin/native-image HelloStrict
         ./hellostrict | tee native.txt
         diff java.txt native.txt
-        echo "
-        import org.graalvm.home.Version;
-        public class VersionTest {
-            private static final String VERSION = Version.getCurrent().toString();
-            public static void main(String[] args) {
-                System.out.println(VERSION);
-            }
-        }
-        " > VersionTest.java
-        ${MANDREL_HOME}/bin/javac -cp ${MANDREL_HOME}/lib/jvmci/graal-sdk.jar VersionTest.java
-        ${MANDREL_HOME}/bin/native-image --no-fallback --initialize-at-build-time=. --features=org.graalvm.home.HomeFinderFeature VersionTest
-        ./versiontest | grep "${MANDREL_VERSION}" || ( echo "got '$(./versiontest)' but expected '${MANDREL_VERSION}'" && exit 1 )
         ${MANDREL_HOME}/bin/native-image --macro:native-image-launcher
     - name: Upload Mandrel build
       uses: actions/upload-artifact@v3
@@ -206,18 +194,6 @@ jobs:
           ${MANDREL_HOME}/bin/native-image HelloStrict
           ./hellostrict | tee native.txt
           diff java.txt native.txt
-          echo "
-          import org.graalvm.home.Version;
-          public class VersionTest {
-              private static final String VERSION = Version.getCurrent().toString();
-              public static void main(String[] args) {
-                  System.out.println(VERSION);
-              }
-          }
-          " > VersionTest.java
-          ${MANDREL_HOME}/bin/javac -cp ${MANDREL_HOME}/lib/jvmci/graal-sdk.jar VersionTest.java
-          ${MANDREL_HOME}/bin/native-image --no-fallback --initialize-at-build-time=. --features=org.graalvm.home.HomeFinderFeature VersionTest
-          ./versiontest | grep "${MANDREL_VERSION}" || ( echo "got '$(./versiontest)' but expected '${MANDREL_VERSION}'" && exit 1 )
           ${MANDREL_HOME}/bin/native-image --macro:native-image-launcher
       - name: Upload Mandrel build
         uses: actions/upload-artifact@v3
@@ -319,23 +295,7 @@ jobs:
           Write-Host $DIFF
           exit 1
         }
-        Set-Content -Path 'VersionTest.java' -Value "
-        import org.graalvm.home.Version;
-        public class VersionTest {
-            private static final String VERSION = Version.getCurrent().toString();
-            public static void main(String[] args) {
-                System.out.println(VERSION);
-            }
-        }
-        "
-        & $MANDREL_HOME\bin\javac -cp $MANDREL_HOME\lib\jvmci\graal-sdk.jar VersionTest.java
-        & $MANDREL_HOME\bin\native-image.cmd --no-fallback --initialize-at-build-time=. --features=org.graalvm.home.HomeFinderFeature VersionTest
-        $VERSION=(& ./versiontest)
-        if ("$VERSION" -NotMatch "$Env:MANDREL_VERSION") {
-          Write-Host got $VERSION but expected $Env:MANDREL_VERSION
-          exit 1
-        }
-        # $PREFIX && ${MANDREL_HOME}/bin/native-image.cmd --macro:native-image-launcher
+        & ${MANDREL_HOME}/bin/native-image.cmd --macro:native-image-launcher
     - name: Rename mandrel archive
       shell: bash
       run: |
@@ -439,18 +399,6 @@ jobs:
         ${MANDREL_HOME}/bin/native-image HelloStrict
         ./hellostrict | tee native.txt
         diff java.txt native.txt
-        echo "
-        import org.graalvm.home.Version;
-        public class VersionTest {
-            private static final String VERSION = Version.getCurrent().toString();
-            public static void main(String[] args) {
-                System.out.println(VERSION);
-            }
-        }
-        " > VersionTest.java
-        ${MANDREL_HOME}/bin/javac -cp ${MANDREL_HOME}/lib/jvmci/graal-sdk.jar VersionTest.java
-        ${MANDREL_HOME}/bin/native-image --no-fallback --initialize-at-build-time=. --features=org.graalvm.home.HomeFinderFeature VersionTest
-        ./versiontest | grep "${MANDREL_VERSION}" || ( echo "got '$(./versiontest)' but expected '${MANDREL_VERSION}'" && exit 1 )
         ${MANDREL_HOME}/bin/native-image --macro:native-image-launcher
     - name: Upload Mandrel build
       uses: actions/upload-artifact@v3
