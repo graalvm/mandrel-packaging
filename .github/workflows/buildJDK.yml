@@ -52,7 +52,7 @@ jobs:
       with:
         repository: graalvm/mx.git
         fetch-depth: 1
-        ref: master
+        ref: 6.45.0
         path: ${{ github.workspace }}/mx
     - uses: actions/cache@v3
       with:
@@ -142,7 +142,7 @@ jobs:
         with:
           repository: graalvm/mx.git
           fetch-depth: 1
-          ref: master
+          ref: 6.45.0
           path: ${{ github.workspace }}/mx
       - uses: actions/cache@v3
         with:
@@ -222,7 +222,7 @@ jobs:
       with:
         repository: graalvm/mx.git
         fetch-depth: 1
-        ref: master
+        ref: 6.45.0
         path: ${{ github.workspace }}/mx
     - uses: actions/cache@v3
       with:
@@ -329,7 +329,7 @@ jobs:
       with:
         repository: graalvm/mx.git
         fetch-depth: 1
-        ref: master
+        ref: 6.45.0
         path: ${{ github.workspace }}/mx
     - uses: actions/cache@v3
       with:
