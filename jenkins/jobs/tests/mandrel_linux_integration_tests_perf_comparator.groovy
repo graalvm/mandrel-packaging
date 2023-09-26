@@ -15,7 +15,7 @@ matrixJob('mandrel-linux-integration-tests-perf-comparator') {
         )
         text('MANDREL_BUILD',
                 'mandrel-22-3-linux-build-matrix',
-                'mandrel-23-0-linux-build-matrix',
+                'mandrel-23-1-linux-build-matrix',
                 'mandrel-master-linux-build-matrix'
         )
         text('QUARKUS_VERSION', ['main_A', 'main_B'])
