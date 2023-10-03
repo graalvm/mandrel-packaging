@@ -866,7 +866,7 @@ class Mx
         Pattern.compile("\"version\"\\s*:\\s*\"([0-9.]*)\"");
 
     static final List<BuildArgs> BUILD_JAVA_STEPS = List.of(
-        BuildArgs.of("--no-native", "--dependencies", "SVM,GRAAL_SDK,SVM_DRIVER,SVM_AGENT,SVM_DIAGNOSTICS_AGENT")
+        BuildArgs.of("--no-native", "--dependencies", "SVM,GRAAL_SDK,SVM_DRIVER,SVM_AGENT,SVM_DIAGNOSTICS_AGENT,TRUFFLE_RUNTIME_SVM")
         , BuildArgs.of("--only",
             build.IS_WINDOWS ?
                 "native-image.exe.image-bash," +
@@ -947,6 +947,8 @@ class Mx
                 new Path[]{substrateDistPath.resolve("library-support.jar"), Path.of("lib", "svm", "library-support.jar")}),
             new SimpleEntry<>("org.graalvm.truffle:truffle-compiler.jar",
                 new Path[]{truffleDistPath.resolve("truffle-compiler.jar"), Path.of("lib", "truffle", "truffle-compiler.jar")}),
+            new SimpleEntry<>("org.graalvm.nativeimage:truffle-runtime-svm.jar",
+                new Path[]{substrateDistPath.resolve("truffle-runtime-svm.jar"), Path.of("lib", "truffle", "builder", "truffle-runtime-svm.jar")}),
             new SimpleEntry<>("org.graalvm.compiler:compiler.jar",
                 new Path[]{compilerDistPath.resolve("graal.jar"), Path.of("lib", "jvmci", "graal.jar")}),
             new SimpleEntry<>("org.graalvm.nativeimage:objectfile.jar",
@@ -982,6 +984,7 @@ class Mx
                 "POINTSTO," +
                 "LIBRARY_SUPPORT," +
                 "TRUFFLE_COMPILER," +
+                "TRUFFLE_RUNTIME_SVM," +
                 "GRAAL," +
                 "OBJECTFILE," +
                 "SVM_DRIVER," +
@@ -1193,34 +1196,9 @@ class Mx
     static void patchSuites(Tasks.FileReplace.Effects effects, Path mandrelRepo)
     {
         LOG.debugf("Patch mx dependencies");
-        Path suitePy = Path.of("substratevm", "mx.substratevm", "suite.py");
+        Path suitePy = Path.of("substratevm", "mx.substratevm", "mx_substratevm.py");
         Path path = mandrelRepo.resolve(suitePy);
-        Map<String, String> dependenciesToPatch = Map.ofEntries(
-            // Mandrel doesn't use truffle
-            new SimpleEntry<>("^ +\"com.oracle.svm.truffle\",", ""),
-            new SimpleEntry<>("^ +\"truffle:TRUFFLE_API\",", ""),
-            new SimpleEntry<>("^ +\"truffle:TRUFFLE_RUNTIME\",", ""),
-            new SimpleEntry<>("^ +\"com.oracle.svm.truffle.api                   to org.graalvm.truffle\",", ""),
-            new SimpleEntry<>("^ +\"com.oracle.truffle.api.TruffleLanguage.Provider\",", ""),
-            new SimpleEntry<>("^ +\"com.oracle.truffle.api.instrumentation.TruffleInstrument.Provider\",", ""),
-            new SimpleEntry<>("^ +\"com.oracle.truffle.api.provider.TruffleLanguageProvider\",", ""),
-            new SimpleEntry<>("^ +\"com.oracle.truffle.api.instrumentation.provider.TruffleInstrumentProvider\",", ""),
-            new SimpleEntry<>("^ +\"com.oracle.svm.truffle.nfi\",", ""),
-            new SimpleEntry<>("^ +\"com.oracle.svm.truffle.nfi.posix\",", ""),
-            new SimpleEntry<>("^ +\"com.oracle.svm.truffle.nfi.windows\",", ""),
-            new SimpleEntry<>("^ +\"extracted-dependency:truffle:LIBFFI_DIST\"", ""),
-            new SimpleEntry<>("^ +\"file:src/com.oracle.svm.libffi/include/svm_libffi.h\",", ""),
-            new SimpleEntry<>("^ +\"extracted-dependency:truffle:TRUFFLE_NFI_GRAALVM_SUPPORT/include/trufflenfi.h\",", ""),
-            // Mandrel doesn't use polyglot
-            new SimpleEntry<>("^ +\"com.oracle.svm.polyglot\",", ""));
-        Tasks.FileReplace.replace(
-            new Tasks.FileReplace(path, patchSuites(dependenciesToPatch))
-            , effects
-        );
-
-        Path svmPy = Path.of("substratevm", "mx.substratevm", "mx_substratevm.py");
-        path = mandrelRepo.resolve(svmPy);
-        dependenciesToPatch = Map.of("^llvm_supported =.*", "llvm_supported = False");
+        Map<String, String> dependenciesToPatch = Map.of("^llvm_supported =.*", "llvm_supported = False");
         Tasks.FileReplace.replace(
             new Tasks.FileReplace(path, patchSuites(dependenciesToPatch))
             , effects
@@ -1231,31 +1209,6 @@ class Mx
         dependenciesToPatch = Map.ofEntries(
             // Mandrel doesn't use llvm
             new SimpleEntry<>(",org.graalvm.nativeimage.llvm", ""));
-        Tasks.FileReplace.replace(
-            new Tasks.FileReplace(path, patchSuites(dependenciesToPatch))
-            , effects
-        );
-
-        suitePy = Path.of("sdk", "mx.sdk", "suite.py");
-        path = mandrelRepo.resolve(suitePy);
-        dependenciesToPatch = Map.of(
-            // Mandrel doesn't use polyglot
-            "^ +\"org.graalvm.polyglot\",", "",
-            "^ +\"org.graalvm.polyglot.proxy\",", "",
-            "^ +\"org.graalvm.polyglot.io\",", "",
-            "^ +\"org.graalvm.polyglot.management\",", "",
-            "^ +\"org.graalvm.options\",", "",
-            "^ +\"org.graalvm.polyglot.impl to org.graalvm.truffle, com.oracle.truffle.enterprise\",", "",
-            "^ +\"org.graalvm.polyglot.impl.AbstractPolyglotImpl\"", "",
-            "^ +\"org.graalvm.polyglot to org.graalvm.truffle\"", "");
-        Tasks.FileReplace.replace(
-            new Tasks.FileReplace(path, patchSuites(dependenciesToPatch))
-            , effects
-        );
-
-        suitePy = Path.of("sdk", "mx.sdk", "mx_sdk_vm_impl.py");
-        path = mandrelRepo.resolve(suitePy);
-        dependenciesToPatch = Map.of(" org.graalvm.truffle,", " ");
         Tasks.FileReplace.replace(
             new Tasks.FileReplace(path, patchSuites(dependenciesToPatch))
             , effects
