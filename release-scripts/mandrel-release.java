@@ -259,6 +259,7 @@ class MandrelVersion implements Comparable<MandrelVersion>
 
 class GitHubOps
 {
+    private static final int ARTIFACTS_PER_JDK_VERSION = 3;
     private final MandrelVersion version;
     private final boolean dryRun;
     private final String downloadDir;
@@ -320,7 +321,7 @@ class GitHubOps
                 .body(releaseMainBody(changelog, jdkVersionsUsed))
                 .draft(true)
                 .create();
-            uploadAssets(version.toString(), ghRelease);
+            uploadAssets(version.toString(), ghRelease, jdkVersionsUsed);
             Log.info("Created new draft release: " + ghRelease.getHtmlUrl());
             Log.info("Please review and publish!");
         }
@@ -331,37 +332,28 @@ class GitHubOps
         }
     }
 
-    private List<File> assets(String fullVersion)
+    private List<File> assets(String fullVersion, Set<String> jdkVersionsUsed)
     {
-        final List<File> assets = new ArrayList<>(List.of(
-                new File(downloadDir, "mandrel-java17-linux-amd64-" + fullVersion + ".tar.gz"),
-                new File(downloadDir, "mandrel-java17-linux-aarch64-" + fullVersion + ".tar.gz"),
-                new File(downloadDir, "mandrel-java17-windows-amd64-" + fullVersion + ".zip")
-        ));
-        final int major = Integer.parseInt(fullVersion.substring(0, 2));
-        if (major == 21)
+        if (jdkVersionsUsed.isEmpty())
         {
-            assets.add(new File(downloadDir, "mandrel-java11-linux-amd64-" + fullVersion + ".tar.gz"));
-            assets.add(new File(downloadDir, "mandrel-java11-linux-aarch64-" + fullVersion + ".tar.gz"));
-            assets.add(new File(downloadDir, "mandrel-java11-windows-amd64-" + fullVersion + ".zip"));
-            return assets;
+            return Collections.emptyList();
         }
-        if (major == 22)
-        {
-            return assets;
-        }
-        if (major == 23)
-        {
-            assets.add(new File(downloadDir, "mandrel-java20-linux-amd64-" + fullVersion + ".tar.gz"));
-            assets.add(new File(downloadDir, "mandrel-java20-linux-aarch64-" + fullVersion + ".tar.gz"));
-            assets.add(new File(downloadDir, "mandrel-java20-windows-amd64-" + fullVersion + ".zip"));
-        }
+
+        final List<File> assets = new ArrayList<>(jdkVersionsUsed.size() * ARTIFACTS_PER_JDK_VERSION);
+
+        jdkVersionsUsed.forEach(jdkVersion -> {
+            String jdkMajor = jdkVersion.split("\\+")[0].split("\\.")[0];
+            assets.add(new File(downloadDir, "mandrel-java" + jdkMajor + "-linux-amd64-" + fullVersion + ".tar.gz"));
+            assets.add(new File(downloadDir, "mandrel-java" + jdkMajor + "-linux-aarch64-" + fullVersion + ".tar.gz"));
+            assets.add(new File(downloadDir, "mandrel-java" + jdkMajor + "-windows-amd64-" + fullVersion + ".zip"));
+        });
+
         return assets;
     }
 
-    private void uploadAssets(String fullVersion, GHRelease ghRelease) throws IOException
+    private void uploadAssets(String fullVersion, GHRelease ghRelease, Set<String> jdkVersionsUsed) throws IOException
     {
-        final List<File> assets = assets(fullVersion);
+        final List<File> assets = assets(fullVersion, jdkVersionsUsed);
 
         for (File f : assets)
         {
