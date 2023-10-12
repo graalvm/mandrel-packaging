@@ -263,12 +263,14 @@ class GitHubOps
     private final MandrelVersion version;
     private final boolean dryRun;
     private final String downloadDir;
+    private final boolean verbose;
 
-    GitHubOps(MandrelVersion version, boolean dryRun, String downloadDir)
+    GitHubOps(MandrelVersion version, boolean dryRun, String downloadDir, boolean verbose)
     {
         this.version = version;
         this.dryRun = dryRun;
         this.downloadDir = downloadDir;
+        this.verbose = verbose;
     }
 
     void createGHRelease(Set<String> jdkVersionsUsed)
@@ -277,10 +279,22 @@ class GitHubOps
         try
         {
             final GHRepository repository = github.getRepository(GitOps.REPOSITORY_NAME);
+            Log.debug("Getting all open milestones", verbose);
             final PagedIterable<GHMilestone> ghMilestones = repository.listMilestones(GHIssueState.OPEN);
             final String finalVersion = version.majorMinorMicroPico() + "-Final";
 
-            final GHMilestone milestone = ghMilestones.toList().stream().filter(m -> m.getTitle().equals(finalVersion)).findAny().orElse(null);
+            List<GHMilestone> milestonesList = ghMilestones.toList();
+            Log.debug("Got " + milestonesList.size() + " milestones", verbose);
+            GHMilestone milestone = null;
+
+            for (GHMilestone i : milestonesList)
+            {
+                if (i.getTitle().equals(finalVersion))
+                {
+                    milestone = i;
+                    break;
+                }
+            }
 
             if (milestone == null)
             {
@@ -288,6 +302,7 @@ class GitHubOps
             }
             else
             {
+                Log.debug("Found milestone " + milestone.getNumber(), verbose);
                 if (version.isFinal() && milestone.getOpenIssues() != 0)
                 {
                     Log.error("There are still open issues in milestone " + milestone.getTitle() + ". Please take care of them and try again.");
@@ -310,10 +325,12 @@ class GitHubOps
                 Log.warn("Skipping release due to --dry-run");
                 Log.info("Release body would look like");
                 System.out.println(releaseMainBody(changelog, jdkVersionsUsed));
+
+                assets(version.toString(), jdkVersionsUsed).forEach(f -> Log.info("Would upload " + f.getName()));
                 return;
             }
 
-            manageMilestones(repository, ghMilestones, milestone);
+            manageMilestones(repository, milestonesList, milestone);
 
             final GHRelease ghRelease = repository.createRelease(tag)
                 .name("Mandrel " + version)
@@ -558,7 +575,7 @@ class GitHubOps
         return tagPrefix + finalVersions.get(1).toString();
     }
 
-    private void manageMilestones(GHRepository repository, PagedIterable<GHMilestone> ghMilestones, GHMilestone milestone) throws IOException
+    private void manageMilestones(GHRepository repository, List<GHMilestone> ghMilestones, GHMilestone milestone) throws IOException
     {
         assert !dryRun : "Milestones should not be touched in dry runs";
         if (!version.isFinal())
@@ -571,7 +588,7 @@ class GitHubOps
             Log.info("Closed milestone " + milestone.getTitle() + " (" + milestone.getNumber() + ")");
         }
         MandrelVersion newVersion = version.getNewVersion();
-        GHMilestone newMilestone = ghMilestones.toList().stream().filter(m -> m.getTitle().equals(newVersion.toString())).findAny().orElse(null);
+        GHMilestone newMilestone = ghMilestones.stream().filter(m -> m.getTitle().equals(newVersion.toString())).findAny().orElse(null);
         if (newMilestone == null)
         {
             newMilestone = repository.createMilestone(newVersion.toString(), "");
@@ -579,12 +596,13 @@ class GitHubOps
         }
     }
 
-    private static boolean includeInChangelog(GHPullRequest pr, GHMilestone milestone)
+    private boolean includeInChangelog(GHPullRequest pr, GHMilestone milestone)
     {
         try
         {
             GHMilestone prMilestone = pr.getMilestone();
             if (prMilestone != null && prMilestone.getNumber() == milestone.getNumber()) {
+                Log.debug("Checking if PR #" + pr.getNumber() + " is merged", verbose);
                 // isMerged polls github, so make sure we run it only on the PRs with the milestone we are interested in
                 return pr.isMerged();
             }
@@ -1061,7 +1079,7 @@ class Release extends ReusableOptions implements Callable<Integer>
         version.suffix = suffix; // TODO: if Alpha/Beta autobump suffix number?
 
         final Set<String> jdkVersionsUsed = maybeDownloadBuildsAndGetJdkVersions(version);
-        GitHubOps gitHubOps = new GitHubOps(version, dryRun, downloadDir);
+        GitHubOps gitHubOps = new GitHubOps(version, dryRun, downloadDir, verbose);
         gitHubOps.createGHRelease(jdkVersionsUsed);
         if (!version.isFinal())
         {
