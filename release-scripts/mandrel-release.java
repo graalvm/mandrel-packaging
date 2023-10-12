@@ -4,7 +4,7 @@
 //DEPS org.eclipse.jgit:org.eclipse.jgit.pgm:5.13.0.202109080827-r
 //DEPS org.eclipse.jgit:org.eclipse.jgit.gpg.bc:5.13.0.202109080827-r
 //DEPS info.picocli:picocli:4.5.0
-//DEPS org.kohsuke:github-api:1.307
+//DEPS org.kohsuke:github-api:1.316
 
 import org.eclipse.jgit.api.Git;
 import org.eclipse.jgit.api.ResetCommand;
