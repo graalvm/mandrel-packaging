@@ -591,17 +591,17 @@ class GitHubOps
     {
         try
         {
-            if (!pr.isMerged())
-            {
-                return false;
+            GHMilestone prMilestone = pr.getMilestone();
+            if (prMilestone != null && prMilestone.getNumber() == milestone.getNumber()) {
+                // isMerged polls github, so make sure we run it only on the PRs with the milestone we are interested in
+                return pr.isMerged();
             }
-            return pr.getMilestone() != null && pr.getMilestone().getNumber() == milestone.getNumber();
         }
         catch (IOException e)
         {
             e.printStackTrace();
-            return false;
         }
+        return false;
     }
 
     private Integer getGroup(GHPullRequest pr)
