@@ -7,8 +7,8 @@ matrixJob('mandrel-23-1-windows-build-matrix') {
         labelExpression('LABEL', ['w2k19'])
         text('JDK_VERSION',
                 '17',
-                '20',
-                '21'
+                '21',
+                '22'
         )
         text('JDK_RELEASE',
                 'ea',
