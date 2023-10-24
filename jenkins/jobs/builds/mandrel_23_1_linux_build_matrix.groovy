@@ -7,8 +7,8 @@ matrixJob('mandrel-23-1-linux-build-matrix') {
         labelExpression('LABEL', ['el8_aarch64', 'el8'])
         text('JDK_VERSION',
                 '17',
-                '20',
-                '21'
+                '21',
+                '22'
         )
         text('JDK_RELEASE',
                 'ea',
