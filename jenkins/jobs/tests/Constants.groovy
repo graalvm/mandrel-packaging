@@ -53,13 +53,15 @@ class Constants {
     export MANDREL_TAR=`ls -1 mandrel*.tar.gz`
     tar -xvf "${MANDREL_TAR}"
     source /etc/profile.d/jdks.sh
-    export JAVA_HOME="$( pwd )/$( echo mandrel-java*-*/ )"
-    export GRAALVM_HOME="${JAVA_HOME}"
-    export PATH="${JAVA_HOME}/bin:${PATH}"
-    if [[ ! -e "${JAVA_HOME}/bin/native-image" ]]; then
+    # export JAVA_HOME="$( pwd )/$( echo mandrel-java*-*/ )"
+    export GRAALVM_HOME="$( pwd )/$( echo mandrel-java*-*/ )"
+    # java, javac comes from JDK 17 by default now.
+    export PATH="${JAVA_HOME}/bin:${GRAALVM_HOME}/bin:${PATH}"
+    if [[ ! -e "${GRAALVM_HOME}/bin/native-image" ]]; then
         echo "Cannot find native-image tool. Quitting..."
         exit 1
     fi
+    java --version
     native-image --version
     popd
     '''
@@ -202,13 +204,18 @@ class Constants {
         echo ZIP_NAME: %ZIP_NAME%
         for /f "tokens=5" %%g in ('dir /AD mandrel-* ^| findstr /R mandrel-.*') do set GRAALVM_HOME=%cd%\\%%g
         echo GRAALVM_HOME: %GRAALVM_HOME%
-        set "JAVA_HOME=%GRAALVM_HOME%"
-        set "PATH=%JAVA_HOME%\\bin;%PATH%"
+        echo JAVA_HOME: %JAVA_HOME%
+        REM set "JAVA_HOME=%GRAALVM_HOME%"
+        REM java and javac come from JDK 17 by default now
+        set "PATH=%JAVA_HOME%\\bin;%GRAALVM_HOME%\\bin;%PATH%"
         if not exist "%GRAALVM_HOME%\\bin\\native-image.cmd" (
             echo "Cannot find native-image tool. Quitting..."
             exit 1
         ) else (
             echo "native-image.cmd is present, good."
+            echo "Java version:"
+            cmd /C java --version
+            echo "native-image version:"
             cmd /C native-image --version
         )
     popd
