@@ -37,7 +37,7 @@ matrixJob('mandrel-windows-quarkus-tests') {
     )
     parameters {
         stringParam('QUARKUS_REPO', 'https://github.com/quarkusio/quarkus.git', 'Quarkus repository.')
-        stringParam('QUARKUS_MODULES', Constants.QUARKUS_MODULES_TESTS)
+        stringParam('QUARKUS_MODULES', '', 'Uses .github/native-tests.json unless specified here.')
         stringParam(
                 'MANDREL_BUILD_NUMBER',
                 'lastSuccessfulBuild',

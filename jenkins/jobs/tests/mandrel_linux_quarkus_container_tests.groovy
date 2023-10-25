@@ -27,7 +27,7 @@ matrixJob('mandrel-linux-quarkus-container-tests') {
     parameters {
         stringParam('CONTAINER_RUNTIME', 'podman', 'Command used, either "docker" or "podman". Note that podman is not installed on all executors...')
         stringParam('QUARKUS_REPO', 'https://github.com/quarkusio/quarkus.git', 'Quarkus repository.')
-        stringParam('QUARKUS_MODULES', Constants.QUARKUS_MODULES_TESTS)
+        stringParam('QUARKUS_MODULES', '', 'Uses .github/native-tests.json unless specified here.')
         matrixCombinationsParam('MATRIX_COMBINATIONS_FILTER', "", 'Choose which combinations to run')
     }
     triggers {

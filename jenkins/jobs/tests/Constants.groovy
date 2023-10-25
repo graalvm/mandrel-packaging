@@ -27,7 +27,7 @@ class Constants {
     static final String QUARKUS_VERSION_RELEASED_COMBINATION_FILTER =
             //@formatter:off
             '(' +
-                '(MANDREL_BUILD.startsWith("mandrel-22") && QUARKUS_VERSION.trim().matches("^2.16.*")) ||' +
+                '(MANDREL_BUILD.startsWith("mandrel-22") && QUARKUS_VERSION.trim().matches("^2.*")) ||' +
                 '(MANDREL_BUILD.startsWith("mandrel-23") && QUARKUS_VERSION.trim().matches("^3.*|^main.*")) ||' +
                 '(MANDREL_BUILD.startsWith("mandrel-master") && QUARKUS_VERSION.trim().matches("^3.*|^main.*"))' +
             ') && (' +
@@ -37,154 +37,6 @@ class Constants {
             ')'
             //@formatter:on
 
-    static final String QUARKUS_MODULES_TESTS = '' +
-            'amazon-lambda,' +
-            'amazon-lambda-http,' +
-            'awt,' +
-            'bouncycastle,' +
-            'bouncycastle-fips,' +
-            'bouncycastle-jsse,' +
-            'cache,' +
-            'elasticsearch-java-client,' +
-            'elasticsearch-rest-client,' +
-            'elasticsearch-rest-high-level-client,' +
-            'elytron-resteasy,' +
-            'elytron-resteasy-reactive,' +
-            'elytron-security,' +
-            'elytron-security-jdbc,' +
-            'elytron-security-ldap,' +
-            'elytron-security-oauth2,' +
-            'elytron-undertow,' +
-            'flyway,' +
-            'grpc-health,' +
-            'grpc-interceptors,' +
-            'grpc-mutual-auth,' +
-            'grpc-plain-text-gzip,' +
-            'grpc-plain-text-mutiny,' +
-            'grpc-proto-v2,' +
-            'grpc-streaming,' +
-            'grpc-tls,' +
-            'hibernate-orm-envers,' +
-            'hibernate-orm-panache,' +
-            'hibernate-orm-panache-kotlin,' +
-            'hibernate-orm-rest-data-panache,' +
-            'hibernate-orm-tenancy/connection-resolver,' +
-            'hibernate-orm-tenancy/connection-resolver-legacy-qualifiers,' +
-            'hibernate-orm-tenancy/datasource,' +
-            'hibernate-orm-tenancy/schema,' +
-            'hibernate-reactive-db2,' +
-            'hibernate-reactive-mariadb,' +
-            'hibernate-reactive-mysql,' +
-            'hibernate-reactive-mysql-agroal-flyway,' +
-            'hibernate-reactive-panache,' +
-            'hibernate-reactive-panache-kotlin,' +
-            'hibernate-reactive-postgresql,' +
-            'hibernate-search-orm-elasticsearch,' +
-            'hibernate-search-orm-elasticsearch-coordination-outbox-polling,' +
-            'hibernate-search-orm-elasticsearch-tenancy,' +
-            'hibernate-search-orm-opensearch,' +
-            'hibernate-validator,' +
-            'infinispan-cache-jpa,' +
-            'infinispan-client,' +
-            'jackson,' +
-            'jaxb,' +
-            'jaxp,' +
-            'jpa,' +
-            'jpa-db2,' +
-            'jpa-derby,' +
-            'jpa-h2,' +
-            'jpa-h2-embedded,' +
-            'jpa-mapping-xml/legacy-app,' +
-            'jpa-mapping-xml/modern-app,' +
-            'jpa-mariadb,' +
-            'jpa-mssql,' +
-            'jpa-mysql,' +
-            'jpa-oracle,' +
-            'jpa-postgresql,' +
-            'jpa-postgresql-withxml,' +
-            'jpa-without-entity,' +
-            'jsonb,' +
-            'kafka,' +
-            'kafka-avro,' +
-            'kafka-avro-apicurio2,' +
-            'kafka-oauth-keycloak,' +
-            'kafka-sasl,' +
-            'kafka-snappy,' +
-            'kafka-ssl,' +
-            'kafka-streams,' +
-            'keycloak-authorization,' +
-            'kotlin-serialization,' +
-            'kubernetes-service-binding-jdbc,' +
-            'liquibase,' +
-            'liquibase-mongodb,' +
-            'locales,' +
-            'logging-gelf,' +
-            'logging-json,' +
-            'logging-min-level-set,' +
-            'logging-min-level-unset,' +
-            'mailer,' +
-            'main,' +
-            'management-interface,' +
-            'management-interface-auth,' +
-            'micrometer-mp-metrics,' +
-            'micrometer-prometheus,' +
-            'mongodb-client,' +
-            'mongodb-devservices,' +
-            'mongodb-panache,' +
-            'mongodb-panache-kotlin,' +
-            'mongodb-rest-data-panache,' +
-            'narayana-jta,' +
-            'narayana-stm,' +
-            'native-config-profile,' +
-            'no-awt,' +
-            'oidc,' +
-            'oidc-client,' +
-            'oidc-client-reactive,' +
-            'oidc-client-wiremock,' +
-            'oidc-code-flow,' +
-            'oidc-tenancy,' +
-            'oidc-token-propagation,' +
-            'oidc-wiremock,' +
-            'opentelemetry,' +
-            'opentelemetry-jdbc-instrumentation,' +
-            'picocli-native,' +
-            'quartz,' +
-            'qute,' +
-            'reactive-db2-client,' +
-            'reactive-messaging-amqp,' +
-            'reactive-messaging-kafka,' +
-            'reactive-messaging-pulsar,' +
-            'reactive-messaging-rabbitmq,' +
-            'reactive-messaging-rabbitmq-dyn,' +
-            'reactive-mysql-client,' +
-            'reactive-oracle-client,' +
-            'reactive-pg-client,' +
-            'redis-cache,' +
-            'redis-client,' +
-            'rest-client,' +
-            'rest-client-reactive,' +
-            'rest-client-reactive-kotlin-serialization,' +
-            'rest-client-reactive-multipart,' +
-            'rest-client-reactive-stork,' +
-            'resteasy-jackson,' +
-            'resteasy-jackson,' +
-            'resteasy-mutiny,' +
-            'resteasy-reactive-kotlin/standard,' +
-            'security-webauthn,' +
-            'smallrye-config,' +
-            'smallrye-graphql,' +
-            'smallrye-graphql-client,' +
-            'smallrye-jwt-token-propagation,' +
-            'smallrye-metrics,' +
-            'smallrye-opentracing,' +
-            'vertx,' +
-            'vertx-graphql,' +
-            'vertx-http,' +
-            'vertx-web,' +
-            'vertx-web-jackson,' +
-            'virtual-http,' +
-            'websockets'
-
     static final String QUARKUS_MODULES_SUBSET_TESTS = '' +
             'awt,' +
             'no-awt'
@@ -192,7 +44,7 @@ class Constants {
     static final String LINUX_PREPARE_MANDREL = '''
     # Prepare Mandrel
     wget --quiet "https://ci.modcluster.io/view/Mandrel/job/${MANDREL_BUILD}/JDK_VERSION=${JDK_VERSION},JDK_RELEASE=${JDK_RELEASE},LABEL=${LABEL}/${MANDREL_BUILD_NUMBER}/artifact/*zip*/archive.zip"
-    if [[ ! -f "archive.zip" ]]; then 
+    if [[ ! -f "archive.zip" ]]; then
         echo "Download failed. Quitting..."
         exit 1
     fi
@@ -259,12 +111,16 @@ class Constants {
     free -h
     df -h
     ps aux | grep java
+    native-image --version
     git clone --depth 1 --branch ${QUARKUS_VERSION} ${QUARKUS_REPO}
+    if [ -z "${QUARKUS_MODULES}" ]; then
+        export QUARKUS_MODULES=$(jq -r '.include | map(."test-modules") | join(",")' quarkus/.github/native-tests.json)
+    fi
     cd quarkus
     export MAVEN_OPTS="-Xmx5g -XX:MaxMetaspaceSize=3g"
     ./mvnw --batch-mode install -Dquickly
     ./mvnw verify -fae -f integration-tests/pom.xml -Dmaven.test.failure.ignore=true --batch-mode -Dno-format \\
-        -DfailIfNoTests=false -Dnative -pl ${QUARKUS_MODULES} \\
+        -DfailIfNoTests=false -Dnative -pl "${QUARKUS_MODULES}" \\
         -Dquarkus.native.native-image-xmx=6g
     '''
 
@@ -298,6 +154,9 @@ class Constants {
     df -h
     ps aux | grep java
     git clone --depth 1 --branch ${QUARKUS_VERSION} ${QUARKUS_REPO}
+    if [ -z "${QUARKUS_MODULES}" ]; then
+        export QUARKUS_MODULES=$(jq -r '.include | map(."test-modules") | join(",")' quarkus/.github/native-tests.json)
+    fi
     cd quarkus
     source /etc/profile.d/jdks.sh
     set +e
@@ -361,9 +220,12 @@ class Constants {
 
     static final String WINDOWS_QUARKUS_TESTS = WINDOWS_PREPARE_MANDREL + '''
     git clone --depth 1 --branch %QUARKUS_VERSION% %QUARKUS_REPO%
+    if "%QUARKUS_MODULES%"=="" (
+      For /F "USEBACKQ Tokens=* Delims=" %%Q in (`jq -r ".include | map(.\\"test-modules\\") | join(\\"^,\\")" quarkus/.github/native-tests.json`) Do Set "QUARKUS_MODULES=%%Q"
+    )
     cd quarkus
     set "MAVEN_OPTS=-Xmx5g -XX:MaxMetaspaceSize=3g"
     mvnw --batch-mode install -Dquickly & mvnw verify -f integration-tests/pom.xml --fail-at-end ^
-        --batch-mode -Dno-format -DfailIfNoTests=false -Dnative -Dquarkus.native.native-image-xmx=6g -pl %QUARKUS_MODULES%
+        --batch-mode -Dno-format -DfailIfNoTests=false -Dnative -Dquarkus.native.native-image-xmx=6g -pl "%QUARKUS_MODULES%"
     '''
 }
