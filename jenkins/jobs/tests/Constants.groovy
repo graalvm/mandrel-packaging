@@ -31,9 +31,9 @@ class Constants {
                 '(MANDREL_BUILD.startsWith("mandrel-23") && QUARKUS_VERSION.trim().matches("^3.*|^main.*")) ||' +
                 '(MANDREL_BUILD.startsWith("mandrel-master") && QUARKUS_VERSION.trim().matches("^3.*|^main.*"))' +
             ') && (' +
-                '(JDK_VERSION.equals("21") && (MANDREL_BUILD.startsWith("mandrel-master") || MANDREL_BUILD.startsWith("mandrel-23"))) ||' +
-                '(JDK_VERSION.equals("17") && (MANDREL_BUILD.startsWith("mandrel-22") || MANDREL_BUILD.startsWith("mandrel-23"))) ||' +
-                '(JDK_VERSION.equals("22") && JDK_RELEASE.equals("ea") && (MANDREL_BUILD.startsWith("mandrel-master") || MANDREL_BUILD.startsWith("mandrel-23")))' +
+                '(JDK_VERSION.equals("21") && (MANDREL_BUILD.startsWith("mandrel-master") || MANDREL_BUILD.startsWith("mandrel-23-1"))) ||' +
+                '(JDK_VERSION.equals("17") && (MANDREL_BUILD.startsWith("mandrel-22") || MANDREL_BUILD.startsWith("mandrel-23-0"))) ||' +
+                '(JDK_VERSION.equals("22") && JDK_RELEASE.equals("ea") && (MANDREL_BUILD.startsWith("mandrel-master")))' +
             ')'
             //@formatter:on
 
@@ -57,12 +57,19 @@ class Constants {
     export GRAALVM_HOME="$( pwd )/$( echo mandrel-java*-*/ )"
     # java, javac comes from JDK 17 by default now.
     export PATH="${JAVA_HOME}/bin:${GRAALVM_HOME}/bin:${PATH}"
+    
+    # Workaround for plain Temurin java to find libnative-image-agent.so
+    mkdir lib
+    cp ${GRAALVM_HOME}/lib/libnative-image-agent.so lib/
+    export LD_LIBRARY_PATH="$( pwd )/lib:$LD_LIBRARY_PATH"
     if [[ ! -e "${GRAALVM_HOME}/bin/native-image" ]]; then
         echo "Cannot find native-image tool. Quitting..."
         exit 1
     fi
     java --version
     native-image --version
+    echo "LD_LIBRARY_PATH: ${LD_LIBRARY_PATH}"
+    echo "PATH: ${PATH}"
     popd
     '''
 
@@ -207,7 +214,7 @@ class Constants {
         echo JAVA_HOME: %JAVA_HOME%
         REM set "JAVA_HOME=%GRAALVM_HOME%"
         REM java and javac come from JDK 17 by default now
-        set "PATH=%JAVA_HOME%\\bin;%GRAALVM_HOME%\\bin;%PATH%"
+        set "PATH=%JAVA_HOME%\\bin;%GRAALVM_HOME%\\bin;%GRAALVM_HOME%\\lib;%PATH%"
         if not exist "%GRAALVM_HOME%\\bin\\native-image.cmd" (
             echo "Cannot find native-image tool. Quitting..."
             exit 1

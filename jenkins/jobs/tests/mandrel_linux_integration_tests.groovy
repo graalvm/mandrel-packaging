@@ -14,6 +14,7 @@ matrixJob('mandrel-linux-integration-tests') {
         text('MANDREL_BUILD',
                 'mandrel-22-3-linux-build-matrix',
                 'mandrel-23-1-linux-build-matrix',
+                'mandrel-23-0-linux-build-matrix',
                 'mandrel-master-linux-build-matrix'
         )
         text('QUARKUS_VERSION', Constants.QUARKUS_VERSION_RELEASED)
