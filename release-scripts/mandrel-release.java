@@ -273,7 +273,7 @@ class GitHubOps
         this.verbose = verbose;
     }
 
-    void createGHRelease(Set<String> jdkVersionsUsed)
+    void createGHRelease(Set<String> jdkVersionsUsed, boolean linuxUpload, boolean windowsUpload)
     {
         final GitHub github = connectToGitHub();
         try
@@ -326,7 +326,7 @@ class GitHubOps
                 Log.info("Release body would look like");
                 System.out.println(releaseMainBody(changelog, jdkVersionsUsed));
 
-                assets(version.toString(), jdkVersionsUsed).forEach(f -> Log.info("Would upload " + f.getName()));
+                assets(version.toString(), jdkVersionsUsed, linuxUpload, windowsUpload).forEach(f -> Log.info("Would upload " + f.getName()));
                 return;
             }
 
@@ -338,7 +338,8 @@ class GitHubOps
                 .body(releaseMainBody(changelog, jdkVersionsUsed))
                 .draft(true)
                 .create();
-            uploadAssets(version.toString(), ghRelease, jdkVersionsUsed);
+
+            uploadAssets(version.toString(), ghRelease, jdkVersionsUsed, linuxUpload, windowsUpload);
             Log.info("Created new draft release: " + ghRelease.getHtmlUrl());
             Log.info("Please review and publish!");
         }
@@ -349,7 +350,7 @@ class GitHubOps
         }
     }
 
-    private List<File> assets(String fullVersion, Set<String> jdkVersionsUsed)
+    private List<File> assets(String fullVersion, Set<String> jdkVersionsUsed, boolean linuxUpload, boolean windowsUpload)
     {
         if (jdkVersionsUsed.isEmpty())
         {
@@ -358,19 +359,26 @@ class GitHubOps
 
         final List<File> assets = new ArrayList<>(jdkVersionsUsed.size() * ARTIFACTS_PER_JDK_VERSION);
 
-        jdkVersionsUsed.forEach(jdkVersion -> {
-            String jdkMajor = jdkVersion.split("\\+")[0].split("\\.")[0];
-            assets.add(new File(downloadDir, "mandrel-java" + jdkMajor + "-linux-amd64-" + fullVersion + ".tar.gz"));
-            assets.add(new File(downloadDir, "mandrel-java" + jdkMajor + "-linux-aarch64-" + fullVersion + ".tar.gz"));
-            assets.add(new File(downloadDir, "mandrel-java" + jdkMajor + "-windows-amd64-" + fullVersion + ".zip"));
+        jdkVersionsUsed.forEach(jdkVersion ->
+        {
+            final String jdkMajor = jdkVersion.split("\\+")[0].split("\\.")[0];
+            if (linuxUpload)
+            {
+                assets.add(new File(downloadDir, "mandrel-java" + jdkMajor + "-linux-amd64-" + fullVersion + ".tar.gz"));
+                assets.add(new File(downloadDir, "mandrel-java" + jdkMajor + "-linux-aarch64-" + fullVersion + ".tar.gz"));
+            }
+            if (windowsUpload)
+            {
+                assets.add(new File(downloadDir, "mandrel-java" + jdkMajor + "-windows-amd64-" + fullVersion + ".zip"));
+            }
         });
 
         return assets;
     }
 
-    private void uploadAssets(String fullVersion, GHRelease ghRelease, Set<String> jdkVersionsUsed) throws IOException
+    private void uploadAssets(String fullVersion, GHRelease ghRelease, Set<String> jdkVersionsUsed, boolean linuxUpload, boolean windowsUpload) throws IOException
     {
-        final List<File> assets = assets(fullVersion, jdkVersionsUsed);
+        final List<File> assets = assets(fullVersion, jdkVersionsUsed, linuxUpload, windowsUpload);
 
         for (File f : assets)
         {
@@ -411,6 +419,7 @@ class GitHubOps
 
     private String releaseMainBody(String changelog, Set<String> jdkVersionsUsed)
     {
+        final String jdkMajorVersionExample = ((String) jdkVersionsUsed.stream().sorted().toArray()[0]).split("\\.")[0];
         return "# Mandrel\n" +
             "\n" +
             "Mandrel " + version + " is a downstream distribution of the [GraalVM community edition " + version.majorMinorMicro() + "](https://github.com/graalvm/graalvm-ce-builds/releases/tag/vm-" + version.majorMinorMicro() + ").\n" +
@@ -456,8 +465,8 @@ class GitHubOps
             "## Quick start\n" +
             "\n" +
             "```\n" +
-            "$ tar -xf mandrel-java17-linux-amd64-" + version + ".tar.gz\n" +
-            "$ export JAVA_HOME=\"$( pwd )/mandrel-java17-" + version + "\"\n" +
+            "$ tar -xf mandrel-java" + jdkMajorVersionExample + "-linux-amd64-" + version + ".tar.gz\n" +
+            "$ export JAVA_HOME=\"$( pwd )/mandrel-java" + jdkMajorVersionExample + "-" + version + "\"\n" +
             "$ export GRAALVM_HOME=\"${JAVA_HOME}\"\n" +
             "$ export PATH=\"${JAVA_HOME}/bin:${PATH}\"\n" +
             "$ curl -O -J https://code.quarkus.io/d?e=io.quarkus:quarkus-resteasy-reactive\n" +
@@ -477,19 +486,19 @@ class GitHubOps
             "curl -O -J  https://code.quarkus.io/d?e=io.quarkus:quarkus-resteasy-reactive\n" +
             "unzip code-with-quarkus.zip\n" +
             "cd code-with-quarkus\n" +
-            "        ./mvnw package -Pnative -Dquarkus.native.container-build=true -Dquarkus.native.builder-image=quay.io/quarkus/ubi-quarkus-mandrel-builder-image:" + version + "-java17\n" +
-            "        ./target/code-with-quarkus-1.0.0-SNAPSHOT-runner\n" +
+            "./mvnw package -Pnative -Dquarkus.native.container-build=true -Dquarkus.native.builder-image=quay.io/quarkus/ubi-quarkus-mandrel-builder-image:" + version + "-java" + jdkMajorVersionExample + "\n" +
+            "./target/code-with-quarkus-1.0.0-SNAPSHOT-runner\n" +
             "```\n" +
             "\n" +
-            "One can use the builder image on Windows with Docker Desktop (mind `Resources-> File sharing` settings so as Quarkus project directory is mountable).\n" +
+            "One can use the builder image on Windows with e.g. Podman Desktop, see [Podman For Windows](https://quarkus.io/blog/podman-for-windows/).\n" +
             "\n" +
             "```batchfile\n" +
             "powershell -c \"Invoke-WebRequest -OutFile quarkus.zip -Uri https://code.quarkus.io/d?e=io.quarkus:quarkus-resteasy-reactive\"\n" +
             "powershell -c \"Expand-Archive -Path quarkus.zip -DestinationPath . -Force\n" +
             "cd code-with-quarkus\n" +
-            "mvnw package -Pnative -Dquarkus.native.container-build=true -Dquarkus.native.builder-image=quay.io/quarkus/ubi-quarkus-mandrel-builder-image:" + version + "-java17\n" +
+            "mvnw package -Pnative -Dquarkus.native.container-build=true -Dquarkus.native.builder-image=quay.io/quarkus/ubi-quarkus-mandrel-builder-image:" + version + "-java" + jdkMajorVersionExample + "\n" +
             "docker build -f src/main/docker/Dockerfile.native -t my-quarkus-mandrel-app .\n" +
-            "        docker run -i --rm -p 8080:8080 my-quarkus-mandrel-app\n" +
+            "docker run -i --rm -p 8080:8080 my-quarkus-mandrel-app\n" +
             "```\n" +
             "-->\n" +
             changelog +
@@ -601,7 +610,8 @@ class GitHubOps
         try
         {
             GHMilestone prMilestone = pr.getMilestone();
-            if (prMilestone != null && prMilestone.getNumber() == milestone.getNumber()) {
+            if (prMilestone != null && prMilestone.getNumber() == milestone.getNumber())
+            {
                 Log.debug("Checking if PR #" + pr.getNumber() + " is merged", verbose);
                 // isMerged polls github, so make sure we run it only on the PRs with the milestone we are interested in
                 return pr.isMerged();
@@ -978,13 +988,13 @@ class MxSuiteUtils
                 final Matcher releaseMatcher = releasePattern.matcher(lines.get(i));
                 if (releaseMatcher.find())
                 {
-                    String newLine = releaseMatcher.group(1) + "False" + releaseMatcher.group(2);
+                    final String newLine = releaseMatcher.group(1) + "False" + releaseMatcher.group(2);
                     lines.set(i, newLine);
                 }
                 final Matcher versionMatcher = versionPattern.matcher(lines.get(i));
                 if (versionMatcher.find())
                 {
-                    String newLine = versionMatcher.group(1) + version.getNewVersion().majorMinorMicroPico() + versionMatcher.group(2);
+                    final String newLine = versionMatcher.group(1) + version.getNewVersion().majorMinorMicroPico() + versionMatcher.group(2);
                     lines.set(i, newLine);
                 }
             }
@@ -1080,7 +1090,7 @@ class Release extends ReusableOptions implements Callable<Integer>
 
         final Set<String> jdkVersionsUsed = maybeDownloadBuildsAndGetJdkVersions(version);
         GitHubOps gitHubOps = new GitHubOps(version, dryRun, downloadDir, verbose);
-        gitHubOps.createGHRelease(jdkVersionsUsed);
+        gitHubOps.createGHRelease(jdkVersionsUsed, linuxBuildNumber != UNDEFINED, windowsBuildNumber != UNDEFINED);
         if (!version.isFinal())
         {
             return 0;
@@ -1110,9 +1120,19 @@ class Release extends ReusableOptions implements Callable<Integer>
             {
                 Log.error("At least one of --windows-job-build-number, --linux-job-build-number must be specified. Terminating.");
             }
-            if (jdkVersionsUsed.size() != 2)
+            if (version.major == 21 && jdkVersionsUsed.size() != 2)
             {
                 Log.warn("There are supposed to be 2 distinct JDK versions used, one for JDK 17 and one for JDK 11." +
+                    "This is unexpected: " + String.join(",", jdkVersionsUsed));
+            }
+            else if ((version.major == 22 || (version.major == 23 && version.minor == 0)) && jdkVersionsUsed.size() != 1)
+            {
+                Log.warn("There was supposed to be just one JDK 17 version used." +
+                    "This is unexpected: " + String.join(",", jdkVersionsUsed));
+            }
+            else if (version.major == 23 && version.minor == 1 && jdkVersionsUsed.size() != 1)
+            {
+                Log.warn("There was supposed to be just one JDK 21 version used." +
                     "This is unexpected: " + String.join(",", jdkVersionsUsed));
             }
         }
@@ -1178,13 +1198,13 @@ class Release extends ReusableOptions implements Callable<Integer>
         {
             jdkMajorVersions = new int[]{11, 17};
         }
-        else if (mandrelVersion.major == 22)
+        else if (mandrelVersion.major == 22 || (mandrelVersion.major == 23 && mandrelVersion.minor == 0))
         {
             jdkMajorVersions = new int[]{17};
         }
         else
         {
-            jdkMajorVersions = new int[]{17, 20};
+            jdkMajorVersions = new int[]{21};
         }
 
         final String jenkinsURL = "https://ci.modcluster.io";
