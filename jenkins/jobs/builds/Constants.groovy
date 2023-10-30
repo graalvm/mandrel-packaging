@@ -20,7 +20,7 @@ class Constants {
     fi
     curl -OJLs https://api.adoptium.net/v3/binary/latest/${JDK_VERSION}/${JDK_RELEASE}/linux/${JDK_ARCH}/jdk/hotspot/normal/eclipse
     curl -OJLs https://api.adoptium.net/v3/binary/latest/${JDK_VERSION}/${JDK_RELEASE}/linux/${JDK_ARCH}/staticlibs/hotspot/normal/eclipse
-    tar -xf OpenJDK${JDK_VERSION}U-jdk*
+    tar -xf OpenJDK${JDK_VERSION}*-jdk*
     export JAVA_HOME=$( pwd )/$( echo jdk-${JDK_VERSION}* )
     if [[ ! -e "${JAVA_HOME}/bin/java" ]]; then
         echo "Cannot find downloaded JDK. Quitting..."
