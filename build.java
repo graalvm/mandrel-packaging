@@ -132,6 +132,12 @@ public class build
             FileSystem.copy(mandrelRepo.resolve(
                 Path.of("sdk", "mxbuild", PLATFORM, IS_WINDOWS ? "native-image.exe.image-bash" : "native-image.image-bash",
                     IS_WINDOWS ? "native-image.cmd" : "native-image")), nativeImage);
+            if (IS_WINDOWS)
+            {
+                final Path nativeImageExport = mandrelJavaHome.resolve(Path.of("lib", "svm", "bin", "native-image.export-list"));
+                FileSystem.copy(mandrelRepo.resolve(
+                    Path.of("sdk", "mxbuild", PLATFORM, "native-image.exe.image-bash", "native-image.export-list")), nativeImageExport);
+            }
         }
 
         if (!options.skipNative)
