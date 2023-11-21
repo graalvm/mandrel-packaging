@@ -75,6 +75,11 @@ jobs:
         tar xf jdk-static-libs.tar.gz -C ${JAVA_HOME} --strip-components=1
         echo ${JAVA_HOME}
         ${JAVA_HOME}/bin/java --version
+    - name: Use python 3.10
+      # The minimum supported version is 3.9 see https://github.com/graalvm/mx/issues/249
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.10'
     - name: Build Mandrel JDK
       run: |
         ${JAVA_HOME}/bin/java -ea build.java --verbose --mx-home ${MX_HOME} --mandrel-repo ${MANDREL_REPO} --mandrel-version "${MANDREL_VERSION}" --archive-suffix tar.gz
@@ -165,6 +170,12 @@ jobs:
           tar xf jdk-static-libs.tar.gz -C ${JAVA_HOME} --strip-components=1
           echo ${MAC_JAVA_HOME}
           ${MAC_JAVA_HOME}/bin/java --version
+      - name: Use python 3.10
+        # mx uses distutils which is no longer available in python 3.12 which is the default in macos-latest
+        # use 3.10 instead (the minimum supported version is 3.9) see https://github.com/graalvm/mx/issues/249
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
       - name: Build Mandrel JDK
         run: |
           export JAVA_HOME=${MAC_JAVA_HOME}
@@ -247,6 +258,11 @@ jobs:
         Move-Item -Path "$Env:temp\jdk-*\lib\static" -Destination $Env:JAVA_HOME\lib\
         Remove-Item -Recurse "$Env:temp\jdk-*"
         & $Env:JAVA_HOME\bin\java -version
+    - name: Use python 3.10
+      # The minimum supported version is 3.9 see https://github.com/graalvm/mx/issues/249
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.10'
     - name: Build Mandrel
       run: |
         cmd.exe /c "call `"C:\Program Files\Microsoft Visual Studio\2022\Enterprise\VC\Auxiliary\Build\vcvars64.bat`" && set > %temp%\vcvars64.txt"
@@ -352,6 +368,11 @@ jobs:
         tar xf jdk-static-libs.tar.gz -C ${JAVA_HOME} --strip-components=1
         echo ${JAVA_HOME}
         ${JAVA_HOME}/bin/java --version
+    - name: Use python 3.10
+      # The minimum supported version is 3.9 see https://github.com/graalvm/mx/issues/249
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.10'
     - name: Build Mandrel JDK
       run: |
         # Build the Java bits
