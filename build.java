@@ -173,21 +173,9 @@ public class build
             String platformAndJDK = PLATFORM + "-" + JDK_VERSION;
             if (IS_WINDOWS)
             {
-                Path libchelperSource;
-                Path jvmlibSource;
-                Path reporterchelperSource;
-                if (MxVersion.mx5_313_0.compareTo(mx.version) > 0)
-                {
-                    libchelperSource = Path.of("substratevm", "mxbuild", PLATFORM, "src", "com.oracle.svm.native.libchelper", ARCH, "libchelper.lib");
-                    jvmlibSource = Path.of("substratevm", "mxbuild", PLATFORM, "src", "com.oracle.svm.native.jvm.windows", ARCH, "jvm.lib");
-                    reporterchelperSource = Path.of("substratevm", "mxbuild", PLATFORM, "src", "com.oracle.svm.native.reporterchelper", ARCH, "reporterchelper.dll");
-                }
-                else
-                {
-                    libchelperSource = Path.of("substratevm", "mxbuild", PLATFORM, "com.oracle.svm.native.libchelper", ARCH, "libchelper.lib");
-                    jvmlibSource = Path.of("substratevm", "mxbuild", platformAndJDK, "com.oracle.svm.native.jvm.windows", ARCH, "jvm.lib");
-                    reporterchelperSource = Path.of("substratevm", "mxbuild", platformAndJDK, "com.oracle.svm.native.reporterchelper", ARCH, "reporterchelper.dll");
-                }
+                Path libchelperSource = Path.of("substratevm", "mxbuild", PLATFORM, "com.oracle.svm.native.libchelper", PLATFORM, "default", "libchelper.lib");
+                Path jvmlibSource = Path.of("substratevm", "mxbuild", platformAndJDK, "com.oracle.svm.native.jvm.windows", PLATFORM, "default", "jvm.lib");
+                Path reporterchelperSource = Path.of("substratevm", "mxbuild", platformAndJDK, "com.oracle.svm.native.reporterchelper", PLATFORM, "default", "reporterchelper.dll");
                 FileSystem.copy(mandrelRepo.resolve(libchelperSource),
                     mandrelJavaHome.resolve(Path.of("lib", "svm", "clibraries", PLATFORM, "libchelper.lib")));
                 FileSystem.copy(mandrelRepo.resolve(jvmlibSource),
@@ -197,30 +185,14 @@ public class build
             }
             else
             {
-                Path libchelperSource;
-                Path libjvmSource;
                 Path libdarwinSource = null;
-                Path reporterchelperSource;
-                if (MxVersion.mx5_313_0.compareTo(mx.version) > 0)
-                {
-                    libchelperSource = Path.of("substratevm", "mxbuild", PLATFORM, "src", "com.oracle.svm.native.libchelper", ARCH, "liblibchelper.a");
-                    libjvmSource = Path.of("substratevm", "mxbuild", PLATFORM, "src", "com.oracle.svm.native.jvm.posix", ARCH, "libjvm.a");
-                    if (IS_MAC)
-                    {
-                        libdarwinSource = Path.of("substratevm", "mxbuild", PLATFORM, "src", "com.oracle.svm.native.darwin", ARCH, "libdarwin.a");
-                    }
-                    reporterchelperSource = Path.of("substratevm", "mxbuild", PLATFORM, "src", "com.oracle.svm.native.reporterchelper", ARCH, System.mapLibraryName("reporterchelper"));
-                }
-                else
-                {
-                    libchelperSource = Path.of("substratevm", "mxbuild", PLATFORM, "com.oracle.svm.native.libchelper", ARCH, "liblibchelper.a");
-                    libjvmSource = Path.of("substratevm", "mxbuild", platformAndJDK, "com.oracle.svm.native.jvm.posix", ARCH, "libjvm.a");
-                    if (IS_MAC)
-                    {
-                        libdarwinSource = Path.of("substratevm", "mxbuild", PLATFORM, "com.oracle.svm.native.darwin", ARCH, "libdarwin.a");
-                    }
-                    reporterchelperSource = Path.of("substratevm", "mxbuild", platformAndJDK, "com.oracle.svm.native.reporterchelper", ARCH, System.mapLibraryName("reporterchelper"));
-                }
+		Path libchelperSource = Path.of("substratevm", "mxbuild", PLATFORM, "com.oracle.svm.native.libchelper", PLATFORM, "glibc", "liblibchelper.a");
+		Path libjvmSource = Path.of("substratevm", "mxbuild", platformAndJDK, "com.oracle.svm.native.jvm.posix", PLATFORM, "glibc", "libjvm.a");
+		if (IS_MAC)
+		{
+		    libdarwinSource = Path.of("substratevm", "mxbuild", PLATFORM, "com.oracle.svm.native.darwin", ARCH, "libdarwin.a");
+		}
+		Path reporterchelperSource = Path.of("substratevm", "mxbuild", platformAndJDK, "com.oracle.svm.native.reporterchelper", PLATFORM, "glibc", System.mapLibraryName("reporterchelper"));
                 FileSystem.copy(mandrelRepo.resolve(libchelperSource),
                     mandrelJavaHome.resolve(Path.of("lib", "svm", "clibraries", PLATFORM, "liblibchelper.a")));
                 FileSystem.copy(mandrelRepo.resolve(libjvmSource),
