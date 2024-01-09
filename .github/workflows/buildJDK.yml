@@ -173,6 +173,12 @@ jobs:
           mkdir -p ${JAVA_HOME}
           tar xf jdk.tar.gz -C ${JAVA_HOME} --strip-components=1
           tar xf jdk-static-libs.tar.gz -C ${JAVA_HOME} --strip-components=1
+          # work-around for https://github.com/adoptium/temurin-build/issues/3602
+          pushd ${MAC_JAVA_HOME}
+          if [ -e lib/static/darwin-arm64 ]; then
+            mv lib/static/darwin-arm64 lib/static/darwin-amd64
+          fi
+          popd
           echo ${MAC_JAVA_HOME}
           ${MAC_JAVA_HOME}/bin/java --version
       - name: Build Mandrel JDK
