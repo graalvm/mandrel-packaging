@@ -76,7 +76,7 @@ jobs:
         ${JAVA_HOME}/bin/java --version
     - name: Build Mandrel JDK
       run: |
-        ${JAVA_HOME}/bin/java -ea build.java --verbose --mx-home ${MX_HOME} --mandrel-repo ${MANDREL_REPO} --mandrel-version "${MANDREL_VERSION}" --archive-suffix tar.gz
+        ${JAVA_HOME}/bin/java -ea build.java --mx-home ${MX_HOME} --mandrel-repo ${MANDREL_REPO} --mandrel-version "${MANDREL_VERSION}" --archive-suffix tar.gz
         export MANDREL_VERSION_UNTIL_SPACE="$( echo ${MANDREL_VERSION} | sed -e 's/\([^ ]*\).*/\1/;t' )"
         export ARCHIVE_NAME="mandrel-java21-linux-amd64-${MANDREL_VERSION_UNTIL_SPACE}.tar.gz"
         mv ${ARCHIVE_NAME} mandrel-java21-linux-amd64.tar.gz
@@ -167,7 +167,7 @@ jobs:
       - name: Build Mandrel JDK
         run: |
           export JAVA_HOME=${MAC_JAVA_HOME}
-          ${MAC_JAVA_HOME}/bin/java -ea build.java --verbose --mx-home ${MX_HOME} --mandrel-repo ${MANDREL_REPO} --mandrel-version "${MANDREL_VERSION}" --archive-suffix tar.gz
+          ${MAC_JAVA_HOME}/bin/java -ea build.java --mx-home ${MX_HOME} --mandrel-repo ${MANDREL_REPO} --mandrel-version "${MANDREL_VERSION}" --archive-suffix tar.gz
           export MANDREL_VERSION_UNTIL_SPACE="$( echo ${MANDREL_VERSION} | sed -e 's/\([^ ]*\).*/\1/;t' )"
           export ARCHIVE_NAME="mandrel-java21-darwin-amd64-${MANDREL_VERSION_UNTIL_SPACE}.tar.gz"
           mv ${ARCHIVE_NAME} mandrel-java21-darwin-amd64.tar.gz
@@ -255,7 +255,6 @@ jobs:
           }
         }
         & $Env:JAVA_HOME\bin\java -ea build.java `
-          --verbose `
           --mx-home $Env:MX_HOME `
           --mandrel-version $Env:MANDREL_VERSION `
           --mandrel-repo $Env:MANDREL_REPO `
@@ -354,7 +353,6 @@ jobs:
       run: |
         # Build the Java bits
         ${JAVA_HOME}/bin/java -ea build.java \
-        --verbose \
         --mx-home ${MX_HOME} \
         --mandrel-repo ${MANDREL_REPO} \
         --mandrel-version "${MANDREL_VERSION}" \
@@ -367,7 +365,6 @@ jobs:
         --mandrel-home temp-build
         # Build the native bits
         ./temp-build/bin/java -ea build.java \
-        --verbose \
         --mx-home ${MX_HOME} \
         --mandrel-repo ${MANDREL_REPO} \
         --mandrel-version "${MANDREL_VERSION}" \
