@@ -48,12 +48,11 @@ jobs:
         fetch-depth: 1
         ref: ${{ matrix.mandrel-ref }}
         path: ${{ github.workspace }}/mandrel
-    - uses: actions/checkout@v3
-      with:
-        repository: graalvm/mx.git
-        fetch-depth: 1
-        ref: 6.45.0
-        path: ${{ github.workspace }}/mx
+    - name: Checkout MX
+      run: |
+          VERSION=$(jq -r .mx_version ${MANDREL_REPO}/common.json)
+          git clone ${GITHUB_SERVER_URL}/graalvm/mx --depth 1 --branch ${VERSION} ${MX_HOME}
+          ./mx/mx --version
     - uses: actions/cache@v3
       with:
         path: ~/.mx
@@ -218,12 +217,12 @@ jobs:
         fetch-depth: 1
         ref: ${{ matrix.mandrel-ref }}
         path: ${{ github.workspace }}/mandrel
-    - uses: actions/checkout@v3
-      with:
-        repository: graalvm/mx.git
-        fetch-depth: 1
-        ref: 6.45.0
-        path: ${{ github.workspace }}/mx
+    - name: Checkout MX
+      shell: bash
+      run: |
+          VERSION=$(jq -r .mx_version ${MANDREL_REPO}/common.json)
+          git clone ${GITHUB_SERVER_URL}/graalvm/mx --depth 1 --branch ${VERSION} ${MX_HOME}
+          ./mx/mx --version
     - uses: actions/cache@v3
       with:
         path: ~/.mx
@@ -325,12 +324,11 @@ jobs:
         fetch-depth: 1
         ref: ${{ matrix.mandrel-ref }}
         path: ${{ github.workspace }}/mandrel
-    - uses: actions/checkout@v3
-      with:
-        repository: graalvm/mx.git
-        fetch-depth: 1
-        ref: 6.45.0
-        path: ${{ github.workspace }}/mx
+    - name: Checkout MX
+      run: |
+          VERSION=$(jq -r .mx_version ${MANDREL_REPO}/common.json)
+          git clone ${GITHUB_SERVER_URL}/graalvm/mx --depth 1 --branch ${VERSION} ${MX_HOME}
+          ./mx/mx --version
     - uses: actions/cache@v3
       with:
         path: ~/.mx
