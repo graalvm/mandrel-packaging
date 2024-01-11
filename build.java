@@ -389,6 +389,7 @@ class Options
     final String archiveSuffix;
     final String vendor;
     final String vendorUrl;
+    final boolean disableDebuginfoStripping;
 
     Options(
         boolean mavenDeploy
@@ -410,6 +411,7 @@ class Options
         , String archiveSuffix
         , String vendor
         , String vendorUrl
+        , boolean disableDebuginfoStripping
     )
     {
         this.mavenDeploy = mavenDeploy;
@@ -431,6 +433,7 @@ class Options
         this.archiveSuffix = archiveSuffix;
         this.vendor = vendor;
         this.vendorUrl = vendorUrl;
+        this.disableDebuginfoStripping = disableDebuginfoStripping;
     }
 
     public static Options from(Map<String, List<String>> args)
@@ -464,6 +467,7 @@ class Options
         final boolean skipJava = args.containsKey("skip-java");
         final boolean skipNative = args.containsKey("skip-native");
         final boolean skipNativeAgents = args.containsKey("skip-native-agents");
+        final boolean disableDebuginfoStripping = args.containsKey("disable-debuginfo-stripping");
 
         final String archiveSuffix = optional("archive-suffix", args);
 
@@ -487,6 +491,7 @@ class Options
             , archiveSuffix
             , vendor
             , vendorUrl
+            , disableDebuginfoStripping
         );
     }
 
@@ -1048,6 +1053,7 @@ class Mx
                     , "--native-images=lib:native-image-agent,lib:native-image-diagnostics-agent"
                     , "--components=ni"
                     , "--exclude-components=nju,svmnfi,svml,tflm"
+                    , options.disableDebuginfoStripping ? "--disable-debuginfo-stripping" : ""
                     , "build"
                 )
                 , buildArgs.args
