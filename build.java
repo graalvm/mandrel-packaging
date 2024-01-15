@@ -140,8 +140,8 @@ public class build
             }
             logger.debugf("Copy svm-preview...");
             final Path svmForeign = mandrelJavaHome.resolve(Path.of("lib", "svm-preview", "builder", "svm-foreign.jar"));
-            FileSystem.copy(mandrelRepo.resolve(
-                Path.of("substratevm", "mxbuild", JDK_VERSION, "dists", JDK_VERSION, "svm-foreign.jar")), svmForeign);
+            final Path svmForeignSource = PathFinder.getFirstExisting(mandrelRepo.resolve(Path.of("substratevm", "mxbuild")).toString(), "svm-foreign.jar");
+            FileSystem.copy(svmForeignSource, svmForeign);
         }
 
         if (!options.skipNative)
