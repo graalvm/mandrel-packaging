@@ -108,8 +108,19 @@ jobs:
         ${MANDREL_HOME}/bin/native-image HelloStrict
         ./hellostrict | tee native.txt
         diff java.txt native.txt
+        rm -f java.txt native.txt
         ${MANDREL_HOME}/bin/native-image --macro:native-image-launcher
         ${MANDREL_HOME}/bin/native-image --version
+        echo "
+        void main() {
+            System.out.println(\"Implicitly declared classes.\");
+        }
+        " > ImplicitClass.java
+        ${MANDREL_HOME}/bin/javac --enable-preview --release 23 ImplicitClass.java
+        ${MANDREL_HOME}/bin/java --enable-preview ImplicitClass | tee java.txt
+        ${MANDREL_HOME}/bin/native-image --enable-preview ImplicitClass
+        ./implicitclass | tee native.txt
+        diff java.txt native.txt
     - name: Upload Mandrel build
       uses: actions/upload-artifact@v3
       with:
@@ -211,8 +222,19 @@ jobs:
           ${MANDREL_HOME}/bin/native-image HelloStrict
           ./hellostrict | tee native.txt
           diff java.txt native.txt
+          rm -f java.txt native.txt
           ${MANDREL_HOME}/bin/native-image --macro:native-image-launcher
           ${MANDREL_HOME}/bin/native-image --version
+          echo "
+          void main() {
+              System.out.println(\"Implicitly declared classes.\");
+          }
+          " > ImplicitClass.java
+          ${MANDREL_HOME}/bin/javac --enable-preview --release 23 ImplicitClass.java
+          ${MANDREL_HOME}/bin/java --enable-preview ImplicitClass | tee java.txt
+          ${MANDREL_HOME}/bin/native-image --enable-preview ImplicitClass
+          ./implicitclass | tee native.txt
+          diff java.txt native.txt
       - name: Upload Mandrel build
         uses: actions/upload-artifact@v3
         with:
@@ -317,7 +339,23 @@ jobs:
           Write-Host $DIFF
           exit 1
         }
+        & Remove-Item -Path java.txt -Force
+        & Remove-Item -Path native.txt -Force
         & ${MANDREL_HOME}/bin/native-image.cmd --macro:native-image-launcher
+        Set-Content -Path 'ImplicitClass.java' -Value "
+        void main() {
+            System.out.println(`"Implicitly declared classes.`");
+        }
+        "
+        & $MANDREL_HOME\bin\javac --enable-preview --release 23 ImplicitClass.java
+        & $MANDREL_HOME\bin\java --enable-preview ImplicitClass | Set-Content java.txt
+        & $MANDREL_HOME\bin\native-image.cmd --enable-preview ImplicitClass
+        & ./implicitclass | Set-Content native.txt
+        $DIFF=(Compare-Object -CaseSensitive (Get-Content java.txt) (Get-Content native.txt))
+        if ($DIFF -ne $null) {
+          Write-Host $DIFF
+          exit 1
+        }
     - name: Rename mandrel archive
       shell: bash
       run: |
@@ -423,8 +461,19 @@ jobs:
         ${MANDREL_HOME}/bin/native-image HelloStrict
         ./hellostrict | tee native.txt
         diff java.txt native.txt
+        rm -f java.txt native.txt
         ${MANDREL_HOME}/bin/native-image --macro:native-image-launcher
         ${MANDREL_HOME}/bin/native-image --version
+        echo "
+        void main() {
+            System.out.println(\"Implicitly declared classes.\");
+        }
+        " > ImplicitClass.java
+        ${MANDREL_HOME}/bin/javac --enable-preview --release 23 ImplicitClass.java
+        ${MANDREL_HOME}/bin/java --enable-preview ImplicitClass | tee java.txt
+        ${MANDREL_HOME}/bin/native-image --enable-preview ImplicitClass
+        ./implicitclass | tee native.txt
+        diff java.txt native.txt
     - name: Upload Mandrel build
       uses: actions/upload-artifact@v3
       with:
