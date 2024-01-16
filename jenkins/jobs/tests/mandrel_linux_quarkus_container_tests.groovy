@@ -23,6 +23,7 @@ matrixJob('mandrel-linux-quarkus-container-tests') {
             absolute(860)
         }
     }
+    combinationFilter(Constants.QUARKUS_VERSION_BUILDER_COMBINATION_FILTER)
     parameters {
         stringParam('CONTAINER_RUNTIME', 'podman', 'Command used, either "docker" or "podman". Note that podman is not installed on all executors...')
         stringParam('QUARKUS_REPO', 'https://github.com/quarkusio/quarkus.git', 'Quarkus repository.')

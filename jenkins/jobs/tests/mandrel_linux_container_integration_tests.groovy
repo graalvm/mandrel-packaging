@@ -23,9 +23,7 @@ matrixJob('mandrel-linux-container-integration-tests') {
             absolute(240)
         }
     }
-//    combinationFilter(
-//            '!BUILDER_IMAGE.contains("21") || (BUILDER_IMAGE.contains("21") && QUARKUS_VERSION.contains("2.7"))'
-//    )
+    combinationFilter(Constants.QUARKUS_VERSION_BUILDER_COMBINATION_FILTER)
     parameters {
         stringParam('MANDREL_INTEGRATION_TESTS_REPO', 'https://github.com/Karm/mandrel-integration-tests.git', 'Test suite repository.')
         choiceParam(
