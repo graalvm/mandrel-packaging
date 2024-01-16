@@ -4,9 +4,7 @@ matrixJob('mandrel-master-linux-build-matrix') {
     axes {
         labelExpression('LABEL', ['el8_aarch64', 'el8'])
         text('JDK_VERSION',
-                '17',
-                '21',
-                '22'
+                '23'
         )
         text('JDK_RELEASE',
                 'ea',
@@ -19,7 +17,7 @@ matrixJob('mandrel-master-linux-build-matrix') {
         numToKeep(5)
     }
     combinationFilter(
-            '!(JDK_VERSION=="22" && JDK_RELEASE=="ga")'
+            '!(JDK_VERSION=="23" && JDK_RELEASE=="ga")'
     )
     parameters {
         choiceParam('REPOSITORY', Constants.REPOSITORY, 'Mandrel repo')
