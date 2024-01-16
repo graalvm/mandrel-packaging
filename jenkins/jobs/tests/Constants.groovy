@@ -1,34 +1,37 @@
 class Constants {
     static final ArrayList<String> QUARKUS_VERSION_RELEASED =
             [
-                    '3.5.0',
-                    '3.4.3',
-                    '3.2.7.Final',
-                    '2.16.12.Final'
+                    '3.6.5',
+                    '3.5.3',
+                    '3.2.9.Final',
+                    '2.16.12.Final',
+                    '2.13.9.Final'
             ]
 
     static final ArrayList<String> QUARKUS_VERSION_BUILDER_IMAGE =
             [
-                    '3.5.0',
-                    '3.4.3',
-                    '3.2.7.Final',
-                    '2.16.12.Final'
+                    '3.6.5',
+                    '3.5.3',
+                    '3.2.9.Final',
+                    '2.16.12.Final',
+                    '2.13.9.Final'
             ]
 
     static final ArrayList<String> QUARKUS_VERSION_RELEASED_PERF =
             [
-                    '3.5.0',
-                    '3.4.3',
-                    '3.2.7.Final',
-                    '2.13.8.Final',
-                    '2.7.7.Final'
+                    '3.6.5',
+                    '3.5.3',
+                    '3.2.9.Final',
+                    '2.16.12.Final',
+                    '2.13.9.Final'
             ]
 
     static final String QUARKUS_VERSION_RELEASED_COMBINATION_FILTER =
             //@formatter:off
             '(' +
                 '(MANDREL_BUILD.startsWith("mandrel-22") && QUARKUS_VERSION.trim().matches("^2.*")) ||' +
-                '(MANDREL_BUILD.startsWith("mandrel-23") && QUARKUS_VERSION.trim().matches("^3.*|^main.*")) ||' +
+                '(MANDREL_BUILD.startsWith("mandrel-23-0") && QUARKUS_VERSION.trim().matches("^3.2.*")) ||' +
+                '(MANDREL_BUILD.startsWith("mandrel-23-1") && QUARKUS_VERSION.trim().matches("^3.*|^main.*")) ||' +
                 '(MANDREL_BUILD.startsWith("mandrel-master") && QUARKUS_VERSION.trim().matches("^3.*|^main.*"))' +
             ') && (' +
                 '(JDK_VERSION.equals("21") && (MANDREL_BUILD.startsWith("mandrel-master") || MANDREL_BUILD.startsWith("mandrel-23-1"))) ||' +
@@ -36,7 +39,12 @@ class Constants {
                 '(JDK_VERSION.equals("22") && JDK_RELEASE.equals("ea") && (MANDREL_BUILD.startsWith("mandrel-master")))' +
             ')'
             //@formatter:on
-
+    static final String QUARKUS_VERSION_BUILDER_COMBINATION_FILTER =
+            //@formatter:off
+            '(BUILDER_IMAGE.contains("22.3") && QUARKUS_VERSION.trim().matches("^2.*")) ||' +
+            '(BUILDER_IMAGE.contains("23.0") && QUARKUS_VERSION.trim().matches("^3.2.*")) ||' +
+            '(BUILDER_IMAGE.contains("23.1") && QUARKUS_VERSION.trim().matches("^3.*|^main.*"))' +
+            //@formatter:on
     static final String QUARKUS_MODULES_SUBSET_TESTS = '' +
             'awt,' +
             'no-awt'
