@@ -39,12 +39,14 @@ class Constants {
                 '(JDK_VERSION.equals("22") && JDK_RELEASE.equals("ea") && (MANDREL_BUILD.startsWith("mandrel-master")))' +
             ')'
             //@formatter:on
+
     static final String QUARKUS_VERSION_BUILDER_COMBINATION_FILTER =
             //@formatter:off
             '(BUILDER_IMAGE.contains("22.3") && QUARKUS_VERSION.trim().matches("^2.*")) ||' +
             '(BUILDER_IMAGE.contains("23.0") && QUARKUS_VERSION.trim().matches("^3.2.*")) ||' +
-            '(BUILDER_IMAGE.contains("23.1") && QUARKUS_VERSION.trim().matches("^3.*|^main.*"))' +
+            '(BUILDER_IMAGE.contains("23.1") && QUARKUS_VERSION.trim().matches("^3.*|^main.*"))'
             //@formatter:on
+
     static final String QUARKUS_MODULES_SUBSET_TESTS = '' +
             'awt,' +
             'no-awt'
