@@ -138,10 +138,13 @@ public class build
                 FileSystem.copy(mandrelRepo.resolve(
                     Path.of("sdk", "mxbuild", PLATFORM, "native-image.exe.image-bash", "native-image.export-list")), nativeImageExport);
             }
-            logger.debugf("Copy svm-preview...");
-            final Path svmForeign = mandrelJavaHome.resolve(Path.of("lib", "svm-preview", "builder", "svm-foreign.jar"));
-            final Path svmForeignSource = PathFinder.getFirstExisting(mandrelRepo.resolve(Path.of("substratevm", "mxbuild")).toString(), "svm-foreign.jar");
-            FileSystem.copy(svmForeignSource, svmForeign);
+            if (Runtime.version().feature() > 21)
+            {
+                logger.debugf("Copy svm-preview...");
+                final Path svmForeign = mandrelJavaHome.resolve(Path.of("lib", "svm-preview", "builder", "svm-foreign.jar"));
+                final Path svmForeignSource = PathFinder.getFirstExisting(mandrelRepo.resolve(Path.of("substratevm", "mxbuild")).toString(), "svm-foreign.jar");
+                FileSystem.copy(svmForeignSource, svmForeign);
+            }
         }
 
         if (!options.skipNative)
@@ -855,7 +858,7 @@ class Mx
         Pattern.compile("\"version\"\\s*:\\s*\"([0-9.]*)\"");
 
     static final List<BuildArgs> BUILD_JAVA_STEPS = List.of(
-        BuildArgs.of("--no-native", "--dependencies", "SVM,SVM_FOREIGN,GRAAL_SDK,SVM_DRIVER,SVM_AGENT,SVM_DIAGNOSTICS_AGENT")
+        BuildArgs.of("--no-native", "--dependencies", "SVM,GRAAL_SDK,SVM_DRIVER,SVM_AGENT,SVM_DIAGNOSTICS_AGENT" + (Runtime.version().feature() > 21 ? ",SVM_FOREIGN" : ""))
         , BuildArgs.of("--only",
             build.IS_WINDOWS ?
                 "native-image.exe.image-bash," +
