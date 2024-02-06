@@ -138,10 +138,6 @@ public class build
                 FileSystem.copy(mandrelRepo.resolve(
                     Path.of("sdk", "mxbuild", PLATFORM, "native-image.exe.image-bash", "native-image.export-list")), nativeImageExport);
             }
-            logger.debugf("Copy svm-preview...");
-            final Path svmForeign = mandrelJavaHome.resolve(Path.of("lib", "svm-preview", "builder", "svm-foreign.jar"));
-            final Path svmForeignSource = PathFinder.getFirstExisting(mandrelRepo.resolve(Path.of("substratevm", "mxbuild")).toString(), "svm-foreign.jar");
-            FileSystem.copy(svmForeignSource, svmForeign);
         }
 
         if (!options.skipNative)
@@ -949,7 +945,9 @@ class Mx
             new SimpleEntry<>("org.graalvm.nativeimage:svm-diagnostics-agent.jar",
                 new Path[]{substrateDistPath.resolve("svm-diagnostics-agent.jar"), Path.of("lib", "graalvm", "svm-diagnostics-agent.jar")}),
             new SimpleEntry<>("org.graalvm.nativeimage:svm-configure.jar",
-                new Path[]{substrateDistPath.resolve("svm-configure.jar"), Path.of("lib", "graalvm", "svm-configure.jar")})
+                new Path[]{substrateDistPath.resolve("svm-configure.jar"), Path.of("lib", "graalvm", "svm-configure.jar")}),
+            new SimpleEntry<>("org.graalvm.nativeimage:svm-foreign.jar",
+                new Path[]{substrateDistPath.resolve("svm-foreign.jar"), Path.of("lib", "svm", "builder", "svm-foreign.jar")})
         );
 
         macroPaths = Map.ofEntries(
