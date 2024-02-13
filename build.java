@@ -978,6 +978,7 @@ class Mx
                 "SVM_AGENT," +
                 "SVM_DIAGNOSTICS_AGENT," +
                 "SVM_CONFIGURE," +
+                "SVM_FOREIGN," +
                 "MANDREL_PACKAGING_WRAPPER")
     );
 
