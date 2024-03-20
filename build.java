@@ -657,24 +657,29 @@ class SequentialBuild
     {
         return (artifact, paths) ->
         {
-            final Path jarPath = PathFinder.getFirstExisting(fs.mandrelRepo().resolve(paths[0]).toString(), artifact);
-            try (java.nio.file.FileSystem jarfs = FileSystems.newFileSystem(jarPath, this.getClass().getClassLoader()))
+            final String jarF = PathFinder.getFirstExisting(fs.mandrelRepo().resolve(paths[0]).toString(), artifact).toString();
+            final Path jarPath = Path.of(jarF);
+            final Path sourceJarPath = Path.of(jarF.replace(".jar", ".src.zip"));
+            for (Path jar: List.of( jarPath, sourceJarPath ))
             {
-                Path metaInfPath = jarfs.getPath("/META-INF");
-                Path manifestPath = metaInfPath.resolve("MANIFEST.MF");
-                if (!Files.exists(manifestPath))
+                try (java.nio.file.FileSystem jarfs = FileSystems.newFileSystem(jar, this.getClass().getClassLoader()))
                 {
-                    if (!Files.exists(metaInfPath))
+                    Path metaInfPath = jarfs.getPath("/META-INF");
+                    Path manifestPath = metaInfPath.resolve("MANIFEST.MF");
+                    if (!Files.exists(manifestPath))
                     {
-                        Files.createDirectory(metaInfPath);
+                        if (!Files.exists(metaInfPath))
+                        {
+                            Files.createDirectory(metaInfPath);
+                        }
+                        Files.createFile(manifestPath);
                     }
-                    Files.createFile(manifestPath);
+                    Tasks.FileReplace.replace(new Tasks.FileReplace(manifestPath, amendManifest(options)), replace);
                 }
-                Tasks.FileReplace.replace(new Tasks.FileReplace(manifestPath, amendManifest(options)), replace);
-            }
-            catch (IOException e)
-            {
-                throw new RuntimeException(e);
+                catch (IOException e)
+                {
+                    throw new RuntimeException(e);
+                }
             }
         };
     }
