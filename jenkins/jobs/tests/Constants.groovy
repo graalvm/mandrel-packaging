@@ -1,27 +1,27 @@
 class Constants {
     static final ArrayList<String> QUARKUS_VERSION_RELEASED =
             [
-                    '3.6.5',
-                    '3.5.3',
-                    '3.2.9.Final',
+                    '3.9.0',
+                    '3.8.3',
+                    '3.2.11.Final',
                     '2.16.12.Final',
                     '2.13.9.Final'
             ]
 
     static final ArrayList<String> QUARKUS_VERSION_BUILDER_IMAGE =
             [
-                    '3.6.5',
-                    '3.5.3',
-                    '3.2.9.Final',
+                    '3.9.0',
+                    '3.8.3',
+                    '3.2.11.Final',
                     '2.16.12.Final',
                     '2.13.9.Final'
             ]
 
     static final ArrayList<String> QUARKUS_VERSION_RELEASED_PERF =
             [
-                    '3.6.5',
-                    '3.5.3',
-                    '3.2.9.Final',
+                    '3.9.0',
+                    '3.8.3',
+                    '3.2.11.Final',
                     '2.16.12.Final',
                     '2.13.9.Final'
             ]
@@ -32,11 +32,12 @@ class Constants {
                 '(MANDREL_BUILD.startsWith("mandrel-22") && QUARKUS_VERSION.trim().matches("^2.*")) ||' +
                 '(MANDREL_BUILD.startsWith("mandrel-23-0") && QUARKUS_VERSION.trim().matches("^3.2.*")) ||' +
                 '(MANDREL_BUILD.startsWith("mandrel-23-1") && QUARKUS_VERSION.trim().matches("^3.*|^main.*")) ||' +
-                '(MANDREL_BUILD.startsWith("mandrel-master") && QUARKUS_VERSION.trim().matches("^3.*|^main.*"))' +
+                '(MANDREL_BUILD.startsWith("mandrel-24-0") && QUARKUS_VERSION.trim().matches("^3.8.*|^3.9.*|^main.*")) ||' +
+                '(MANDREL_BUILD.startsWith("mandrel-master") && QUARKUS_VERSION.trim().matches("^3.8.*|^3.9.*|^main.*"))' +
             ') && (' +
                 '(JDK_VERSION.equals("17") && (MANDREL_BUILD.startsWith("mandrel-22") || MANDREL_BUILD.startsWith("mandrel-23-0"))) ||' +
                 '(JDK_VERSION.equals("21") && (MANDREL_BUILD.startsWith("mandrel-24") || MANDREL_BUILD.startsWith("mandrel-23-1"))) ||' +
-                '(JDK_VERSION.equals("22") && JDK_RELEASE.equals("ea") && MANDREL_BUILD.startsWith("mandrel-24")) ||' +
+                '(JDK_VERSION.equals("22") && MANDREL_BUILD.startsWith("mandrel-24")) ||' +
                 '(JDK_VERSION.equals("23") && JDK_RELEASE.equals("ea") && MANDREL_BUILD.startsWith("mandrel-master"))' +
             ')'
             //@formatter:on
