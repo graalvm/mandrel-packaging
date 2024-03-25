@@ -81,9 +81,9 @@ matrixJob('mandrel-24-0-linux-build-matrix') {
             remote {
                 url('https://github.com/graalvm/mx.git')
             }
-            branches('refs/tags/7.16.4')
+            branches('refs/tags/7.0.3')
             extensions {
-                localBranch('7.16.4')
+                localBranch('7.0.3')
                 relativeTargetDirectory('mx')
             }
         }
