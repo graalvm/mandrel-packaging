@@ -6,7 +6,6 @@ matrixJob('mandrel-24-0-windows-build-matrix') {
     axes {
         labelExpression('LABEL', ['w2k19'])
         text('JDK_VERSION',
-                '21',
                 '22'
         )
         text('JDK_RELEASE',
@@ -19,9 +18,9 @@ matrixJob('mandrel-24-0-windows-build-matrix') {
     logRotator {
         numToKeep(10)
     }
-    combinationFilter(
-            '!(JDK_VERSION=="22" && JDK_RELEASE=="ga")'
-    )
+//  combinationFilter(
+//          '!(JDK_VERSION=="22" && JDK_RELEASE=="ga")'
+//  )
     parameters {
         choiceParam('REPOSITORY', Constants.REPOSITORY, 'Mandrel repo')
         choiceParam(
@@ -82,9 +81,9 @@ matrixJob('mandrel-24-0-windows-build-matrix') {
             remote {
                 url('https://github.com/graalvm/mx.git')
             }
-            branches('refs/tags/7.0.3')
+            branches('refs/tags/7.16.4')
             extensions {
-                localBranch('7.0.3')
+                localBranch('7.16.4')
                 relativeTargetDirectory('mx')
             }
         }
