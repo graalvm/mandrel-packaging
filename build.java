@@ -370,8 +370,6 @@ public class build
                 logger.debugf("launcherMatcher.group(1): %s", launcherMatcher.group(1));
                 logger.debugf("launcherMatcher.group(2): %s", launcherMatcher.group(2));
                 final String launcherLine = launcherMatcher.group(1) +
-                    " -XX:MaxRAM=256m" +
-                    " -XX:MaxRAMPercentage=80" +
                     " -Dorg.graalvm.version=\"" + mandrelVersion + "\"" +
                     " -Dorg.graalvm.vendorversion=\"Mandrel-" + mandrelVersion + "\"" +
                     " -Dorg.graalvm.vendor=\"" + (vendor != null ? vendor : defaultVendor) + "\"" +
