@@ -469,7 +469,7 @@ class GitHubOps
             "$ export JAVA_HOME=\"$( pwd )/mandrel-java" + jdkMajorVersionExample + "-" + version + "\"\n" +
             "$ export GRAALVM_HOME=\"${JAVA_HOME}\"\n" +
             "$ export PATH=\"${JAVA_HOME}/bin:${PATH}\"\n" +
-            "$ curl -O -J https://code.quarkus.io/d?e=io.quarkus:quarkus-resteasy-reactive\n" +
+            "$ curl -O -J https://code.quarkus.io/d?e=io.quarkus:quarkus-resteasy\n" +
             "$ unzip code-with-quarkus.zip\n" +
             "$ cd code-with-quarkus/\n" +
             "$ ./mvnw package -Pnative\n" +
@@ -483,7 +483,7 @@ class GitHubOps
             "Mandrel Quarkus builder image can be used to build a Quarkus native Linux executable right away without any GRAALVM_HOME setup.\n" +
             "\n" +
             "```bash\n" +
-            "curl -O -J  https://code.quarkus.io/d?e=io.quarkus:quarkus-resteasy-reactive\n" +
+            "curl -O -J  https://code.quarkus.io/d?e=io.quarkus:quarkus-resteasy\n" +
             "unzip code-with-quarkus.zip\n" +
             "cd code-with-quarkus\n" +
             "./mvnw package -Pnative -Dquarkus.native.container-build=true -Dquarkus.native.builder-image=quay.io/quarkus/ubi-quarkus-mandrel-builder-image:" + version + "-java" + jdkMajorVersionExample + "\n" +
@@ -493,7 +493,7 @@ class GitHubOps
             "One can use the builder image on Windows with e.g. Podman Desktop, see [Podman For Windows](https://quarkus.io/blog/podman-for-windows/).\n" +
             "\n" +
             "```batchfile\n" +
-            "powershell -c \"Invoke-WebRequest -OutFile quarkus.zip -Uri https://code.quarkus.io/d?e=io.quarkus:quarkus-resteasy-reactive\"\n" +
+            "powershell -c \"Invoke-WebRequest -OutFile quarkus.zip -Uri https://code.quarkus.io/d?e=io.quarkus:quarkus-resteasy\"\n" +
             "powershell -c \"Expand-Archive -Path quarkus.zip -DestinationPath . -Force\n" +
             "cd code-with-quarkus\n" +
             "mvnw package -Pnative -Dquarkus.native.container-build=true -Dquarkus.native.builder-image=quay.io/quarkus/ubi-quarkus-mandrel-builder-image:" + version + "-java" + jdkMajorVersionExample + "\n" +
@@ -1135,6 +1135,11 @@ class Release extends ReusableOptions implements Callable<Integer>
                 Log.warn("There was supposed to be just one JDK 21 version used." +
                     "This is unexpected: " + String.join(",", jdkVersionsUsed));
             }
+            else if (version.major == 24 && version.minor == 0 && jdkVersionsUsed.size() != 1)
+            {
+                Log.warn("There was supposed to be just one JDK 22 version used." +
+                    "This is unexpected: " + String.join(",", jdkVersionsUsed));
+            }
         }
         if (jdkVersionsUsed.isEmpty())
         {
@@ -1202,9 +1207,13 @@ class Release extends ReusableOptions implements Callable<Integer>
         {
             jdkMajorVersions = new int[]{17};
         }
-        else
+        else if (mandrelVersion.major == 23)
         {
             jdkMajorVersions = new int[]{21};
+        }
+        else
+        {
+            jdkMajorVersions = new int[]{22};
         }
 
         final String jenkinsURL = "https://ci.modcluster.io";
