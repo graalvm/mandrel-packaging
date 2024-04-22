@@ -1,27 +1,27 @@
 class Constants {
     static final ArrayList<String> QUARKUS_VERSION_RELEASED =
             [
-                    '3.9.0',
-                    '3.8.3',
-                    '3.2.11.Final',
+                    '3.9.4',
+                    '3.8.4',
+                    '3.2.12.Final',
                     '2.16.12.Final',
                     '2.13.9.Final'
             ]
 
     static final ArrayList<String> QUARKUS_VERSION_BUILDER_IMAGE =
             [
-                    '3.9.0',
-                    '3.8.3',
-                    '3.2.11.Final',
+                    '3.9.4',
+                    '3.8.4',
+                    '3.2.12.Final',
                     '2.16.12.Final',
                     '2.13.9.Final'
             ]
 
     static final ArrayList<String> QUARKUS_VERSION_RELEASED_PERF =
             [
-                    '3.9.0',
-                    '3.8.3',
-                    '3.2.11.Final',
+                    '3.9.4',
+                    '3.8.4',
+                    '3.2.12.Final',
                     '2.16.12.Final',
                     '2.13.9.Final'
             ]
@@ -139,7 +139,7 @@ class Constants {
         export QUARKUS_MODULES=$(jq -r '.include | map(."test-modules") | join(",")' quarkus/.github/native-tests.json)
     fi
     cd quarkus
-    export MAVEN_OPTS="-Xmx5g -XX:MaxMetaspaceSize=3g"
+    export MAVEN_OPTS="-Xmx5g -XX:MaxMetaspaceSize=4g"
     ./mvnw --batch-mode install -Dquickly
     ./mvnw verify -fae -f integration-tests/pom.xml -Dmaven.test.failure.ignore=true --batch-mode -Dno-format \\
         -DfailIfNoTests=false -Dnative -pl "${QUARKUS_MODULES}" \\
@@ -166,6 +166,13 @@ class Constants {
         echo There was a problem pulling the image ${BUILDER_IMAGE}. We cannot proceed.
         exit 1
     fi
+    # TestContainers tooling
+    export DOCKER_HOST=unix:///run/user/${UID}/podman/podman.sock
+    export TESTCONTAINERS_RYUK_DISABLED=true
+    systemctl --user enable podman.socket
+    systemctl --user start podman.socket
+    curl -H "Content-Type: application/json" --unix-socket /var/run/user/$UID/podman/podman.sock  http://localhost/_ping
+
     export PATH="${JAVA_HOME}/bin:${PATH}"
     mvn --batch-mode clean verify -Ptestsuite-builder-image -Dquarkus.version=${QUARKUS_VERSION} \\
         -Dquarkus.native.container-runtime=${CONTAINER_RUNTIME} -Dquarkus.native.builder-image=${BUILDER_IMAGE}
@@ -180,6 +187,7 @@ class Constants {
         export QUARKUS_MODULES=$(jq -r '.include | map(."test-modules") | join(",")' quarkus/.github/native-tests.json)
     fi
     cd quarkus
+    export CONTAINER_RUNTIME=podman
     source /etc/profile.d/jdks.sh
     set +e
        sudo ${CONTAINER_RUNTIME} stop $(sudo ${CONTAINER_RUNTIME} ps -a -q)
@@ -195,8 +203,15 @@ class Constants {
         echo There was a problem pulling the image ${BUILDER_IMAGE}. We cannot proceed.
         exit 1
     fi
+    # TestContainers tooling
+    export DOCKER_HOST=unix:///run/user/${UID}/podman/podman.sock
+    export TESTCONTAINERS_RYUK_DISABLED=true
+    systemctl --user enable podman.socket
+    systemctl --user start podman.socket
+    curl -H "Content-Type: application/json" --unix-socket /var/run/user/$UID/podman/podman.sock  http://localhost/_ping
+
     export PATH="${JAVA_HOME}/bin:${PATH}"
-    export MAVEN_OPTS="-Xmx5g -XX:MaxMetaspaceSize=3g"
+    export MAVEN_OPTS="-Xmx5g -XX:MaxMetaspaceSize=4g"
     ./mvnw --batch-mode install -Dquickly
     ./mvnw --batch-mode verify -f integration-tests/pom.xml --fail-at-end \\
         -pl ${QUARKUS_MODULES} -Dno-format -Ddocker -Dnative -Dnative.surefire.skip \\
@@ -251,7 +266,7 @@ class Constants {
       For /F "USEBACKQ Tokens=* Delims=" %%Q in (`jq -r ".include | map(.\\"test-modules\\") | join(\\"^,\\")" quarkus/.github/native-tests.json`) Do Set "QUARKUS_MODULES=%%Q"
     )
     cd quarkus
-    set "MAVEN_OPTS=-Xmx5g -XX:MaxMetaspaceSize=3g"
+    set "MAVEN_OPTS=-Xmx5g -XX:MaxMetaspaceSize=4g"
     mvnw --batch-mode install -Dquickly & mvnw verify -f integration-tests/pom.xml --fail-at-end ^
         --batch-mode -Dno-format -DfailIfNoTests=false -Dnative -Dquarkus.native.native-image-xmx=6g -pl "%QUARKUS_MODULES%"
     '''
