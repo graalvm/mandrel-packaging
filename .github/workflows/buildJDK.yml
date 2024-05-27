@@ -18,6 +18,7 @@ env:
   # This ought to be a valid version parseable by Version.parse()
   MANDREL_VERSION: 10.9.8.7-dev
   MX_PYTHON: python3
+  PYTHONIOENCODING: utf-8
 
 # The following aims to reduce CI CPU cycles by:
 # 1. Cancelling any previous builds of this PR when pushing new changes to it
