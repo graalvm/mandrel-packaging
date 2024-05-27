@@ -139,11 +139,12 @@ jobs:
         path: mandrel-java21-linux-amd64.tarxz
 
   build-and-test-on-mac:
-    name: MacOS Build and test ${{ matrix.mandrel-ref }} branch/tag
-    runs-on: macos-latest
+    name: ${{ matrix.os }} Build and test ${{ matrix.mandrel-ref }} branch/tag
+    runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
+        os: [macos-latest, macos-13]
         mandrel-ref: [mandrel/23.1]
     steps:
       - uses: actions/checkout@v3
@@ -171,17 +172,29 @@ jobs:
           key: ${{ runner.os }}-mx-${{ hashFiles('**/suite.py') }}
           restore-keys: |
             ${{ runner.os }}-${{ matrix.quarkus-name }}-maven-
-      - name: Get latest OpenJDK 21 with static libs
+      - name: Get runner architecture
+        id: arch
         run: |
-          curl -sL https://api.adoptium.net/v3/binary/latest/21/ea/mac/x64/jdk/hotspot/normal/eclipse -o jdk.tar.gz
-          curl -sL https://api.adoptium.net/v3/binary/latest/21/ea/mac/x64/staticlibs/hotspot/normal/eclipse -o jdk-static-libs.tar.gz
+          export ARCH=$(echo ${{ runner.arch }} | tr '[:upper:]' '[:lower:]' | sed 's/arm64/aarch64/')
+          echo "ARCH=${ARCH}"
+          echo "ARCH=${ARCH}" >> "$GITHUB_OUTPUT"
+      - name: Get latest OpenJDK 21 with static libs
+        env:
+          ARCH: ${{ steps.arch.outputs.ARCH }}
+        run: |
+          curl -sL https://api.adoptium.net/v3/binary/latest/21/ea/mac/${ARCH}/jdk/hotspot/normal/eclipse -o jdk.tar.gz
+          curl -sL https://api.adoptium.net/v3/binary/latest/21/ea/mac/${ARCH}/staticlibs/hotspot/normal/eclipse -o jdk-static-libs.tar.gz
           mkdir -p ${JAVA_HOME}
           tar xf jdk.tar.gz -C ${JAVA_HOME} --strip-components=1
           tar xf jdk-static-libs.tar.gz -C ${JAVA_HOME} --strip-components=1
           # work-around for https://github.com/adoptium/temurin-build/issues/3602
           pushd ${MAC_JAVA_HOME}
-          if [ -e lib/static/darwin-arm64 ]; then
-            mv lib/static/darwin-arm64 lib/static/darwin-amd64
+          if [[ -e lib/static/darwin-arm64 ]]; then
+            if [[ "$ARCH" == "x64" ]]; then
+              mv lib/static/darwin-arm64 lib/static/darwin-amd64
+            else
+              mv lib/static/darwin-arm64 lib/static/darwin-${ARCH}
+            fi
           fi
           popd
           echo ${MAC_JAVA_HOME}
@@ -193,12 +206,17 @@ jobs:
         with:
           python-version: '3.10'
       - name: Build Mandrel JDK
+        id: build
+        env:
+          ARCH: ${{ steps.arch.outputs.ARCH }}
         run: |
           export JAVA_HOME=${MAC_JAVA_HOME}
           ${MAC_JAVA_HOME}/bin/java -ea build.java --mx-home ${MX_HOME} --mandrel-repo ${MANDREL_REPO} --mandrel-version "${MANDREL_VERSION}" --archive-suffix tar.gz
           export MANDREL_VERSION_UNTIL_SPACE="$( echo ${MANDREL_VERSION} | sed -e 's/\([^ ]*\).*/\1/;t' )"
-          export ARCHIVE_NAME="mandrel-java21-darwin-amd64-${MANDREL_VERSION_UNTIL_SPACE}.tar.gz"
-          mv ${ARCHIVE_NAME} mandrel-java21-darwin-amd64.tar.gz
+          export ARCH=$( echo ${ARCH} | sed 's/x64/amd64/' )
+          export ARCHIVE_NAME="mandrel-java21-darwin-${ARCH}-${MANDREL_VERSION_UNTIL_SPACE}.tar.gz"
+          mv ${ARCHIVE_NAME} mandrel-java21-darwin-${ARCH}.tar.gz
+          echo "ARCH=${ARCH}" >> "$GITHUB_OUTPUT"
       - name: Smoke tests
         run: |
           export MANDREL_VERSION_UNTIL_SPACE="$( echo ${MANDREL_VERSION} | sed -e 's/\([^ ]*\).*/\1/;t' )"
@@ -237,9 +255,11 @@ jobs:
           diff java.txt native.txt
       - name: Upload Mandrel build
         uses: actions/upload-artifact@v3
+        env:
+          ARCH: ${{ steps.build.outputs.ARCH }}
         with:
-          name: mandrel-java21-darwin-amd64-test-build
-          path: mandrel-java21-darwin-amd64.tar.gz
+          name: mandrel-java21-darwin-${ARCH}-test-build
+          path: mandrel-java21-darwin-${ARCH}.tar.gz
 
   build-and-test-on-windows:
     name: Windows Build and test ${{ matrix.mandrel-ref }} branch/tag
