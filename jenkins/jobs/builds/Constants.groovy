@@ -12,6 +12,7 @@ class Constants {
                     'https://github.com/Karm/mandrel-packaging.git',
                     'https://github.com/zakkak/mandrel-packaging.git'
             ]
+
     static final String LINUX_BUILD_CMD = '''
     if [[ "${LABEL}" == *aarch64* ]]; then
         export JDK_ARCH=aarch64
@@ -31,6 +32,27 @@ class Constants {
         echo MANDREL_DESCRIBE="$(git describe --always --long)"
     popd
     sed -i "s~export JAVA_HOME=/usr/java/.*~export JAVA_HOME=${JAVA_HOME}~g" ./jenkins/jobs/scripts/mandrel_linux_build.sh
+    ./jenkins/jobs/scripts/mandrel_linux_build.sh
+    '''
+
+    static final String MACOS_BUILD_CMD = '''
+    export JDK_ARCH=aarch64
+    export OS=mac
+    curl -OJLs https://api.adoptium.net/v3/binary/latest/${JDK_VERSION}/${JDK_RELEASE}/${OS}/${JDK_ARCH}/jdk/hotspot/normal/eclipse
+    curl -OJLs https://api.adoptium.net/v3/binary/latest/${JDK_VERSION}/${JDK_RELEASE}/${OS}/${JDK_ARCH}/staticlibs/hotspot/normal/eclipse
+    tar -xf OpenJDK${JDK_VERSION}U-jdk*
+    export JAVA_HOME=$( pwd )/$( echo jdk-${JDK_VERSION}* )/Contents/Home/
+    if [[ ! -e "${JAVA_HOME}/bin/java" ]]; then
+        echo "Cannot find downloaded JDK. Quitting..."
+        exit 1
+    fi
+    tar -xf OpenJDK${JDK_VERSION}U-static-libs* --strip-components=3 -C ${JAVA_HOME}
+    pushd mandrel
+        echo MANDREL_DESCRIBE="$(git describe --always --long)"
+    popd
+    sed -i "s~export JAVA_HOME=/usr/java/.*~export JAVA_HOME=${JAVA_HOME}~g" ./jenkins/jobs/scripts/mandrel_linux_build.sh
+    sed -i "s~export MANDREL_HOME=.*~export MANDREL_HOME="\\$( find -name 'mandrel-*' -type d )/Contents/Home/"~g" ./jenkins/jobs/scripts/mandrel_linux_build.sh
+    mv ${JAVA_HOME}/lib/static/darwin-arm64 ${JAVA_HOME}/lib/static/darwin-aarch64
     ./jenkins/jobs/scripts/mandrel_linux_build.sh
     '''
 
