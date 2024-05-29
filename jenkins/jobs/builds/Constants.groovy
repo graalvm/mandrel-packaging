@@ -50,10 +50,13 @@ class Constants {
     pushd mandrel
         echo MANDREL_DESCRIBE="$(git describe --always --long)"
     popd
-    sed -i "s~export JAVA_HOME=/usr/java/.*~export JAVA_HOME=${JAVA_HOME}~g" ./jenkins/jobs/scripts/mandrel_linux_build.sh
-    sed -i "s~export MANDREL_HOME=.*~export MANDREL_HOME="\\$( find -name 'mandrel-*' -type d )/Contents/Home/"~g" ./jenkins/jobs/scripts/mandrel_linux_build.sh
+    export PATH=/opt/homebrew/opt/python/libexec/bin:${PATH}
+    echo ${PATH}
+    sed -i '' "s~export JAVA_HOME=/usr/java/.*~export JAVA_HOME=${JAVA_HOME}~g" ./jenkins/jobs/scripts/mandrel_linux_build.sh
+    sed -i '' "s~export MANDREL_HOME=.*~export MANDREL_HOME="\\$( find -name 'mandrel-*' -type d )/Contents/Home/"~g" ./jenkins/jobs/scripts/mandrel_linux_build.sh
     mv ${JAVA_HOME}/lib/static/darwin-arm64 ${JAVA_HOME}/lib/static/darwin-aarch64
     ./jenkins/jobs/scripts/mandrel_linux_build.sh
+    find .
     '''
 
     static final String WINDOWS_BUILD_CMD = '''
