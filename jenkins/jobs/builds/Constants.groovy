@@ -53,7 +53,7 @@ class Constants {
     export PATH=/opt/homebrew/opt/python/libexec/bin:${PATH}
     echo ${PATH}
     sed -i '' "s~export JAVA_HOME=/usr/java/.*~export JAVA_HOME=${JAVA_HOME}~g" ./jenkins/jobs/scripts/mandrel_linux_build.sh
-    sed -i '' "s~export MANDREL_HOME=.*~export MANDREL_HOME=\\"\\$( find -name 'mandrel-*' -type d )/Contents/Home/\\"~g" ./jenkins/jobs/scripts/mandrel_linux_build.sh
+    sed -i '' "s~export MANDREL_HOME=.*~export MANDREL_HOME=\\"\\$( find . -name 'mandrel-*' -type d )/Contents/Home/\\"~g" ./jenkins/jobs/scripts/mandrel_linux_build.sh
     sed -i '' "s~sha1sum~shasum -a1~g" ./jenkins/jobs/scripts/mandrel_linux_build.sh
     sed -i '' "s~sha256sum~shasum -a256~g" ./jenkins/jobs/scripts/mandrel_linux_build.sh
     if [[ -d "${JAVA_HOME}/lib/static/darwin-arm64" ]]; then
