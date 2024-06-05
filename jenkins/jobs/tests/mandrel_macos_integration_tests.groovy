@@ -14,9 +14,9 @@ matrixJob('mandrel-macos-integration-tests') {
                 'ga'
         )
         text('MANDREL_BUILD',
-                'mandrel-23-1-linux-build-matrix',
-                'mandrel-24-0-linux-build-matrix',
-                'mandrel-master-linux-build-matrix'
+                'mandrel-23-1-macos-build-matrix',
+                'mandrel-24-0-macos-build-matrix',
+                'mandrel-master-macos-build-matrix'
         )
         text('QUARKUS_VERSION', Constants.QUARKUS_VERSION_MACOS)
         labelExpression('LABEL', ['macos_aarch64'])
