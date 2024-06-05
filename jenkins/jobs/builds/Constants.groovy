@@ -56,10 +56,13 @@ class Constants {
     sed -i '' "s~export MANDREL_HOME=.*~export MANDREL_HOME=\\"\\$( find . -name 'mandrel-*' -type d )/Contents/Home/\\"~g" ./jenkins/jobs/scripts/mandrel_linux_build.sh
     sed -i '' "s~sha1sum~shasum -a1~g" ./jenkins/jobs/scripts/mandrel_linux_build.sh
     sed -i '' "s~sha256sum~shasum -a256~g" ./jenkins/jobs/scripts/mandrel_linux_build.sh
+    # https://github.com/adoptium/temurin-build/pull/3827
     if [[ -d "${JAVA_HOME}/lib/static/darwin-arm64" ]]; then
         mv ${JAVA_HOME}/lib/static/darwin-arm64 ${JAVA_HOME}/lib/static/darwin-aarch64
     fi
     ./jenkins/jobs/scripts/mandrel_linux_build.sh
+    # We align to what GraalVM CE calls its releases:
+    for m in mandrel-*.tar.gz*;do n=$(echo $m | sed 's/darwin-aarch64/macos-aarch64/g'); mv $m $n;done
     find .
     '''
 

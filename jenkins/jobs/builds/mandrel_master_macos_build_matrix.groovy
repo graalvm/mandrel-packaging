@@ -2,25 +2,25 @@ package jenkins.jobs.builds
 
 final Class Constants = new GroovyClassLoader(getClass().getClassLoader())
         .parseClass(readFileFromWorkspace("jenkins/jobs/builds/Constants.groovy"))
-matrixJob('mandrel-23-1-macos-build-matrix') {
+matrixJob('mandrel-master-macos-build-matrix') {
     axes {
         labelExpression('LABEL', ['aarch64&&macos'])
         text('JDK_VERSION',
-                '21',
+                '23',
         )
         text('JDK_RELEASE',
                 'ea',
                 'ga'
         )
     }
-    displayName('MacOS Build Matrix :: 23.1')
-    description('MacOS build for 23.1 branch.')
+    displayName('MacOS Build Matrix :: master')
+    description('MacOS build for master branch.')
     logRotator {
-        numToKeep(10)
+        numToKeep(5)
     }
-    //combinationFilter(
-    //        '!(JDK_VERSION=="21" && JDK_RELEASE=="ga")'
-    //)
+    combinationFilter(
+            '!(JDK_VERSION=="23" && JDK_RELEASE=="ga")'
+    )
     parameters {
         choiceParam('REPOSITORY', Constants.REPOSITORY, 'Mandrel repo')
         choiceParam(
@@ -33,7 +33,7 @@ matrixJob('mandrel-23-1-macos-build-matrix') {
         )
         stringParam(
                 'BRANCH_OR_TAG',
-                'mandrel/23.1',
+                'graal/master',
                 'e.g. your PR branch or a specific tag.'
         )
         choiceParam('PACKAGING_REPOSITORY', Constants.PACKAGING_REPOSITORY, 'Mandrel packaging scripts.')
@@ -47,12 +47,12 @@ matrixJob('mandrel-23-1-macos-build-matrix') {
         )
         stringParam(
                 'PACKAGING_REPOSITORY_BRANCH_OR_TAG',
-                '23.1',
+                'master',
                 'e.g. master if you use heads or some tag if you use tags.'
         )
         stringParam(
                 'MANDREL_VERSION_SUBSTRING',
-                '23.1-SNAPSHOT',
+                'master-SNAPSHOT',
                 'It must not contain spaces as it is used in tarball name too.'
         )
         matrixCombinationsParam('MATRIX_COMBINATIONS_FILTER', "", 'Choose which combinations to run')
@@ -81,9 +81,9 @@ matrixJob('mandrel-23-1-macos-build-matrix') {
             remote {
                 url('https://github.com/graalvm/mx.git')
             }
-            branches('refs/tags/6.52.0')
+            branches('*/master')
             extensions {
-                localBranch('6.52.0')
+                localBranch('master')
                 relativeTargetDirectory('mx')
             }
         }
