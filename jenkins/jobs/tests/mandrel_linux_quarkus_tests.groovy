@@ -25,7 +25,7 @@ matrixJob('mandrel-linux-quarkus-tests') {
     description('Run Quarkus TS with Mandrel distros. Quarkus versions differ according to particular Mandrel versions.')
     displayName('Linux :: Quarkus TS')
     logRotator {
-        numToKeep(30)
+        numToKeep(10)
     }
     childCustomWorkspace('${SHORT_COMBINATION}')
     wrappers {

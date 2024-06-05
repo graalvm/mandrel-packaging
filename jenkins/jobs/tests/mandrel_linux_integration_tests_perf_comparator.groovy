@@ -24,7 +24,7 @@ matrixJob('mandrel-linux-integration-tests-perf-comparator') {
     description('Run Mandrel integration tests perf profile DEBUG')
     displayName('Linux :: Integration tests :: Perf sandbox comparator')
     logRotator {
-        numToKeep(30)
+        numToKeep(10)
     }
     childCustomWorkspace('${SHORT_COMBINATION}')
     wrappers {

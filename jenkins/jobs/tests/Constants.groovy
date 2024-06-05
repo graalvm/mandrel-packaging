@@ -1,16 +1,22 @@
 class Constants {
     static final ArrayList<String> QUARKUS_VERSION_RELEASED =
             [
-                    '3.9.4',
+                    '3.11.0',
                     '3.8.4',
                     '3.2.12.Final',
                     '2.16.12.Final',
                     '2.13.9.Final'
             ]
 
+    static final ArrayList<String> QUARKUS_VERSION_MACOS =
+            [
+                    '3.11.0',
+                    '3.8.4'
+            ]
+
     static final ArrayList<String> QUARKUS_VERSION_BUILDER_IMAGE =
             [
-                    '3.9.4',
+                    '3.11.0',
                     '3.8.4',
                     '3.2.12.Final',
                     '2.16.12.Final',
@@ -19,7 +25,7 @@ class Constants {
 
     static final ArrayList<String> QUARKUS_VERSION_RELEASED_PERF =
             [
-                    '3.9.4',
+                    '3.11.0',
                     '3.8.4',
                     '3.2.12.Final',
                     '2.16.12.Final',
@@ -31,12 +37,12 @@ class Constants {
             '(' +
                 '(MANDREL_BUILD.startsWith("mandrel-22") && QUARKUS_VERSION.trim().matches("^2.*")) ||' +
                 '(MANDREL_BUILD.startsWith("mandrel-23-0") && QUARKUS_VERSION.trim().matches("^3.2.*")) ||' +
-                '(MANDREL_BUILD.startsWith("mandrel-23-1") && QUARKUS_VERSION.trim().matches("^3.*|^main.*")) ||' +
-                '(MANDREL_BUILD.startsWith("mandrel-24-0") && QUARKUS_VERSION.trim().matches("^3.8.*|^3.9.*|^main.*")) ||' +
-                '(MANDREL_BUILD.startsWith("mandrel-master") && QUARKUS_VERSION.trim().matches("^3.8.*|^3.9.*|^main.*"))' +
+                '(MANDREL_BUILD.startsWith("mandrel-23-1") && QUARKUS_VERSION.trim().matches("^3.8.*|^3.11.*|^main.*")) ||' +
+                '(MANDREL_BUILD.startsWith("mandrel-24-0") && QUARKUS_VERSION.trim().matches("^3.8.*|^3.11.*|^main.*")) ||' +
+                '(MANDREL_BUILD.startsWith("mandrel-master") && QUARKUS_VERSION.trim().matches("^3.8.*|^3.11.*|^main.*"))' +
             ') && (' +
                 '(JDK_VERSION.equals("17") && (MANDREL_BUILD.startsWith("mandrel-22") || MANDREL_BUILD.startsWith("mandrel-23-0"))) ||' +
-                '(JDK_VERSION.equals("21") && (MANDREL_BUILD.startsWith("mandrel-24") || MANDREL_BUILD.startsWith("mandrel-23-1"))) ||' +
+                '(JDK_VERSION.equals("21") && MANDREL_BUILD.startsWith("mandrel-23-1")) ||' +
                 '(JDK_VERSION.equals("22") && MANDREL_BUILD.startsWith("mandrel-24")) ||' +
                 '(JDK_VERSION.equals("23") && JDK_RELEASE.equals("ea") && MANDREL_BUILD.startsWith("mandrel-master"))' +
             ')'
@@ -46,8 +52,8 @@ class Constants {
             //@formatter:off
             '(BUILDER_IMAGE.contains("22.3") && QUARKUS_VERSION.trim().matches("^2.*")) ||' +
             '(BUILDER_IMAGE.contains("23.0") && QUARKUS_VERSION.trim().matches("^3.2.*")) ||' +
-            '(BUILDER_IMAGE.contains("23.1") && QUARKUS_VERSION.trim().matches("^3.*|^main.*")) ||' +
-            '(BUILDER_IMAGE.contains("24.0") && QUARKUS_VERSION.trim().matches("^3.*|^main.*"))'
+            '(BUILDER_IMAGE.contains("23.1") && QUARKUS_VERSION.trim().matches("^3.8.*|^3.11.*|^main.*")) ||' +
+            '(BUILDER_IMAGE.contains("24.0") && QUARKUS_VERSION.trim().matches("^3.8.*|^3.11.*|^main.*"))'
             //@formatter:on
 
     static final String QUARKUS_MODULES_SUBSET_TESTS = '' +
@@ -90,7 +96,37 @@ class Constants {
     free -h
     df -h
     ps aux | grep java
-    mvn --batch-mode clean verify -Ptestsuite -Dquarkus.version=${QUARKUS_VERSION}
+    mvn --batch-mode clean verify -Ptestsuite -DincludeTags=reproducers,perfcheck,runtimes -Dquarkus.version=${QUARKUS_VERSION}
+    '''
+
+    static final String MACOS_PREPARE_MANDREL = '''
+    # Prepare Mandrel
+    wget --quiet "https://ci.modcluster.io/view/Mandrel/job/${MANDREL_BUILD}/JDK_VERSION=${JDK_VERSION},JDK_RELEASE=${JDK_RELEASE},LABEL=${LABEL}/${MANDREL_BUILD_NUMBER}/artifact/*zip*/archive.zip"
+    if [[ ! -f "archive.zip" ]]; then
+        echo "Download failed. Quitting..."
+        exit 1
+    fi
+    unzip archive.zip
+    pushd archive
+    export MANDREL_TAR=$(ls -1 mandrel*.tar.gz)
+    tar -xvf "${MANDREL_TAR}"
+    export JAVA_HOME=$( pwd )/$( echo mandrel-java*-*/ )/Contents/Home
+    export GRAALVM_HOME=${JAVA_HOME}
+    export PATH=$JAVA_HOME/bin:/opt/apache-maven-3.9.7/bin:$PATH 
+    if [[ ! -e "${GRAALVM_HOME}/bin/native-image" ]]; then
+        echo "Cannot find native-image tool. Quitting..."
+        exit 1
+    fi
+    java --version
+    native-image --version
+    popd
+    '''
+
+    static final String MACOS_INTEGRATION_TESTS = MACOS_PREPARE_MANDREL + '''
+    free -h
+    df -h
+    ps aux | grep java
+    mvn --batch-mode clean verify -Ptestsuite -DincludeTags=reproducers,perfcheck,runtimes -Dquarkus.version=${QUARKUS_VERSION}
     '''
 
     static final String LINUX_INTEGRATION_TESTS_PERF = LINUX_PREPARE_MANDREL + '''

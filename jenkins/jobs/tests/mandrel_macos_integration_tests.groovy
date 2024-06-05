@@ -1,9 +1,10 @@
+package jenkins.jobs.tests
+
 final Class Constants = new GroovyClassLoader(getClass().getClassLoader())
         .parseClass(readFileFromWorkspace("jenkins/jobs/tests/Constants.groovy"))
-matrixJob('mandrel-windows-quarkus-tests') {
+matrixJob('mandrel-macos-integration-tests') {
     axes {
         text('JDK_VERSION',
-                '17',
                 '21',
                 '22',
                 '23'
@@ -13,17 +14,15 @@ matrixJob('mandrel-windows-quarkus-tests') {
                 'ga'
         )
         text('MANDREL_BUILD',
-                'mandrel-22-3-windows-build-matrix',
-                'mandrel-23-0-windows-build-matrix',
-                'mandrel-23-1-windows-build-matrix',
-                'mandrel-24-0-windows-build-matrix',
-                'mandrel-master-windows-build-matrix'
+                'mandrel-23-1-linux-build-matrix',
+                'mandrel-24-0-linux-build-matrix',
+                'mandrel-master-linux-build-matrix'
         )
-        text('QUARKUS_VERSION', Constants.QUARKUS_VERSION_RELEASED)
-        labelExpression('LABEL', ['w2k19'])
+        text('QUARKUS_VERSION', Constants.QUARKUS_VERSION_MACOS)
+        labelExpression('LABEL', ['aarch64&&macos'])
     }
-    description('Run Quarkus TS with Mandrel distros. Quarkus versions differ according to particular Mandrel versions.')
-    displayName('Windows :: Quarkus TS')
+    description('Run Mandrel integration tests')
+    displayName('MacOS :: Integration tests')
     logRotator {
         numToKeep(10)
     }
@@ -32,30 +31,40 @@ matrixJob('mandrel-windows-quarkus-tests') {
         preBuildCleanup()
         timestamps()
         timeout {
-            absolute(820)
+            absolute(120)
         }
     }
     combinationFilter(
             Constants.QUARKUS_VERSION_RELEASED_COMBINATION_FILTER
     )
     parameters {
-        stringParam('QUARKUS_REPO', 'https://github.com/quarkusio/quarkus.git', 'Quarkus repository.')
-        stringParam('QUARKUS_MODULES', '', 'Uses .github/native-tests.json unless specified here.')
         stringParam(
                 'MANDREL_BUILD_NUMBER',
                 'lastSuccessfulBuild',
                 'Pick a build number from MANDREL_BUILD or leave the default latest.'
         )
+        stringParam('MANDREL_INTEGRATION_TESTS_REPO', 'https://github.com/Karm/mandrel-integration-tests.git', 'Test suite repository.')
+        choiceParam(
+                'MANDREL_INTEGRATION_TESTS_REF_TYPE',
+                ['heads', 'tags'],
+                'Choose "heads" if you want to build from a branch, or "tags" if you want to build from a tag.'
+        )
+        stringParam('MANDREL_INTEGRATION_TESTS_REF', 'master', 'Branch or tag.')
         matrixCombinationsParam('MATRIX_COMBINATIONS_FILTER', "", 'Choose which combinations to run')
     }
-    triggers {
-        cron {
-            spec('0 1 * * 1,4')
+    scm {
+        git {
+            remote {
+                url('${MANDREL_INTEGRATION_TESTS_REPO}')
+            }
+            branch('refs/${MANDREL_INTEGRATION_TESTS_REF_TYPE}/${MANDREL_INTEGRATION_TESTS_REF}')
         }
     }
     steps {
-        batchFile {
-            command(Constants.WINDOWS_QUARKUS_TESTS)
+        shell('echo DESCRIPTION_STRING=Q:${QUARKUS_VERSION},M:${MANDREL_BUILD},J:${JDK_VERSION}-${JDK_RELEASE}')
+        buildDescription(/DESCRIPTION_STRING=([^\s]*)/, '\\1')
+        shell {
+            command(Constants.MACOS_INTEGRATION_TESTS)
             unstableReturn(1)
         }
     }
@@ -65,7 +74,7 @@ matrixJob('mandrel-windows-quarkus-tests') {
             retainLongStdout(false)
             healthScaleFactor(1.0)
         }
-        archiveArtifacts('**/target/*-reports/*.xml')
+        archiveArtifacts('**/target/*-reports/*.xml,**/target/archived-logs/**')
         extendedEmail {
             recipientList('karm@redhat.com')
             triggers {
