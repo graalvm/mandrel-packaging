@@ -19,7 +19,7 @@ matrixJob('mandrel-macos-integration-tests') {
                 'mandrel-master-linux-build-matrix'
         )
         text('QUARKUS_VERSION', Constants.QUARKUS_VERSION_MACOS)
-        labelExpression('LABEL', ['aarch64&&macos'])
+        labelExpression('LABEL', ['macos_aarch64'])
     }
     description('Run Mandrel integration tests')
     displayName('MacOS :: Integration tests')

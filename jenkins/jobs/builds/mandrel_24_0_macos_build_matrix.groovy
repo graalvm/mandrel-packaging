@@ -4,7 +4,7 @@ final Class Constants = new GroovyClassLoader(getClass().getClassLoader())
         .parseClass(readFileFromWorkspace("jenkins/jobs/builds/Constants.groovy"))
 matrixJob('mandrel-24-0-macos-build-matrix') {
     axes {
-        labelExpression('LABEL', ['aarch64&&macos'])
+        labelExpression('LABEL', ['macos_aarch64'])
         text('JDK_VERSION',
                 '22',
         )
