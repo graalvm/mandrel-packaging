@@ -40,13 +40,13 @@ class Constants {
     export OS=mac
     curl -OJLs https://api.adoptium.net/v3/binary/latest/${JDK_VERSION}/${JDK_RELEASE}/${OS}/${JDK_ARCH}/jdk/hotspot/normal/eclipse
     curl -OJLs https://api.adoptium.net/v3/binary/latest/${JDK_VERSION}/${JDK_RELEASE}/${OS}/${JDK_ARCH}/staticlibs/hotspot/normal/eclipse
-    tar -xf OpenJDK${JDK_VERSION}-jdk*
+    tar -xf OpenJDK*-jdk*
     export JAVA_HOME=$( pwd )/$( echo jdk-${JDK_VERSION}* )/Contents/Home/
     if [[ ! -e "${JAVA_HOME}/bin/java" ]]; then
         echo "Cannot find downloaded JDK. Quitting..."
         exit 1
     fi
-    tar -xf OpenJDK${JDK_VERSION}-static-libs* --strip-components=3 -C ${JAVA_HOME}
+    tar -xf OpenJDK*-static-libs* --strip-components=3 -C ${JAVA_HOME}
     pushd mandrel
         echo MANDREL_DESCRIBE="$(git describe --always --long)"
     popd
