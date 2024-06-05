@@ -123,7 +123,7 @@ class Constants {
     '''
 
     static final String MACOS_INTEGRATION_TESTS = MACOS_PREPARE_MANDREL + '''
-    free -h
+    vm_stat
     df -h
     ps aux | grep java
     mvn --batch-mode clean verify -Ptestsuite -DincludeTags=reproducers,perfcheck,runtimes -Dquarkus.version=${QUARKUS_VERSION}
