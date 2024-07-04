@@ -44,6 +44,7 @@ public class build
     static final Logger logger = LogManager.getLogger(build.class);
     public static final boolean IS_WINDOWS = System.getProperty("os.name").matches(".*[Ww]indows.*");
     public static final boolean IS_MAC = System.getProperty("os.name").matches(".*[Mm]ac.*");
+    public static final boolean IS_LINUX = !IS_WINDOWS && !IS_MAC;
     public static final String JDK_VERSION = "jdk" + Runtime.version().feature();
     public static final String MAVEN_VERSION_FILE = ".maven-version";
     private static final String MANDREL_RELEASE_FILE = "mandrel.release";
@@ -186,8 +187,13 @@ public class build
             else
             {
                 Path libdarwinSource = null;
+                Path libContainerSource = null;
                 Path libchelperSource = Path.of("substratevm", "mxbuild", PLATFORM, "com.oracle.svm.native.libchelper", PLATFORM, (IS_MAC ? "default" : "glibc"), "liblibchelper.a");
                 Path libjvmSource = Path.of("substratevm", "mxbuild", platformAndJDK, "com.oracle.svm.native.jvm.posix", PLATFORM, (IS_MAC ? "default" : "glibc"), "libjvm.a");
+                if (IS_LINUX)
+                {
+                    libContainerSource = Path.of("substratevm", "mxbuild", PLATFORM, "com.oracle.svm.native.libcontainer", PLATFORM, (IS_MAC ? "default" : "glibc"), "libsvm_container.a");
+                }
                 if (IS_MAC)
                 {
                     libdarwinSource = Path.of("substratevm", "mxbuild", PLATFORM, "com.oracle.svm.native.darwin", PLATFORM, "default", "libdarwin.a");
@@ -200,6 +206,10 @@ public class build
                 }
                 FileSystem.copy(mandrelRepo.resolve(libchelperSource), clibsBasePath.resolve(Path.of("liblibchelper.a")));
                 FileSystem.copy(mandrelRepo.resolve(libjvmSource), clibsBasePath.resolve(Path.of("libjvm.a")));
+                if (IS_LINUX)
+                {
+                    FileSystem.copy(mandrelRepo.resolve(libContainerSource), clibsBasePath.resolve(Path.of("libsvm_container.a")));
+                }
                 if (IS_MAC)
                 {
                     FileSystem.copy(mandrelRepo.resolve(libdarwinSource), clibsBasePath.resolve(Path.of("libdarwin.a")));
@@ -884,6 +894,7 @@ class Mx
         {
             projects = "com.oracle.svm.native.libchelper," +
                 "com.oracle.svm.native.reporterchelper," +
+                "com.oracle.svm.native.libcontainer," +
                 "com.oracle.svm.native.jvm.posix";
             if (build.IS_MAC)
             {
