@@ -894,8 +894,11 @@ class Mx
         {
             projects = "com.oracle.svm.native.libchelper," +
                 "com.oracle.svm.native.reporterchelper," +
-                "com.oracle.svm.native.libcontainer," +
                 "com.oracle.svm.native.jvm.posix";
+            if (build.IS_LINUX)
+            {
+                projects += ",com.oracle.svm.native.libcontainer";
+            }
             if (build.IS_MAC)
             {
                 projects += ",com.oracle.svm.native.darwin";
