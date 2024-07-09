@@ -6,7 +6,8 @@ matrixJob('mandrel-windows-integration-tests') {
                 '17',
                 '21',
                 '22',
-                '23'
+                '23',
+                '24'
         )
         text('JDK_RELEASE',
                 'ea',
@@ -17,6 +18,7 @@ matrixJob('mandrel-windows-integration-tests') {
                 'mandrel-23-0-windows-build-matrix',
                 'mandrel-23-1-windows-build-matrix',
                 'mandrel-24-0-windows-build-matrix',
+                'mandrel-24-1-windows-build-matrix',
                 'mandrel-master-windows-build-matrix'
         )
         text('QUARKUS_VERSION', Constants.QUARKUS_VERSION_RELEASED)

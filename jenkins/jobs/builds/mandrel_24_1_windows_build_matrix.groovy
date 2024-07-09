@@ -1,24 +1,26 @@
+package jenkins.jobs.builds
+
 final Class Constants = new GroovyClassLoader(getClass().getClassLoader())
         .parseClass(readFileFromWorkspace("jenkins/jobs/builds/Constants.groovy"))
-matrixJob('mandrel-master-windows-build-matrix') {
+matrixJob('mandrel-24-1-windows-build-matrix') {
     axes {
         labelExpression('LABEL', ['w2k19'])
         text('JDK_VERSION',
-                '24'
+                '23'
         )
         text('JDK_RELEASE',
                 'ea',
                 'ga'
         )
     }
-    displayName('Windows Build Matrix :: master')
-    description('Windows build matrix for master branch.')
+    displayName('Windows Build Matrix :: 24.1')
+    description('Windows build matrix for 24.1 branch.')
     logRotator {
-        numToKeep(5)
+        numToKeep(10)
     }
     combinationFilter(
-            '!(JDK_VERSION=="24" && JDK_RELEASE=="ga")'
-    )
+            '!(JDK_VERSION=="23" && JDK_RELEASE=="ga")'
+   )
     parameters {
         choiceParam('REPOSITORY', Constants.REPOSITORY, 'Mandrel repo')
         choiceParam(
@@ -31,7 +33,7 @@ matrixJob('mandrel-master-windows-build-matrix') {
         )
         stringParam(
                 'BRANCH_OR_TAG',
-                'graal/master',
+                'mandrel/24.1',
                 'e.g. your PR branch or a specific tag.'
         )
         choiceParam('PACKAGING_REPOSITORY', Constants.PACKAGING_REPOSITORY, 'Mandrel packaging scripts.')
@@ -45,12 +47,12 @@ matrixJob('mandrel-master-windows-build-matrix') {
         )
         stringParam(
                 'PACKAGING_REPOSITORY_BRANCH_OR_TAG',
-                'master',
+                '24.1',
                 'e.g. master if you use heads or some tag if you use tags.'
         )
         stringParam(
                 'MANDREL_VERSION_SUBSTRING',
-                'master-SNAPSHOT',
+                '24.1-SNAPSHOT',
                 'It must not contain spaces as it is used in tarball name too.'
         )
         matrixCombinationsParam('MATRIX_COMBINATIONS_FILTER', "", 'Choose which combinations to run')
@@ -79,9 +81,9 @@ matrixJob('mandrel-master-windows-build-matrix') {
             remote {
                 url('https://github.com/graalvm/mx.git')
             }
-            branches('*/master')
+            branches('refs/tags/7.5.2')
             extensions {
-                localBranch('master')
+                localBranch('7.5.2')
                 relativeTargetDirectory('mx')
             }
         }
