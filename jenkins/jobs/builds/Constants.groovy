@@ -88,6 +88,8 @@ class Constants {
         for /F "tokens=*" %%i in (\'"git describe --always --long"\') do set M_DESCRIBE=%%i
         powershell -Command "$c=(Select-String -Path \'%JAVA_HOME%\\release\' -Pattern \'^^SOURCE\').Line -replace \'SOURCE=.*:([a-z0-9]*).*\', \'$1\';Write-Host MANDREL_DESCRIBE=%M_DESCRIBE% JDK git: $c"
     popd
+    SET PYTHONIOENCODING=utf-8
+    SET PYTHONUTF8=1
     powershell -Command "$c=Get-Content \'jenkins\\jobs\\scripts\\mandrel_windows_build.bat\';$c -replace \'.*JAVA_HOME=C.*\',\'set \\"JAVA_HOME=%JAVA_HOME%"\' | Out-File -Encoding ASCII -FilePath \'jenkins\\jobs\\scripts\\mandrel_windows_build.bat\';"
     jenkins\\jobs\\scripts\\mandrel_windows_build.bat
     '''
