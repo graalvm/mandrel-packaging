@@ -6,7 +6,7 @@ matrixJob('mandrel-master-macos-build-matrix') {
     axes {
         labelExpression('LABEL', ['macos_aarch64'])
         text('JDK_VERSION',
-                '23',
+                '24',
         )
         text('JDK_RELEASE',
                 'ea',
@@ -19,7 +19,7 @@ matrixJob('mandrel-master-macos-build-matrix') {
         numToKeep(5)
     }
     combinationFilter(
-            '!(JDK_VERSION=="23" && JDK_RELEASE=="ga")'
+            '!(JDK_VERSION=="24" && JDK_RELEASE=="ga")'
     )
     parameters {
         choiceParam('REPOSITORY', Constants.REPOSITORY, 'Mandrel repo')
