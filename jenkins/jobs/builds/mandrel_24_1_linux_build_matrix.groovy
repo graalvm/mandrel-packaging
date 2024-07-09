@@ -13,8 +13,8 @@ matrixJob('mandrel-24-1-linux-build-matrix') {
                 'ga'
         )
     }
-    displayName('Linux Build Matrix :: 24.0')
-    description('Linux build for 24.0 branch.')
+    displayName('Linux Build Matrix :: 24.1')
+    description('Linux build for 24.1 branch.')
     logRotator {
         numToKeep(10)
     }

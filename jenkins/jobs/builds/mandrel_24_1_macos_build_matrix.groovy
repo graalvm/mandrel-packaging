@@ -13,8 +13,8 @@ matrixJob('mandrel-24-1-macos-build-matrix') {
                 'ga'
         )
     }
-    displayName('MacOS Build Matrix :: 24.0')
-    description('MacOS build for 24.0 branch.')
+    displayName('MacOS Build Matrix :: 24.1')
+    description('MacOS build for 24.1 branch.')
     logRotator {
         numToKeep(10)
     }
