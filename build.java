@@ -192,7 +192,7 @@ public class build
                 Path libjvmSource = Path.of("substratevm", "mxbuild", platformAndJDK, "com.oracle.svm.native.jvm.posix", PLATFORM, (IS_MAC ? "default" : "glibc"), "libjvm.a");
                 if (IS_LINUX)
                 {
-                    libContainerSource = Path.of("substratevm", "mxbuild", PLATFORM, "com.oracle.svm.native.libcontainer", PLATFORM, (IS_MAC ? "default" : "glibc"), "libsvm_container.a");
+                    libContainerSource = Path.of("substratevm", "mxbuild", PLATFORM, "com.oracle.svm.native.libcontainer", PLATFORM, "glibc", "libsvm_container.a");
                 }
                 if (IS_MAC)
                 {
