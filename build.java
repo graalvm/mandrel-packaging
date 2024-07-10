@@ -3,6 +3,8 @@ import static java.nio.file.StandardCopyOption.REPLACE_EXISTING;
 
 import java.io.File;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
 import java.io.UncheckedIOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.FileSystems;
@@ -33,6 +35,8 @@ import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Predicate;
+import java.util.jar.Attributes;
+import java.util.jar.Manifest;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -615,6 +619,8 @@ class Options
 class SequentialBuild
 {
     static final Logger LOG = LogManager.getLogger(SequentialBuild.class);
+    private static final String SPECIFICATION_VERSION_NAME = "Specification-Version";
+    private static final String IMPLEMENTATION_VERSION_NAME = "Implementation-Version";
     final FileSystem fs;
     final OperatingSystem os;
     final Mx mx;
@@ -678,7 +684,7 @@ class SequentialBuild
                         }
                         Files.createFile(manifestPath);
                     }
-                    Tasks.FileReplace.replace(new Tasks.FileReplace(manifestPath, amendManifest(options)), replace);
+                    amendManifest(manifestPath, options);
                 }
                 catch (IOException e)
                 {
@@ -693,15 +699,31 @@ class SequentialBuild
      * These attributes are accessed by Red Hat Build of Quarkus to verify that the correct artifacts are being used.
      * The value of Specification-Version is not that important, but the Implementation-Version should match the version of the native-image.
      */
-    private static Function<Stream<String>, List<String>> amendManifest(Options options)
+    private static void amendManifest(Path manifestPath, Options options)
     {
-        return lines ->
-        {
-            List<String> result = lines.collect(Collectors.toList());
-            result.add("Specification-Version: 0.0");
-            result.add("Implementation-Version: " + options.mavenVersion);
-            return result;
-        };
+        Manifest mf = null;
+        try (InputStream is = Files.newInputStream(manifestPath)) {
+            mf = new Manifest(is);
+        } catch (IOException ioe) {
+            throw new UncheckedIOException(ioe);
+        }
+        Attributes attributes = mf.getMainAttributes();
+        // Replace Implementation-Version if present, otherwise add it.
+        attributes.putValue(IMPLEMENTATION_VERSION_NAME, options.mavenVersion);
+        String specVers = attributes.getValue(SPECIFICATION_VERSION_NAME);
+        if (specVers == null) {
+            // Only add Specification-Version if not already present
+            attributes.putValue(SPECIFICATION_VERSION_NAME, "0.0");
+        }
+        String manifestVers = attributes.getValue(Attributes.Name.MANIFEST_VERSION);
+        if (manifestVers == null) {
+            attributes.putValue("Manifest-Version", "1.0");
+        }
+        try (OutputStream out = Files.newOutputStream(manifestPath, StandardOpenOption.TRUNCATE_EXISTING)) {
+            mf.write(out);
+        } catch (IOException ioe) {
+            throw new UncheckedIOException(ioe);
+        }
     }
 
 }
