@@ -1519,18 +1519,24 @@ class MxVersion implements Comparable<MxVersion>
     final int major;
     final int minor;
     final int patch;
+    final int build;
     static final MxVersion mx5_313_0 = new MxVersion("5.313.0");
 
     MxVersion(String version)
     {
         String[] split = version.split("\\.");
-        if (split.length != 3)
+        if (split.length < 3 || split.length > 4)
         {
-            throw new IllegalArgumentException("Version should be of the form MAJOR.MINOR.PATCH not " + version);
+            throw new IllegalArgumentException("Version should be of the form MAJOR.MINOR.PATCH[.BUILD] not " + version);
         }
         major = Integer.parseInt(split[0]);
         minor = Integer.parseInt(split[1]);
         patch = Integer.parseInt(split[2]);
+        if (split.length == 4) {
+            build = Integer.parseInt(split[3]);
+        } else {
+            build = 0;
+        }
     }
 
     @Override
@@ -1546,7 +1552,12 @@ class MxVersion implements Comparable<MxVersion>
         {
             return result;
         }
-        return patch - other.patch;
+        result = patch - other.patch;
+        if (result != 0)
+        {
+            return result;
+        }
+        return build - other.build;
     }
 }
 
