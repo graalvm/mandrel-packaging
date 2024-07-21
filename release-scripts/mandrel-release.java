@@ -1,5 +1,5 @@
 //usr/bin/env jbang --ea "$0" "$@" ; exit $?
-//JAVA 11+
+//JAVA 17+
 //DEPS org.eclipse.jgit:org.eclipse.jgit:5.13.0.202109080827-r
 //DEPS org.eclipse.jgit:org.eclipse.jgit.pgm:5.13.0.202109080827-r
 //DEPS org.eclipse.jgit:org.eclipse.jgit.gpg.bc:5.13.0.202109080827-r
@@ -273,7 +273,7 @@ class GitHubOps
         this.verbose = verbose;
     }
 
-    void createGHRelease(Set<String> jdkVersionsUsed, boolean linuxUpload, boolean windowsUpload)
+    void createGHRelease(Set<String> jdkVersionsUsed, boolean linuxUpload, boolean windowsUpload, boolean macUpload)
     {
         final GitHub github = connectToGitHub();
         try
@@ -326,7 +326,7 @@ class GitHubOps
                 Log.info("Release body would look like");
                 System.out.println(releaseMainBody(changelog, jdkVersionsUsed));
 
-                assets(version.toString(), jdkVersionsUsed, linuxUpload, windowsUpload).forEach(f -> Log.info("Would upload " + f.getName()));
+                assets(version.toString(), jdkVersionsUsed, linuxUpload, windowsUpload, macUpload).forEach(f -> Log.info("Would upload " + f.getName()));
                 return;
             }
 
@@ -339,7 +339,7 @@ class GitHubOps
                 .draft(true)
                 .create();
 
-            uploadAssets(version.toString(), ghRelease, jdkVersionsUsed, linuxUpload, windowsUpload);
+            uploadAssets(version.toString(), ghRelease, jdkVersionsUsed, linuxUpload, windowsUpload, macUpload);
             Log.info("Created new draft release: " + ghRelease.getHtmlUrl());
             Log.info("Please review and publish!");
         }
@@ -350,7 +350,7 @@ class GitHubOps
         }
     }
 
-    private List<File> assets(String fullVersion, Set<String> jdkVersionsUsed, boolean linuxUpload, boolean windowsUpload)
+    private List<File> assets(String fullVersion, Set<String> jdkVersionsUsed, boolean linuxUpload, boolean windowsUpload, boolean macUpload)
     {
         if (jdkVersionsUsed.isEmpty())
         {
@@ -371,14 +371,18 @@ class GitHubOps
             {
                 assets.add(new File(downloadDir, "mandrel-java" + jdkMajor + "-windows-amd64-" + fullVersion + ".zip"));
             }
+            if (macUpload)
+            {
+                assets.add(new File(downloadDir, "mandrel-java" + jdkMajor + "-macos-aarch64-" + fullVersion + ".tar.gz"));
+            }
         });
 
         return assets;
     }
 
-    private void uploadAssets(String fullVersion, GHRelease ghRelease, Set<String> jdkVersionsUsed, boolean linuxUpload, boolean windowsUpload) throws IOException
+    private void uploadAssets(String fullVersion, GHRelease ghRelease, Set<String> jdkVersionsUsed, boolean linuxUpload, boolean windowsUpload, boolean macUpload) throws IOException
     {
-        final List<File> assets = assets(fullVersion, jdkVersionsUsed, linuxUpload, windowsUpload);
+        final List<File> assets = assets(fullVersion, jdkVersionsUsed, linuxUpload, windowsUpload, macUpload);
 
         for (File f : assets)
         {
@@ -422,7 +426,7 @@ class GitHubOps
         final String jdkMajorVersionExample = ((String) jdkVersionsUsed.stream().sorted().toArray()[0]).split("\\.")[0];
         return "# Mandrel\n" +
             "\n" +
-            "Mandrel " + version + " is a downstream distribution of the [GraalVM community edition " + version.majorMinorMicro() + "](https://github.com/graalvm/graalvm-ce-builds/releases/tag/vm-" + version.majorMinorMicro() + ").\n" +
+            "Mandrel " + version + " is a downstream distribution of the GraalVM community edition.\n" +
             "Mandrel's main goal is to provide a `native-image` release specifically to support [Quarkus](https://quarkus.io).\n" +
             "The aim is to align the `native-image` capabilities from GraalVM with OpenJDK and Red Hat Enterprise Linux libraries to improve maintainability for native Quarkus applications.\n" +
             "\n" +
@@ -1077,6 +1081,8 @@ class Release extends ReusableOptions implements Callable<Integer>
     int linuxBuildNumber;
     @CommandLine.Option(names = {"--windows-job-build-number"}, description = "The build number of the complete, tested matrix job run.", defaultValue = "" + UNDEFINED)
     int windowsBuildNumber;
+    @CommandLine.Option(names = {"--macos-job-build-number"}, description = "The build number of the complete, tested matrix job run.", defaultValue = "" + UNDEFINED)
+    int macosBuildNumber;
 
     @Override
     public Integer call() throws IOException
@@ -1090,7 +1096,7 @@ class Release extends ReusableOptions implements Callable<Integer>
 
         final Set<String> jdkVersionsUsed = maybeDownloadBuildsAndGetJdkVersions(version);
         GitHubOps gitHubOps = new GitHubOps(version, dryRun, downloadDir, verbose);
-        gitHubOps.createGHRelease(jdkVersionsUsed, linuxBuildNumber != UNDEFINED, windowsBuildNumber != UNDEFINED);
+        gitHubOps.createGHRelease(jdkVersionsUsed, linuxBuildNumber != UNDEFINED, windowsBuildNumber != UNDEFINED, macosBuildNumber != UNDEFINED);
         if (!version.isFinal())
         {
             return 0;
@@ -1112,13 +1118,13 @@ class Release extends ReusableOptions implements Callable<Integer>
         final Set<String> jdkVersionsUsed = new HashSet<>();
         if (download)
         {
-            if (windowsBuildNumber != UNDEFINED || linuxBuildNumber != UNDEFINED)
+            if (windowsBuildNumber != UNDEFINED || linuxBuildNumber != UNDEFINED || macosBuildNumber != UNDEFINED)
             {
                 jdkVersionsUsed.addAll(downloadAssets(version));
             }
             else
             {
-                Log.error("At least one of --windows-job-build-number, --linux-job-build-number must be specified. Terminating.");
+                Log.error("At least one of --windows-job-build-number, --linux-job-build-number or --macos-job-build-number must be specified. Terminating.");
             }
             if (version.major == 21 && jdkVersionsUsed.size() != 2)
             {
@@ -1262,6 +1268,24 @@ class Release extends ReusableOptions implements Callable<Integer>
                 downloadFile(zipURL);
                 downloadFile(zipURL + ".sha1");
                 downloadFile(zipURL + ".sha256");
+                final String jdkv = parseSmallRemoteTextFile(matrixJobCoordinates + "/MANDREL.md", jdkVersionPattern, "jdk");
+                if (jdkv != null)
+                {
+                    jdkVersionsUsed.add(jdkv);
+                }
+            }
+        }
+        if (macosBuildNumber != UNDEFINED)
+        {
+            final String macosArchLabel = "macos_aarch64";
+            final String macosJobUrl = jenkinsURL + "/job/mandrel-" + mandrelVersion.major + "-" + mandrelVersion.minor + "-macos-build-matrix";
+            for (int jdkMajorVersion : jdkMajorVersions)
+            {
+                final String matrixJobCoordinates = macosJobUrl + "/" + macosBuildNumber + "/JDK_RELEASE=ga,JDK_VERSION=" + jdkMajorVersion + ",LABEL=" + macosArchLabel + "/artifact";
+                final String tarURL = matrixJobCoordinates + "/mandrel-java" + jdkMajorVersion + "-macos-aarch64-" + mandrelVersion + ".tar.gz";
+                downloadFile(tarURL);
+                downloadFile(tarURL + ".sha1");
+                downloadFile(tarURL + ".sha256");
                 final String jdkv = parseSmallRemoteTextFile(matrixJobCoordinates + "/MANDREL.md", jdkVersionPattern, "jdk");
                 if (jdkv != null)
                 {
