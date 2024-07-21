@@ -7,7 +7,11 @@ export JAVA_HOME=/usr/java/${OPENJDK}
 export MX_HOME=${WORKSPACE}/mx
 export PATH=${JAVA_HOME}/bin:${MX_HOME}:${PATH}
 pushd mandrel
-export JAVA_VERSION="$(java --version | sed -e 's/.*build \([^) ]*\)).*/\1/;t;d' )"
+if [[ "$(uname)" =~ "Darwin" ]]; then
+    export JAVA_VERSION="$(java --version | sed -n '2s/.*build \([^)]*\)).*/\1/p')"
+else
+    export JAVA_VERSION="$(java --version | sed -e 's/.*build \([^) ]*\)).*/\1/;t;d' )"
+fi
 popd
 ${JAVA_HOME}/bin/java -ea build.java --maven-local-repository ${MAVEN_REPO} \
 --mandrel-repo ${MANDREL_REPO} --mx-home ${MX_HOME} \
@@ -25,7 +29,7 @@ if [[ ! -e "${MANDREL_HOME}/bin/native-image" ]]; then
   echo "Cannot find native-image tool. Quitting..."
   exit 1
 fi
-export MANDREL_VERSION="$( ${MANDREL_HOME}/bin/native-image --version | cut -d ' ' -f 2 )"
+export MANDREL_VERSION="$( ${MANDREL_HOME}/bin/native-image --version | cut -d ' ' -f 2 | head -n1)"
 cat >./MANDREL.md <<EOL
 This is a dev build of Mandrel from https://github.com/graalvm/mandrel.
 Mandrel ${MANDREL_VERSION}
