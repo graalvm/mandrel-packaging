@@ -476,7 +476,7 @@ class GitHubOps
             "$ curl -O -J https://code.quarkus.io/d?e=io.quarkus:quarkus-resteasy\n" +
             "$ unzip code-with-quarkus.zip\n" +
             "$ cd code-with-quarkus/\n" +
-            "$ ./mvnw package -Pnative\n" +
+            "$ ./mvnw package -Pnative -Dmaven.compiler.release=" + jdkMajorVersionExample + "\n" +
             "$ ./target/code-with-quarkus-1.0.0-SNAPSHOT-runner\n" +
             "```\n" +
             "\n" +
@@ -490,7 +490,9 @@ class GitHubOps
             "curl -O -J  https://code.quarkus.io/d?e=io.quarkus:quarkus-resteasy\n" +
             "unzip code-with-quarkus.zip\n" +
             "cd code-with-quarkus\n" +
-            "./mvnw package -Pnative -Dquarkus.native.container-build=true -Dquarkus.native.builder-image=quay.io/quarkus/ubi-quarkus-mandrel-builder-image:" + version + "-java" + jdkMajorVersionExample + "\n" +
+            "./mvnw package -Pnative -Dquarkus.native.container-build=true \\\n" +
+            "    -Dquarkus.native.builder-image=quay.io/quarkus/ubi-quarkus-mandrel-builder-image:jdk-" + jdkMajorVersionExample + " \\\n" +
+            "    -Dmaven.compiler.release=" + jdkMajorVersionExample + "\n" +
             "./target/code-with-quarkus-1.0.0-SNAPSHOT-runner\n" +
             "```\n" +
             "\n" +
@@ -500,9 +502,9 @@ class GitHubOps
             "powershell -c \"Invoke-WebRequest -OutFile quarkus.zip -Uri https://code.quarkus.io/d?e=io.quarkus:quarkus-resteasy\"\n" +
             "powershell -c \"Expand-Archive -Path quarkus.zip -DestinationPath . -Force\n" +
             "cd code-with-quarkus\n" +
-            "mvnw package -Pnative -Dquarkus.native.container-build=true -Dquarkus.native.builder-image=quay.io/quarkus/ubi-quarkus-mandrel-builder-image:" + version + "-java" + jdkMajorVersionExample + "\n" +
-            "docker build -f src/main/docker/Dockerfile.native -t my-quarkus-mandrel-app .\n" +
-            "docker run -i --rm -p 8080:8080 my-quarkus-mandrel-app\n" +
+            "mvnw package -Pnative -Dquarkus.native.container-build=true -Dquarkus.native.builder-image=quay.io/quarkus/ubi-quarkus-mandrel-builder-image:jdk-" + jdkMajorVersionExample + " -Dmaven.compiler.release=" + jdkMajorVersionExample + "\n" +
+            "podman build -f src/main/docker/Dockerfile.native -t my-quarkus-mandrel-app .\n" +
+            "podman run -i --rm -p 8080:8080 my-quarkus-mandrel-app\n" +
             "```\n" +
             "-->\n" +
             changelog +
