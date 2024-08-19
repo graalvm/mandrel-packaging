@@ -1,6 +1,3 @@
-import static java.nio.charset.StandardCharsets.UTF_8;
-import static java.nio.file.StandardCopyOption.REPLACE_EXISTING;
-
 import java.io.File;
 import java.io.IOException;
 import java.io.UncheckedIOException;
@@ -38,6 +35,9 @@ import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
+
+import static java.nio.charset.StandardCharsets.UTF_8;
+import static java.nio.file.StandardCopyOption.REPLACE_EXISTING;
 
 public class build
 {
@@ -353,8 +353,21 @@ public class build
 
     private static String getMandrelVersion(FileSystem fs, OperatingSystem os, Path mandrelRepo)
     {
-        String mandrelVersion = os.exec(Mx.mandrelVersion(fs.mxHome(), fs.mandrelRepo()), true).get(0);
-
+        final Pattern startsWithNumber = Pattern.compile("^\\d.*");
+        String mandrelVersion = null;
+        final List<String> o = os.exec(Mx.mandrelVersion(fs.mxHome(), fs.mandrelRepo()), true);
+        for (String s : o)
+        {
+            logger.info("mx's graalvm-version output: " + s);
+            if (mandrelVersion == null && startsWithNumber.matcher(s).matches())
+            {
+                mandrelVersion = s;
+            }
+        }
+        if (mandrelVersion == null)
+        {
+            throw new RuntimeException("Could not determine Mandrel version from mx graalvm-version output");
+        }
         if (mandrelVersion.endsWith("-dev"))
         {
             final Tasks.Exec command = Tasks.Exec.of(Arrays.asList("git", "rev-parse", "--short", "HEAD"), mandrelRepo);
