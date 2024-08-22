@@ -158,7 +158,7 @@ jobs:
         with:
           repository: graalvm/mx.git
           fetch-depth: 1
-          ref: 6.45.0
+          ref: 6.52.0
           path: ${{ github.workspace }}/mx
       - uses: actions/cache@v3
         with:
