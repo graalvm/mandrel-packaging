@@ -424,6 +424,18 @@ class GitHubOps
     private String releaseMainBody(String changelog, Set<String> jdkVersionsUsed)
     {
         final String jdkMajorVersionExample = ((String) jdkVersionsUsed.stream().sorted().toArray()[0]).split("\\.")[0];
+        final int jdkMajorVersion = Integer.parseInt(jdkMajorVersionExample);
+        final String codeWithQuarkusURL;
+        if(jdkMajorVersion > 17)
+        {
+            codeWithQuarkusURL = "https://code.quarkus.io/d?e=resteasy-reactive&cn=code.quarkus.io";
+        }
+        else
+        {
+            codeWithQuarkusURL = "https://code.quarkus.io/d?j=17&e=resteasy-reactive&S=io.quarkus.platform%3A3.2&cn=code.quarkus.io";
+        }
+
+
         return "# Mandrel\n" +
             "\n" +
             "Mandrel " + version + " is a downstream distribution of the GraalVM community edition.\n" +
@@ -473,10 +485,10 @@ class GitHubOps
             "$ export JAVA_HOME=\"$( pwd )/mandrel-java" + jdkMajorVersionExample + "-" + version + "\"\n" +
             "$ export GRAALVM_HOME=\"${JAVA_HOME}\"\n" +
             "$ export PATH=\"${JAVA_HOME}/bin:${PATH}\"\n" +
-            "$ curl -O -J https://code.quarkus.io/d?e=io.quarkus:quarkus-resteasy\n" +
+            "$ curl -O -J " + codeWithQuarkusURL + "\n" +
             "$ unzip code-with-quarkus.zip\n" +
             "$ cd code-with-quarkus/\n" +
-            "$ ./mvnw package -Pnative -Dmaven.compiler.release=" + jdkMajorVersionExample + "\n" +
+            "$ ./mvnw package -Pnative\n" +
             "$ ./target/code-with-quarkus-1.0.0-SNAPSHOT-runner\n" +
             "```\n" +
             "\n" +
@@ -487,22 +499,21 @@ class GitHubOps
             "Mandrel Quarkus builder image can be used to build a Quarkus native Linux executable right away without any GRAALVM_HOME setup.\n" +
             "\n" +
             "```bash\n" +
-            "curl -O -J  https://code.quarkus.io/d?e=io.quarkus:quarkus-resteasy\n" +
+            "curl -O -J " + codeWithQuarkusURL + "\n" +
             "unzip code-with-quarkus.zip\n" +
             "cd code-with-quarkus\n" +
             "./mvnw package -Pnative -Dquarkus.native.container-build=true \\\n" +
             "    -Dquarkus.native.builder-image=quay.io/quarkus/ubi-quarkus-mandrel-builder-image:jdk-" + jdkMajorVersionExample + " \\\n" +
-            "    -Dmaven.compiler.release=" + jdkMajorVersionExample + "\n" +
             "./target/code-with-quarkus-1.0.0-SNAPSHOT-runner\n" +
             "```\n" +
             "\n" +
             "One can use the builder image on Windows with e.g. Podman Desktop, see [Podman For Windows](https://quarkus.io/blog/podman-for-windows/).\n" +
             "\n" +
             "```batchfile\n" +
-            "powershell -c \"Invoke-WebRequest -OutFile quarkus.zip -Uri https://code.quarkus.io/d?e=io.quarkus:quarkus-resteasy\"\n" +
+            "powershell -c \"Invoke-WebRequest -OutFile quarkus.zip -Uri " + codeWithQuarkusURL + "\"\n" +
             "powershell -c \"Expand-Archive -Path quarkus.zip -DestinationPath . -Force\n" +
             "cd code-with-quarkus\n" +
-            "mvnw package -Pnative -Dquarkus.native.container-build=true -Dquarkus.native.builder-image=quay.io/quarkus/ubi-quarkus-mandrel-builder-image:jdk-" + jdkMajorVersionExample + " -Dmaven.compiler.release=" + jdkMajorVersionExample + "\n" +
+            "mvnw package -Pnative -Dquarkus.native.container-build=true -Dquarkus.native.builder-image=quay.io/quarkus/ubi-quarkus-mandrel-builder-image:jdk-" + jdkMajorVersionExample + "\n" +
             "podman build -f src/main/docker/Dockerfile.native -t my-quarkus-mandrel-app .\n" +
             "podman run -i --rm -p 8080:8080 my-quarkus-mandrel-app\n" +
             "```\n" +
