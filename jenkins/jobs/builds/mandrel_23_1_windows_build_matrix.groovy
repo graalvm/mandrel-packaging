@@ -22,7 +22,7 @@ matrixJob('mandrel-23-1-windows-build-matrix') {
 //            '!(JDK_VERSION=="21" && JDK_RELEASE=="ga")'
 //    )
     parameters {
-        choiceParam('REPOSITORY', Constants.REPOSITORY, 'Mandrel repo')
+        choiceParam('REPOSITORY', Constants.REPOSITORY+Constants.REPOSITORY_M23_1_JDK21, 'Mandrel repo')
         choiceParam(
                 'HEADS_OR_TAGS',
                 [
