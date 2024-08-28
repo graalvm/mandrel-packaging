@@ -6,6 +6,13 @@ class Constants {
                     'https://github.com/Karm/graal.git',
                     'https://github.com/zakkak/mandrel.git'
             ]
+    static final ArrayList<String> REPOSITORY_M23_1_JDK21 =
+            [
+                    'https://github.com/graalvm/graalvm-community-jdk21u.git',
+                    'https://github.com/jerboaa/graalvm-for-jdk21-community-backports.git',
+                    'https://github.com/zakkak/graalvm-community-jdk21u.git',
+                    'https://github.com/Karm/graalvm-community-jdk21u.git'
+            ]
     static final ArrayList<String> PACKAGING_REPOSITORY =
             [
                     'https://github.com/mandrel/mandrel-packaging.git',
