@@ -318,13 +318,22 @@ class GitHubOps
                 Log.error("Please create tag " + tag + " and try again");
             }
 
-            final String changelog = createChangelog(repository, milestone, tags);
+            /*
+             * There used to be more JDK versions per 1 Mandrel release, e.g. Mandrel 21.3 could work with both
+             * Java 11 and 17. We aim at aligning releases with Java releases now, and we could simplify this code as
+             * soon as we completely get rid of all Mandrel 22.3.
+             * Mandrel 25 for JDK 25 will conclude the renaming.
+             */
+            final List<String> jdkVersions = jdkVersionsUsed.stream().filter(v -> v.length() > 2).sorted().toList();
+            final String changelog = createChangelog(repository, milestone, tags, jdkVersions.size() == 1 ? jdkVersions.get(0) : null);
+            // e.g. deals with "23+37" too. Things like 24-beta+16-ea should not happen in a release script.
+            final String jdkVersionForExampleURLs = jdkVersions.get(0).split("[+.]")[0].trim();
 
             if (dryRun)
             {
                 Log.warn("Skipping release due to --dry-run");
                 Log.info("Release body would look like");
-                System.out.println(releaseMainBody(changelog, jdkVersionsUsed));
+                System.out.println(releaseMainBody(changelog, jdkVersionsUsed, jdkVersionForExampleURLs));
 
                 assets(version.toString(), jdkVersionsUsed, linuxUpload, windowsUpload, macUpload).forEach(f -> Log.info("Would upload " + f.getName()));
                 return;
@@ -335,7 +344,7 @@ class GitHubOps
             final GHRelease ghRelease = repository.createRelease(tag)
                 .name("Mandrel " + version)
                 .prerelease(!version.isFinal())
-                .body(releaseMainBody(changelog, jdkVersionsUsed))
+                .body(releaseMainBody(changelog, jdkVersionsUsed, jdkVersionForExampleURLs))
                 .draft(true)
                 .create();
 
@@ -361,7 +370,11 @@ class GitHubOps
 
         jdkVersionsUsed.forEach(jdkVersion ->
         {
-            final String jdkMajor = jdkVersion.split("\\+")[0].split("\\.")[0];
+            final String jdkMajor = jdkVersion.split("[+.]")[0];
+            if (jdkMajor.isBlank())
+            {
+                Log.error("JDK version must not be empty. We need it for `mandrel-javaMAJOR...' artifacts names.");
+            }
             if (linuxUpload)
             {
                 assets.add(new File(downloadDir, "mandrel-java" + jdkMajor + "-linux-amd64-" + fullVersion + ".tar.gz"));
@@ -421,12 +434,11 @@ class GitHubOps
         }
     }
 
-    private String releaseMainBody(String changelog, Set<String> jdkVersionsUsed)
+    private String releaseMainBody(String changelog, Set<String> jdkVersionsUsed, String jdkMajorVersionExample)
     {
-        final String jdkMajorVersionExample = ((String) jdkVersionsUsed.stream().sorted().toArray()[0]).split("\\.")[0];
         final int jdkMajorVersion = Integer.parseInt(jdkMajorVersionExample);
         final String codeWithQuarkusURL;
-        if(jdkMajorVersion > 17)
+        if (jdkMajorVersion > 17)
         {
             codeWithQuarkusURL = "https://code.quarkus.io/d?e=resteasy-reactive&cn=code.quarkus.io";
         }
@@ -524,7 +536,7 @@ class GitHubOps
             "OpenJDK" + (jdkVersionsUsed.size() > 1 ? "s" : "") + " used: " + String.join(", ", jdkVersionsUsed) + "\n";
     }
 
-    private String createChangelog(GHRepository repository, GHMilestone milestone, List<GHTag> tags) throws IOException
+    private String createChangelog(GHRepository repository, GHMilestone milestone, List<GHTag> tags, String jdkVersionUsed) throws IOException
     {
         assert milestone != null;
         Log.info("Getting merged PRs for " + milestone.getTitle() + " (" + milestone.getNumber() + ")");
@@ -532,7 +544,7 @@ class GitHubOps
             .filter(pr -> includeInChangelog(pr, milestone));
         final Map<Integer, List<GHPullRequest>> collect = mergedPRsInMilestone.collect(Collectors.groupingBy(this::getGroup));
         StringBuilder changelogBuilder = new StringBuilder("\n### Changelog\n\n");
-        final String latestReleasedTag = getLatestReleasedTag(tags);
+        final String latestReleasedTag = getLatestReleasedTag(tags, jdkVersionUsed);
         final List<GHPullRequest> noteworthyPRs = collect.get(0);
         if (noteworthyPRs != null && noteworthyPRs.size() != 0)
         {
@@ -565,7 +577,7 @@ class GitHubOps
      * @param tags
      * @return The latest final version
      */
-    private String getLatestReleasedTag(List<GHTag> tags)
+    private String getLatestReleasedTag(List<GHTag> tags, String jdkVersionUsed)
     {
         // Figuring out the last released Tag for pre-releases is not trivial so
         // just return null and let the user manually update the release notes
@@ -590,7 +602,17 @@ class GitHubOps
         if (finalVersions.size() == 1)
         {
             // There is no Mandrel release before that major.minor.micro, return upstream graal tag instead
-            final String upstreamTag = "vm-" + version.majorMinorMicro();
+            final String upstreamTag;
+            if (version.major >= 24 && jdkVersionUsed != null)
+            {
+                // e.g. OpenJDK used: 23+37 is actually tagged as jdk-23.0.0
+                final String v = jdkVersionUsed.split("[+]")[0];
+                upstreamTag = "jdk-" + (v.contains(".") ? v : v + ".0.0");
+            }
+            else
+            {
+                upstreamTag = "vm-" + version.majorMinorMicro();
+            }
             if (tags.stream().noneMatch(x -> x.getName().equals(upstreamTag)))
             {
                 Log.warn("Upstream tag " + upstreamTag + " not found in " + GitOps.REPOSITORY_NAME + " please add the upstream tag manually in the release text.");
@@ -1134,6 +1156,10 @@ class Release extends ReusableOptions implements Callable<Integer>
             if (windowsBuildNumber != UNDEFINED || linuxBuildNumber != UNDEFINED || macosBuildNumber != UNDEFINED)
             {
                 jdkVersionsUsed.addAll(downloadAssets(version));
+                jdkVersionsUsed.stream().filter(String::isBlank).findAny()
+                    .ifPresent(s -> Log.warn("One of the Jenkins job Artifacts sets has an empty JDK version " +
+                        "in its MANDREL.md, e.g. [1]. It could be a benign parsing error, but you must download the artifact " +
+                        "and check manually. [1] https://ci.modcluster.io/view/Mandrel/job/mandrel-24-1-macos-build-matrix/37/JDK_RELEASE=ga,JDK_VERSION=23,LABEL=macos_aarch64/artifact/MANDREL.md"));
             }
             else
             {
@@ -1141,22 +1167,27 @@ class Release extends ReusableOptions implements Callable<Integer>
             }
             if (version.major == 21 && jdkVersionsUsed.size() != 2)
             {
-                Log.warn("There are supposed to be 2 distinct JDK versions used, one for JDK 17 and one for JDK 11." +
+                Log.warn("There are supposed to be 2 distinct JDK versions used, one for JDK 17 and one for JDK 11. " +
                     "This is unexpected: " + String.join(",", jdkVersionsUsed));
             }
             else if ((version.major == 22 || (version.major == 23 && version.minor == 0)) && jdkVersionsUsed.size() != 1)
             {
-                Log.warn("There was supposed to be just one JDK 17 version used." +
+                Log.warn("There was supposed to be just one JDK 17 version used. " +
                     "This is unexpected: " + String.join(",", jdkVersionsUsed));
             }
             else if (version.major == 23 && version.minor == 1 && jdkVersionsUsed.size() != 1)
             {
-                Log.warn("There was supposed to be just one JDK 21 version used." +
+                Log.warn("There was supposed to be just one JDK 21 version used. " +
                     "This is unexpected: " + String.join(",", jdkVersionsUsed));
             }
             else if (version.major == 24 && version.minor == 0 && jdkVersionsUsed.size() != 1)
             {
-                Log.warn("There was supposed to be just one JDK 22 version used." +
+                Log.warn("There was supposed to be just one JDK 22 version used. " +
+                    "This is unexpected: " + String.join(",", jdkVersionsUsed));
+            }
+            else if (version.major == 24 && version.minor == 1 && jdkVersionsUsed.size() != 1)
+            {
+                Log.warn("There was supposed to be just one JDK 23 version used. " +
                     "This is unexpected: " + String.join(",", jdkVersionsUsed));
             }
         }
@@ -1230,9 +1261,17 @@ class Release extends ReusableOptions implements Callable<Integer>
         {
             jdkMajorVersions = new int[]{21};
         }
-        else
+        else if (mandrelVersion.major == 24 && mandrelVersion.minor == 0)
         {
             jdkMajorVersions = new int[]{22};
+        }
+        else if (mandrelVersion.major == 24 && mandrelVersion.minor == 1)
+        {
+            jdkMajorVersions = new int[]{23};
+        }
+        else
+        {
+            jdkMajorVersions = new int[]{24};
         }
 
         final String jenkinsURL = "https://ci.modcluster.io";
