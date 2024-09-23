@@ -44,15 +44,23 @@ https://bugs.eclipse.org/bugs/show_bug.cgi?id=386908
 
 Then `./mandrel-release.java release -m <path/to/mandrel> -f <username/mandrel-fork>` must be invoked which is responsible for:
 
+e.g. 
+
+```bash
+$ ./mandrel-release.java release --download --linux-job-build-number=36 \
+--windows-job-build-number=28 --macos-job-build-number=37 \
+-m /home/karm/tmp/mandrel -s Final -f Karm/graal --verbose
+```
+
 1. Creating a new GitHub release for the new tag including a changelog
 2. Marking the suite.py files as non-releases
 3. Bumping the version in suite.py files
 4. Creating a new branch and commiting the changes there
 5. Pushing the changes to a fork
 6. Openning a PR
-6. TODO Open PR for a new image on quarkus-images based on the new release
-7. TODO send out emails to relevant lists 
-8. TODO? Send a Slack message
+7. Uploading the binaries to the GitHub release
+8. TODO Open PR for a new image on quarkus-images based on the new release
+9. TODO send out emails to relevant lists
 
 For usage information please run `./mandrel-release.java -h`
 
@@ -87,3 +95,100 @@ For usage information please run `./mandrel-release.java -h`
 The changelog is a list of merged PRs in the GH milestone of the version being
 released that are also marked with the label `backport` or
 `release/noteworthy-feature`.
+
+## Example session
+
+```bash
+$ ./mandrel-release.java release --download --linux-job-build-number=36 --windows-job-build-number=28 --macos-job-build-number=37 -m /home/karm/tmp/mandrel -s Final -f Karm/graal --verbose
+[INFO] Current version is 24.1.0.0
+[INFO] Downloading mandrel-java23-linux-aarch64-24.1.0.0-Final.tar.gz...
+[INFO] Downloading mandrel-java23-linux-aarch64-24.1.0.0-Final.tar.gz.sha1...
+[INFO] Downloading mandrel-java23-linux-aarch64-24.1.0.0-Final.tar.gz.sha256...
+[DEBUG] URL: https://ci.modcluster.io/job/mandrel-24-1-linux-build-matrix/36/JDK_RELEASE=ga,JDK_VERSION=23,LABEL=el8_aarch64/artifact/MANDREL.md file contents: This is a dev build of Mandrel from https://github.com/graalvm/mandrel.
+Mandrel 23
+Runtime
+64-Bit
+OpenJDK used: 23+37
+
+[INFO] Downloading mandrel-java23-linux-amd64-24.1.0.0-Final.tar.gz...
+[INFO] Downloading mandrel-java23-linux-amd64-24.1.0.0-Final.tar.gz.sha1...
+[INFO] Downloading mandrel-java23-linux-amd64-24.1.0.0-Final.tar.gz.sha256...
+[DEBUG] URL: https://ci.modcluster.io/job/mandrel-24-1-linux-build-matrix/36/JDK_RELEASE=ga,JDK_VERSION=23,LABEL=el8/artifact/MANDREL.md file contents: This is a dev build of Mandrel from https://github.com/graalvm/mandrel.
+Mandrel 23
+Runtime
+64-Bit
+OpenJDK used: 23+37
+
+[INFO] Downloading mandrel-java23-windows-amd64-24.1.0.0-Final.zip...
+[INFO] Downloading mandrel-java23-windows-amd64-24.1.0.0-Final.zip.sha1...
+[INFO] Downloading mandrel-java23-windows-amd64-24.1.0.0-Final.zip.sha256...
+[DEBUG] URL: https://ci.modcluster.io/job/mandrel-24-1-windows-build-matrix/28/JDK_RELEASE=ga,JDK_VERSION=23,LABEL=w2k19/artifact/MANDREL.md file contents: This is a dev build of Mandrel from https://github.com/graalvm/mandrel.
+Mandrel 64-Bit
+OpenJDK used: 23+37
+
+[INFO] Downloading mandrel-java23-macos-aarch64-24.1.0.0-Final.tar.gz...
+[INFO] Downloading mandrel-java23-macos-aarch64-24.1.0.0-Final.tar.gz.sha1...
+[INFO] Downloading mandrel-java23-macos-aarch64-24.1.0.0-Final.tar.gz.sha256...
+[DEBUG] URL: https://ci.modcluster.io/job/mandrel-24-1-macos-build-matrix/37/JDK_RELEASE=ga,JDK_VERSION=23,LABEL=macos_aarch64/artifact/MANDREL.md file contents: This is a dev build of Mandrel from https://github.com/graalvm/mandrel.
+Mandrel 23
+Runtime
+64-Bit
+OpenJDK used: 23+37
+
+[DEBUG] Getting all open milestones
+[DEBUG] Got 5 milestones
+[DEBUG] Found milestone 87
+[INFO] Getting merged PRs for 24.1.0.0-Final (87)
+[DEBUG] Checking if PR #757 is merged
+[DEBUG] Checking if PR #751 is merged
+[DEBUG] Checking if PR #750 is merged
+24.1.0.0-Final
+[INFO] Closed milestone 24.1.0.0-Final (87)
+[INFO] Created milestone 24.1.0.1-Final (110)
+[INFO] Uploading mandrel-java23-linux-amd64-24.1.0.0-Final.tar.gz
+[INFO] Uploaded mandrel-java23-linux-amd64-24.1.0.0-Final.tar.gz
+[INFO] Uploading mandrel-java23-linux-amd64-24.1.0.0-Final.tar.gz.sha1
+[INFO] Uploaded mandrel-java23-linux-amd64-24.1.0.0-Final.tar.gz.sha1
+[INFO] Uploading mandrel-java23-linux-amd64-24.1.0.0-Final.tar.gz.sha256
+[INFO] Uploaded mandrel-java23-linux-amd64-24.1.0.0-Final.tar.gz.sha256
+[INFO] Uploading mandrel-java23-linux-aarch64-24.1.0.0-Final.tar.gz
+[INFO] Uploaded mandrel-java23-linux-aarch64-24.1.0.0-Final.tar.gz
+[INFO] Uploading mandrel-java23-linux-aarch64-24.1.0.0-Final.tar.gz.sha1
+[INFO] Uploaded mandrel-java23-linux-aarch64-24.1.0.0-Final.tar.gz.sha1
+[INFO] Uploading mandrel-java23-linux-aarch64-24.1.0.0-Final.tar.gz.sha256
+[INFO] Uploaded mandrel-java23-linux-aarch64-24.1.0.0-Final.tar.gz.sha256
+[INFO] Uploading mandrel-java23-windows-amd64-24.1.0.0-Final.zip
+[INFO] Uploaded mandrel-java23-windows-amd64-24.1.0.0-Final.zip
+[INFO] Uploading mandrel-java23-windows-amd64-24.1.0.0-Final.zip.sha1
+[INFO] Uploaded mandrel-java23-windows-amd64-24.1.0.0-Final.zip.sha1
+[INFO] Uploading mandrel-java23-windows-amd64-24.1.0.0-Final.zip.sha256
+[INFO] Uploaded mandrel-java23-windows-amd64-24.1.0.0-Final.zip.sha256
+[INFO] Uploading mandrel-java23-macos-aarch64-24.1.0.0-Final.tar.gz
+[INFO] Uploaded mandrel-java23-macos-aarch64-24.1.0.0-Final.tar.gz
+[INFO] Uploading mandrel-java23-macos-aarch64-24.1.0.0-Final.tar.gz.sha1
+[INFO] Uploaded mandrel-java23-macos-aarch64-24.1.0.0-Final.tar.gz.sha1
+[INFO] Uploading mandrel-java23-macos-aarch64-24.1.0.0-Final.tar.gz.sha256
+[INFO] Uploaded mandrel-java23-macos-aarch64-24.1.0.0-Final.tar.gz.sha256
+[INFO] Created new draft release: https://github.com/graalvm/mandrel/releases/tag/untagged-9a996555616b0f035344
+[INFO] Please review and publish!
+[INFO] New version will be 24.1.0.1
+2024-09-23 19:55:54 WARN  FS:752 - locking FileBasedConfig[/home/karm/.config/jgit/config] failed after 5 retries
+[INFO] Git remote mandrel-release-fork points to git@github.com:Karm/graal
+[INFO] Created new branch develop/mandrel-24.1.0.1-Final based on mandrel/24.1
+[INFO] Updating /home/karm/tmp/mandrel/visualizer/mx.visualizer/suite.py
+[INFO] Updating /home/karm/tmp/mandrel/compiler/mx.compiler/suite.py
+[INFO] Updating /home/karm/tmp/mandrel/espresso/mx.espresso/suite.py
+[INFO] Updating /home/karm/tmp/mandrel/regex/mx.regex/suite.py
+[INFO] Updating /home/karm/tmp/mandrel/sdk/mx.sdk/suite.py
+[INFO] Updating /home/karm/tmp/mandrel/substratevm/mx.substratevm/suite.py
+[INFO] Updating /home/karm/tmp/mandrel/sulong/mx.sulong/suite.py
+[INFO] Updating /home/karm/tmp/mandrel/tools/mx.tools/suite.py
+[INFO] Updating /home/karm/tmp/mandrel/truffle/mx.truffle/suite.py
+[INFO] Updating /home/karm/tmp/mandrel/vm/mx.vm/suite.py
+[INFO] Updating /home/karm/tmp/mandrel/wasm/mx.wasm/suite.py
+[INFO] Updated suites
+[INFO] Changes commited
+[INFO] Changes pushed to remote mandrel-release-fork
+[INFO] Checked out mandrel/24.1
+[INFO] Pull request https://github.com/graalvm/mandrel/pull/795 created
+```
