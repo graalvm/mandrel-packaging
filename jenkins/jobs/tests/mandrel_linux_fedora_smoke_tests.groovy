@@ -10,7 +10,6 @@ matrixJob('mandrel-linux-fedora-smoke-tests') {
                 'quay.io/quarkus/ubi-quarkus-mandrel-builder-image:jdk-22',
                 'quay.io/quarkus/ubi-quarkus-mandrel-builder-image:jdk-23'
         )
-        text('QUARKUS_VERSION', Constants.QUARKUS_VERSION_RELEASED)
         labelExpression('LABEL', ['fedora_aarch64', 'el8_aarch64', 'el8'])
     }
     description('Run Mandrel smoke test, vanilla Fedora vs. RHEL 8')
