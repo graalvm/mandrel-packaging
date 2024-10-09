@@ -34,6 +34,9 @@ matrixJob('mandrel-linux-fedora-smoke-tests') {
     steps {
         shell {
             command('''
+            getenforce
+            podman info
+            uname -a
             echo 'public class Main{public static void main(String[] args){System.out.println("Hello.");}}' > Main.java
             podman pull ${BUILDER_IMAGE}
             podman run -u 0:0 -t --entrypoint javac -v $(pwd):/project:z ${BUILDER_IMAGE} Main.java
