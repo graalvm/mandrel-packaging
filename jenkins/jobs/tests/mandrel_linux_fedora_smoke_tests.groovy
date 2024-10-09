@@ -25,7 +25,6 @@ matrixJob('mandrel-linux-fedora-smoke-tests') {
             absolute(120)
         }
     }
-    combinationFilter(Constants.QUARKUS_VERSION_BUILDER_COMBINATION_FILTER)
     triggers {
         cron {
             spec('0 1 * * 3,6')
