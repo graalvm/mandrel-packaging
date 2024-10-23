@@ -491,10 +491,12 @@ class GitHubOps
             "```\n" +
             "\n" +
             "## Quick start Linux/MacOS\n" +
-            "Mac users: mandrel-java" + jdkMajorVersionExample + "-macos-aarch64-" + version + ".tar.gz\n" +
+            "Mac users: \n" +
+            "  * Use artifact mandrel-java" + jdkMajorVersionExample + "-macos-aarch64-" + version + ".tar.gz\n" +
+            "  * Use JAVA_HOME=\"$( pwd )/mandrel-java" + jdkMajorVersionExample + "-" + version + "/Contents/Home\"\n" +
             "\n" +
             "```\n" +
-            "$ curl -O -J \"https://github.com/graalvm/mandrel/releases/download/mandrel-" + version + "/mandrel-java" + jdkMajorVersionExample + "-linux-amd64-" + version + ".tar.gz\"\n" +
+            "$ curl -O -J -L \"https://github.com/graalvm/mandrel/releases/download/mandrel-" + version + "/mandrel-java" + jdkMajorVersionExample + "-linux-amd64-" + version + ".tar.gz\"\n" +
             "$ tar -xf mandrel-java" + jdkMajorVersionExample + "-linux-amd64-" + version + ".tar.gz\n" +
             "$ export JAVA_HOME=\"$( pwd )/mandrel-java" + jdkMajorVersionExample + "-" + version + "\"\n" +
             "$ export GRAALVM_HOME=\"${JAVA_HOME}\"\n" +
