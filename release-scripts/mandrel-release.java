@@ -440,7 +440,7 @@ class GitHubOps
         final String codeWithQuarkusURL;
         if (jdkMajorVersion > 17)
         {
-            codeWithQuarkusURL = "https://code.quarkus.io/d?e=resteasy-reactive&cn=code.quarkus.io";
+            codeWithQuarkusURL = "https://code.quarkus.io/d?e=rest&cn=code.quarkus.io";
         }
         else
         {
@@ -490,18 +490,38 @@ class GitHubOps
             "apt install g++ zlib1g-dev libfreetype6-dev\n" +
             "```\n" +
             "\n" +
-            "## Quick start\n" +
+            "## Quick start Linux/MacOS\n" +
+            "Mac users: mandrel-java" + jdkMajorVersionExample + "-macos-aarch64-" + version + ".tar.gz\n" +
             "\n" +
             "```\n" +
+            "$ curl -O -J \"https://github.com/graalvm/mandrel/releases/download/mandrel-" + version + "/mandrel-java" + jdkMajorVersionExample + "-linux-amd64-" + version + ".tar.gz\"\n" +
             "$ tar -xf mandrel-java" + jdkMajorVersionExample + "-linux-amd64-" + version + ".tar.gz\n" +
             "$ export JAVA_HOME=\"$( pwd )/mandrel-java" + jdkMajorVersionExample + "-" + version + "\"\n" +
             "$ export GRAALVM_HOME=\"${JAVA_HOME}\"\n" +
             "$ export PATH=\"${JAVA_HOME}/bin:${PATH}\"\n" +
-            "$ curl -O -J " + codeWithQuarkusURL + "\n" +
+            "$ curl -O -J \"" + codeWithQuarkusURL + "\"\n" +
             "$ unzip code-with-quarkus.zip\n" +
             "$ cd code-with-quarkus/\n" +
             "$ ./mvnw package -Pnative\n" +
             "$ ./target/code-with-quarkus-1.0.0-SNAPSHOT-runner\n" +
+            "```\n" +
+            "\n" +
+            "## Quick start Windows\n" +
+            "Note that `vcvars64` command is usually located in your VS installation and you should add it to your PATH, " +
+            "\ne.g. `C:\\Program Files\\Microsoft Visual Studio\\2022\\Community\\VC\\Auxiliary\\Build`.\n" +
+            "\n" +
+            "```\n" +
+            "powershell -c \"Start-BitsTransfer -Source 'https://github.com/graalvm/mandrel/releases/download/mandrel-" + version + "/mandrel-java" + jdkMajorVersionExample + "-windows-amd64-" + version + ".zip'\"\n" +
+            "powershell -c \"Expand-Archive -Path mandrel-java" + jdkMajorVersionExample + "-windows-amd64-" + version + ".zip -DestinationPath . -Force\"\n" +
+            "SET JAVA_HOME=%CD%\\mandrel-java" + jdkMajorVersionExample + "-" + version + "\n" +
+            "SET GRAALVM_HOME=%JAVA_HOME%\n" +
+            "SET PATH=%JAVA_HOME%\\bin;%PATH%\n" +
+            "vcvars64\n" +
+            "powershell -Command \"Invoke-WebRequest -Uri '" + codeWithQuarkusURL + "' -OutFile 'code-with-quarkus.zip'\"\n" +
+            "powershell -c \"Expand-Archive -Path code-with-quarkus.zip -DestinationPath . -Force\"\n" +
+            "cd code-with-quarkus\n" +
+            "mvnw package -Pnative\n" +
+            "target\\code-with-quarkus-1.0.0-SNAPSHOT-runner\n" +
             "```\n" +
             "\n" +
             "### Quarkus builder image\n" +
