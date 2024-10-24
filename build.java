@@ -1209,7 +1209,7 @@ class Mx
                     , javaHome.toString()
                     , "--native-images=lib:native-image-agent,lib:native-image-diagnostics-agent"
                     , "--components=ni"
-                    , "--exclude-components=nju,svmnfi,svml,tflm"
+                    , "--exclude-components=nju,svmnfi,svml,tflm,svmt"
                     , options.disableDebuginfoStripping ? "--disable-debuginfo-stripping" : ""
                     , "build"
                 )
