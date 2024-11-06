@@ -86,26 +86,25 @@ class Constants {
     static final String WINDOWS_BUILD_CMD = '''
     set JAVA_HOME=%WORKSPACE%\\JDK
     powershell -Command "Remove-Item -ErrorAction Ignore -Recurse \\"$Env:JAVA_HOME\\";"
-    if "%JDK_RELEASE_NAME%" == "latest" (
     set downloadCmd=^
-        $wc = New-Object System.Net.WebClient;^
+    $wc = New-Object System.Net.WebClient;^
+    if ($Env:JDK_RELEASE_NAME -eq 'latest') {^
         $wc.DownloadFile(\\"https://api.adoptium.net/v3/binary/latest/$Env:JDK_VERSION/$Env:JDK_RELEASE/windows/x64/jdk/hotspot/normal/eclipse\\", \\"$Env:temp\\jdk.zip\\");^
         Expand-Archive \\"$Env:temp\\jdk.zip\\" -DestinationPath \\"$Env:temp\\";^
         Move-Item -Path \\"$Env:temp\\jdk-*\\" -Destination $Env:JAVA_HOME;^
         $wc.DownloadFile(\\"https://api.adoptium.net/v3/binary/latest/$Env:JDK_VERSION/$Env:JDK_RELEASE/windows/x64/staticlibs/hotspot/normal/eclipse\\", \\"$Env:temp\\jdk-staticlibs.zip\\");^
         Expand-Archive \\"$Env:temp\\jdk-staticlibs.zip\\" -DestinationPath \\"$Env:temp\\";^
         Move-Item -Path \\"$Env:temp\\jdk-*\\lib\\static\\" -Destination $Env:JAVA_HOME\\lib\\;^
-        Remove-Item -Recurse \\"$Env:temp\\jdk-*\\";
-    ) else (
-        $wc = New-Object System.Net.WebClient;^
+        Remove-Item -Recurse \\"$Env:temp\\jdk-*\\";^
+    } else {^
         $wc.DownloadFile(\\"https://api.adoptium.net/v3/binary/version/$Env:JDK_RELEASE_NAME/windows/x64/jdk/hotspot/normal/eclipse\\", \\"$Env:temp\\jdk.zip\\");^
         Expand-Archive \\"$Env:temp\\jdk.zip\\" -DestinationPath \\"$Env:temp\\";^
         Move-Item -Path \\"$Env:temp\\jdk-*\\" -Destination $Env:JAVA_HOME;^
         $wc.DownloadFile(\\"https://api.adoptium.net/v3/binary/version/$Env:JDK_RELEASE_NAME/windows/x64/staticlibs/hotspot/normal/eclipse\\", \\"$Env:temp\\jdk-staticlibs.zip\\");^
         Expand-Archive \\"$Env:temp\\jdk-staticlibs.zip\\" -DestinationPath \\"$Env:temp\\";^
         Move-Item -Path \\"$Env:temp\\jdk-*\\lib\\static\\" -Destination $Env:JAVA_HOME\\lib\\;^
-        Remove-Item -Recurse \\"$Env:temp\\jdk-*\\";
-    )
+        Remove-Item -Recurse \\"$Env:temp\\jdk-*\\";^
+    }
     powershell -Command "%downloadCmd%"
     echo JAVA_HOME is %JAVA_HOME%
     if not exist "%JAVA_HOME%\\bin\\java.exe" (
