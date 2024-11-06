@@ -26,8 +26,13 @@ class Constants {
     else
         export JDK_ARCH=x64
     fi
-    curl -OJLs https://api.adoptium.net/v3/binary/latest/${JDK_VERSION}/${JDK_RELEASE}/linux/${JDK_ARCH}/jdk/hotspot/normal/eclipse
-    curl -OJLs https://api.adoptium.net/v3/binary/latest/${JDK_VERSION}/${JDK_RELEASE}/linux/${JDK_ARCH}/staticlibs/hotspot/normal/eclipse
+    if [[ "${JDK_RELEASE_NAME}" == latest ]]; then
+        curl -OJLs https://api.adoptium.net/v3/binary/latest/${JDK_VERSION}/${JDK_RELEASE}/linux/${JDK_ARCH}/jdk/hotspot/normal/eclipse
+        curl -OJLs https://api.adoptium.net/v3/binary/latest/${JDK_VERSION}/${JDK_RELEASE}/linux/${JDK_ARCH}/staticlibs/hotspot/normal/eclipse
+    else 
+        curl -OJLs https://api.adoptium.net/v3/binary/version/${JDK_RELEASE_NAME}/linux/${JDK_ARCH}/jdk/hotspot/normal/eclipse
+        curl -OJLs https://api.adoptium.net/v3/binary/version/${JDK_RELEASE_NAME}/linux/${JDK_ARCH}/staticlibs/hotspot/normal/eclipse
+    fi
     tar -xf OpenJDK*-jdk*
     export JAVA_HOME=$( pwd )/$( echo jdk-${JDK_VERSION}* )
     if [[ ! -e "${JAVA_HOME}/bin/java" ]]; then
@@ -45,8 +50,13 @@ class Constants {
     static final String MACOS_BUILD_CMD = '''
     export JDK_ARCH=aarch64
     export OS=mac
-    curl -OJLs https://api.adoptium.net/v3/binary/latest/${JDK_VERSION}/${JDK_RELEASE}/${OS}/${JDK_ARCH}/jdk/hotspot/normal/eclipse
-    curl -OJLs https://api.adoptium.net/v3/binary/latest/${JDK_VERSION}/${JDK_RELEASE}/${OS}/${JDK_ARCH}/staticlibs/hotspot/normal/eclipse
+    if [[ "${JDK_RELEASE_NAME}" == latest ]]; then
+        curl -OJLs https://api.adoptium.net/v3/binary/latest/${JDK_VERSION}/${JDK_RELEASE}/${OS}/${JDK_ARCH}/jdk/hotspot/normal/eclipse
+        curl -OJLs https://api.adoptium.net/v3/binary/latest/${JDK_VERSION}/${JDK_RELEASE}/${OS}/${JDK_ARCH}/staticlibs/hotspot/normal/eclipse
+    else
+        curl -OJLs https://api.adoptium.net/v3/binary/version/${JDK_RELEASE_NAME}/${OS}/${JDK_ARCH}/jdk/hotspot/normal/eclipse
+        curl -OJLs https://api.adoptium.net/v3/binary/version/${JDK_RELEASE_NAME}/${OS}/${JDK_ARCH}/staticlibs/hotspot/normal/eclipse
+    fi
     tar -xf OpenJDK*-jdk*
     export JAVA_HOME=$( pwd )/$( echo jdk-${JDK_VERSION}* )/Contents/Home/
     if [[ ! -e "${JAVA_HOME}/bin/java" ]]; then
@@ -76,6 +86,7 @@ class Constants {
     static final String WINDOWS_BUILD_CMD = '''
     set JAVA_HOME=%WORKSPACE%\\JDK
     powershell -Command "Remove-Item -ErrorAction Ignore -Recurse \\"$Env:JAVA_HOME\\";"
+    if "%JDK_RELEASE_NAME%" == "latest" (
     set downloadCmd=^
         $wc = New-Object System.Net.WebClient;^
         $wc.DownloadFile(\\"https://api.adoptium.net/v3/binary/latest/$Env:JDK_VERSION/$Env:JDK_RELEASE/windows/x64/jdk/hotspot/normal/eclipse\\", \\"$Env:temp\\jdk.zip\\");^
@@ -85,6 +96,16 @@ class Constants {
         Expand-Archive \\"$Env:temp\\jdk-staticlibs.zip\\" -DestinationPath \\"$Env:temp\\";^
         Move-Item -Path \\"$Env:temp\\jdk-*\\lib\\static\\" -Destination $Env:JAVA_HOME\\lib\\;^
         Remove-Item -Recurse \\"$Env:temp\\jdk-*\\";
+    ) else (
+        $wc = New-Object System.Net.WebClient;^
+        $wc.DownloadFile(\\"https://api.adoptium.net/v3/binary/version/$Env:JDK_RELEASE_NAME/windows/x64/jdk/hotspot/normal/eclipse\\", \\"$Env:temp\\jdk.zip\\");^
+        Expand-Archive \\"$Env:temp\\jdk.zip\\" -DestinationPath \\"$Env:temp\\";^
+        Move-Item -Path \\"$Env:temp\\jdk-*\\" -Destination $Env:JAVA_HOME;^
+        $wc.DownloadFile(\\"https://api.adoptium.net/v3/binary/version/$Env:JDK_RELEASE_NAME/windows/x64/staticlibs/hotspot/normal/eclipse\\", \\"$Env:temp\\jdk-staticlibs.zip\\");^
+        Expand-Archive \\"$Env:temp\\jdk-staticlibs.zip\\" -DestinationPath \\"$Env:temp\\";^
+        Move-Item -Path \\"$Env:temp\\jdk-*\\lib\\static\\" -Destination $Env:JAVA_HOME\\lib\\;^
+        Remove-Item -Recurse \\"$Env:temp\\jdk-*\\";
+    )
     powershell -Command "%downloadCmd%"
     echo JAVA_HOME is %JAVA_HOME%
     if not exist "%JAVA_HOME%\\bin\\java.exe" (

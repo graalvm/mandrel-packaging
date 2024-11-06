@@ -22,6 +22,11 @@ matrixJob('mandrel-23-1-macos-build-matrix') {
     //        '!(JDK_VERSION=="21" && JDK_RELEASE=="ga")'
     //)
     parameters {
+        stringParam(
+                'JDK_RELEASE_NAME',
+                'latest',
+                'You can pick from https://api.adoptium.net/v3/info/release_names or leave it as latest.'
+        )
         choiceParam('REPOSITORY', Constants.REPOSITORY+Constants.REPOSITORY_M23_1_JDK21, 'Mandrel repo')
         choiceParam(
                 'HEADS_OR_TAGS',
