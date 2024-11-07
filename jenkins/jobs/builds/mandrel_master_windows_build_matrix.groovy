@@ -39,6 +39,11 @@ matrixJob('mandrel-master-windows-build-matrix') {
                 'graal/master',
                 'e.g. your PR branch or a specific tag.'
         )
+        stringParam(
+                'BRANCH_SELECTOR',
+                'refs/\${HEADS_OR_TAGS}/\${BRANCH_OR_TAG}',
+                'Leave as is or replace this whole property with a concrete commit sha.'
+        )
         choiceParam('PACKAGING_REPOSITORY', Constants.PACKAGING_REPOSITORY, 'Mandrel packaging scripts.')
         choiceParam(
                 'PACKAGING_REPOSITORY_HEADS_OR_TAGS',
@@ -74,7 +79,7 @@ matrixJob('mandrel-master-windows-build-matrix') {
             remote {
                 url('${REPOSITORY}')
             }
-            branches('refs/${HEADS_OR_TAGS}/${BRANCH_OR_TAG}')
+            branches('${BRANCH_SELECTOR}')
             extensions {
                 localBranch('${BRANCH_OR_TAG}')
                 relativeTargetDirectory('mandrel')
