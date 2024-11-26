@@ -1203,6 +1203,7 @@ class Mx
                 List.of(
                     mx.toString()
                     , options.verbose ? "-V" : ""
+                    , "--jmods-dir", "NO_JMODS"
                     , "--trust-http"
                     , "--no-jlinking"
                     , "--java-home"
