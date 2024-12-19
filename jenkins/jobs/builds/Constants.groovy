@@ -78,7 +78,8 @@ class Constants {
         mv ${JAVA_HOME}/lib/static/darwin-arm64 ${JAVA_HOME}/lib/static/darwin-aarch64
     fi
     ./jenkins/jobs/scripts/mandrel_linux_build.sh
-    # We align to what GraalVM CE calls its releases:
+    # We align to what GraalVM CE calls its releases
+    # this is no longer needed as of mandrel-packaging 24.2, but we keep it for backwards compatibility:
     for m in mandrel-*.tar.gz*;do n=$(echo $m | sed 's/darwin-aarch64/macos-aarch64/g'); mv $m $n;done
     find .
     '''
