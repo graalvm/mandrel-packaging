@@ -255,7 +255,7 @@ public class build
         if (options.archiveSuffix != null)
         {
             int javaMajor = Runtime.version().feature();
-            String archiveName = "mandrel-java" + javaMajor + "-" + PLATFORM + "-" + mandrelVersionUntilSpace + "." + options.archiveSuffix;
+            String archiveName = "mandrel-java" + javaMajor + "-" + PLATFORM.replace("darwin", "macos") + "-" + mandrelVersionUntilSpace + "." + options.archiveSuffix;
             logger.info("Creating Archive " + archiveName);
             createArchive(fs, os, mandrelHome, archiveName);
         }
