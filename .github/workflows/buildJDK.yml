@@ -215,8 +215,8 @@ jobs:
           ${MAC_JAVA_HOME}/bin/java -ea build.java --mx-home ${MX_HOME} --mandrel-repo ${MANDREL_REPO} --mandrel-version "${MANDREL_VERSION}" --archive-suffix tar.gz
           export MANDREL_VERSION_UNTIL_SPACE="$( echo ${MANDREL_VERSION} | sed -e 's/\([^ ]*\).*/\1/;t' )"
           export ARCH=$( echo ${ARCH} | sed 's/x64/amd64/' )
-          export ARCHIVE_NAME="mandrel-java24-darwin-${ARCH}-${MANDREL_VERSION_UNTIL_SPACE}.tar.gz"
-          mv ${ARCHIVE_NAME} mandrel-java24-darwin-${ARCH}.tar.gz
+          export ARCHIVE_NAME="mandrel-java24-macos-${ARCH}-${MANDREL_VERSION_UNTIL_SPACE}.tar.gz"
+          mv ${ARCHIVE_NAME} mandrel-java24-macos-${ARCH}.tar.gz
           echo "ARCH=${ARCH}" >> "$GITHUB_OUTPUT"
       - name: Smoke tests
         run: |
@@ -259,8 +259,8 @@ jobs:
         env:
           ARCH: ${{ steps.build.outputs.ARCH }}
         with:
-          name: mandrel-java24-darwin-${ARCH}-test-build
-          path: mandrel-java24-darwin-${ARCH}.tar.gz
+          name: mandrel-java24-macos-${ARCH}-test-build
+          path: mandrel-java24-macos-${ARCH}.tar.gz
 
   build-and-test-on-windows:
     name: Windows Build and test ${{ matrix.mandrel-ref }} branch/tag
