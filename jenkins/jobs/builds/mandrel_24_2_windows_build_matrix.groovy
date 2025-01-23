@@ -127,7 +127,7 @@ matrixJob('mandrel-24-2-windows-build-matrix') {
             }
         }
         downstreamParameterized {
-            trised -i 's/24_1/24_2/g' $ngger(['mandrel-windows-integration-tests']) {
+            trigger(['mandrel-windows-integration-tests']) {
                 condition('SUCCESS')
                 parameters {
                     predefinedProp('MANDREL_BUILD_NUMBER', '${BUILD_NUMBER}')
