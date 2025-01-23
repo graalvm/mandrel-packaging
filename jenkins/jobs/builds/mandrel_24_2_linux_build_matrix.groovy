@@ -2,25 +2,25 @@ package jenkins.jobs.builds
 
 final Class Constants = new GroovyClassLoader(getClass().getClassLoader())
         .parseClass(readFileFromWorkspace("jenkins/jobs/builds/Constants.groovy"))
-matrixJob('mandrel-24-0-linux-build-matrix') {
+matrixJob('mandrel-24-2-linux-build-matrix') {
     axes {
         labelExpression('LABEL', ['el8_aarch64', 'el8'])
         text('JDK_VERSION',
-                '22'
+                '24'
         )
         text('JDK_RELEASE',
                 'ea',
                 'ga'
         )
     }
-    displayName('Linux Build Matrix :: 24.0')
-    description('Linux build for 24.0 branch.')
+    displayName('Linux Build Matrix :: 24.2')
+    description('Linux build for 24.2 branch.')
     logRotator {
         numToKeep(10)
     }
-//  combinationFilter(
-//          '!(JDK_VERSION=="22" && JDK_RELEASE=="ga")'
-//  )
+    combinationFilter(
+            '!(JDK_VERSION=="24" && JDK_RELEASE=="ga")'
+    )
     parameters {
         stringParam(
                 'JDK_RELEASE_NAME',
@@ -38,7 +38,7 @@ matrixJob('mandrel-24-0-linux-build-matrix') {
         )
         stringParam(
                 'BRANCH_OR_TAG',
-                'mandrel/24.0',
+                'mandrel/24.2',
                 'e.g. your PR branch or a specific tag.'
         )
         choiceParam('PACKAGING_REPOSITORY', Constants.PACKAGING_REPOSITORY, 'Mandrel packaging scripts.')
@@ -52,12 +52,12 @@ matrixJob('mandrel-24-0-linux-build-matrix') {
         )
         stringParam(
                 'PACKAGING_REPOSITORY_BRANCH_OR_TAG',
-                '24.0',
+                '24.2',
                 'e.g. master if you use heads or some tag if you use tags.'
         )
         stringParam(
                 'MANDREL_VERSION_SUBSTRING',
-                '24.0-SNAPSHOT',
+                '24.2-SNAPSHOT',
                 'It must not contain spaces as it is used in tarball name too.'
         )
         matrixCombinationsParam('MATRIX_COMBINATIONS_FILTER', "", 'Choose which combinations to run')
@@ -86,9 +86,9 @@ matrixJob('mandrel-24-0-linux-build-matrix') {
             remote {
                 url('https://github.com/graalvm/mx.git')
             }
-            branches('refs/tags/7.0.3')
+            branches('refs/tags/7.38.1')
             extensions {
-                localBranch('7.0.3')
+                localBranch('7.38.1')
                 relativeTargetDirectory('mx')
             }
         }

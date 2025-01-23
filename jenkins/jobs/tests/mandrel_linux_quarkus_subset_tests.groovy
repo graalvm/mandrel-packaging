@@ -5,21 +5,18 @@ final Class Constants = new GroovyClassLoader(getClass().getClassLoader())
 matrixJob('mandrel-linux-quarkus-subset-tests') {
     axes {
         text('JDK_VERSION',
-                '17',
                 '21',
-                '22',
-                '23'
+                '23',
+                '24'
         )
         text('JDK_RELEASE',
                 'ea',
                 'ga'
         )
         text('MANDREL_BUILD',
-                'mandrel-22-3-linux-build-matrix',
-                'mandrel-23-0-linux-build-matrix',
                 'mandrel-23-1-linux-build-matrix',
-                'mandrel-24-0-linux-build-matrix',
                 'mandrel-24-1-linux-build-matrix',
+                'mandrel-24-2-linux-build-matrix',
                 'mandrel-master-linux-build-matrix'
         )
         text('QUARKUS_VERSION', Constants.QUARKUS_VERSION_RELEASED)
@@ -58,7 +55,7 @@ matrixJob('mandrel-linux-quarkus-subset-tests') {
     }
     steps {
         shell {
-            command(Constants.LINUX_QUARKUS_TESTS)
+            command(Constants.LINUX_QUARKUS_TESTS.stripIndent())
             unstableReturn(1)
         }
     }

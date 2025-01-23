@@ -3,12 +3,11 @@ final Class Constants = new GroovyClassLoader(getClass().getClassLoader())
 matrixJob('mandrel-linux-quarkus-container-tests') {
     axes {
         text('BUILDER_IMAGE',
-                'quay.io/quarkus/ubi-quarkus-mandrel-builder-image:22.3-java17',
-                'quay.io/quarkus/ubi-quarkus-mandrel-builder-image:23.0-java17',
-                'quay.io/quarkus/ubi-quarkus-mandrel-builder-image:23.1-java21'
+                'quay.io/quarkus/ubi-quarkus-mandrel-builder-image:23.1-java21',
+                'quay.io/quarkus/ubi-quarkus-mandrel-builder-image:24.1-java23'
         )
         text('QUARKUS_VERSION', Constants.QUARKUS_VERSION_BUILDER_IMAGE)
-        labelExpression('LABEL', ['el8'])
+        labelExpression('LABEL', ['el8_aarch64', 'el8'])
     }
     description('Run Quarkus TS with Mandrel distros. Quarkus versions differ according to particular Mandrel versions.')
     displayName('Linux :: Quarkus Builder image TS')
@@ -25,9 +24,7 @@ matrixJob('mandrel-linux-quarkus-container-tests') {
     }
     combinationFilter(Constants.QUARKUS_VERSION_BUILDER_COMBINATION_FILTER)
     parameters {
-        stringParam('CONTAINER_RUNTIME', 'podman', 'Command used, either "docker" or "podman". Note that podman is not installed on all executors...')
         stringParam('QUARKUS_REPO', 'https://github.com/quarkusio/quarkus.git', 'Quarkus repository.')
-        stringParam('QUARKUS_MODULES', '', 'Uses .github/native-tests.json unless specified here.')
         matrixCombinationsParam('MATRIX_COMBINATIONS_FILTER', "", 'Choose which combinations to run')
     }
     triggers {
@@ -39,7 +36,7 @@ matrixJob('mandrel-linux-quarkus-container-tests') {
         shell('echo DESCRIPTION_STRING=Q:${QUARKUS_VERSION},${BUILDER_IMAGE}')
         buildDescription(/DESCRIPTION_STRING=([^\s]*)/, '\\1')
         shell {
-            command(Constants.LINUX_CONTAINER_QUARKUS_TESTS)
+            command(Constants.LINUX_CONTAINER_QUARKUS_TESTS.stripIndent())
             unstableReturn(1)
         }
     }

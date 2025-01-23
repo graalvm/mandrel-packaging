@@ -8,7 +8,8 @@ matrixJob('mandrel-linux-fedora-smoke-tests') {
                 'quay.io/quarkus/ubi-quarkus-mandrel-builder-image:jdk-17',
                 'quay.io/quarkus/ubi-quarkus-mandrel-builder-image:jdk-21',
                 'quay.io/quarkus/ubi-quarkus-mandrel-builder-image:jdk-22',
-                'quay.io/quarkus/ubi-quarkus-mandrel-builder-image:jdk-23'
+                'quay.io/quarkus/ubi-quarkus-mandrel-builder-image:jdk-23',
+                'quay.io/quarkus/ubi-quarkus-mandrel-builder-image:jdk-24'
         )
         labelExpression('LABEL', ['fedora_aarch64', 'el8_aarch64', 'el8'])
     }
@@ -33,6 +34,7 @@ matrixJob('mandrel-linux-fedora-smoke-tests') {
     steps {
         shell {
             command('''
+            #!/bin/bash
             getenforce
             podman info
             uname -a
@@ -47,7 +49,7 @@ matrixJob('mandrel-linux-fedora-smoke-tests') {
                 echo Error.
                 exit 666
             fi
-            '''
+            '''.stripIndent()
             )
             unstableReturn(1)
         }

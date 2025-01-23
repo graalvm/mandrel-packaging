@@ -6,7 +6,6 @@ matrixJob('mandrel-macos-integration-tests') {
     axes {
         text('JDK_VERSION',
                 '21',
-                '22',
                 '23',
                 '24'
         )
@@ -16,8 +15,8 @@ matrixJob('mandrel-macos-integration-tests') {
         )
         text('MANDREL_BUILD',
                 'mandrel-23-1-macos-build-matrix',
-                'mandrel-24-0-macos-build-matrix',
                 'mandrel-24-1-macos-build-matrix',
+                'mandrel-24-2-macos-build-matrix',
                 'mandrel-master-macos-build-matrix'
         )
         text('QUARKUS_VERSION', Constants.QUARKUS_VERSION_MACOS)
@@ -66,7 +65,7 @@ matrixJob('mandrel-macos-integration-tests') {
         shell('echo DESCRIPTION_STRING=Q:${QUARKUS_VERSION},M:${MANDREL_BUILD},J:${JDK_VERSION}-${JDK_RELEASE}')
         buildDescription(/DESCRIPTION_STRING=([^\s]*)/, '\\1')
         shell {
-            command(Constants.MACOS_INTEGRATION_TESTS)
+            command(Constants.MACOS_INTEGRATION_TESTS.stripIndent())
             unstableReturn(1)
         }
     }

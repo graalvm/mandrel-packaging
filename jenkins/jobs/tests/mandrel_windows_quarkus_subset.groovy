@@ -16,9 +16,10 @@ matrixJob('mandrel-windows-quarkus-subset') {
         text('MANDREL_BUILD',
                 'mandrel-23-1-windows-build-matrix',
                 'mandrel-24-1-windows-build-matrix',
+                'mandrel-24-2-windows-build-matrix',
                 'mandrel-master-windows-build-matrix'
         )
-        text('QUARKUS_VERSION', "2024-09-23-fix-43436")
+        text('QUARKUS_VERSION', Constants.QUARKUS_VERSION_RELEASED)
         labelExpression('LABEL', ['w2k19'])
     }
     description('Run Quarkus TS with Mandrel distros. Quarkus versions differ according to particular Mandrel versions.')
@@ -58,7 +59,7 @@ matrixJob('mandrel-windows-quarkus-subset') {
     }
     steps {
         batchFile {
-            command(Constants.WINDOWS_QUARKUS_TESTS)
+            command(Constants.WINDOWS_QUARKUS_TESTS.stripIndent())
             unstableReturn(1)
         }
     }

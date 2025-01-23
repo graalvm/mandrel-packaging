@@ -3,9 +3,7 @@ final Class Constants = new GroovyClassLoader(getClass().getClassLoader())
 matrixJob('mandrel-linux-integration-tests') {
     axes {
         text('JDK_VERSION',
-                '17',
                 '21',
-                '22',
                 '23',
                 '24'
         )
@@ -14,11 +12,9 @@ matrixJob('mandrel-linux-integration-tests') {
                 'ga'
         )
         text('MANDREL_BUILD',
-                'mandrel-22-3-linux-build-matrix',
-                'mandrel-23-0-linux-build-matrix',
                 'mandrel-23-1-linux-build-matrix',
-                'mandrel-24-0-linux-build-matrix',
                 'mandrel-24-1-linux-build-matrix',
+                'mandrel-24-2-linux-build-matrix',
                 'mandrel-master-linux-build-matrix'
         )
         text('QUARKUS_VERSION', Constants.QUARKUS_VERSION_RELEASED)
@@ -67,7 +63,7 @@ matrixJob('mandrel-linux-integration-tests') {
         shell('echo DESCRIPTION_STRING=Q:${QUARKUS_VERSION},M:${MANDREL_BUILD},J:${JDK_VERSION}-${JDK_RELEASE}')
         buildDescription(/DESCRIPTION_STRING=([^\s]*)/, '\\1')
         shell {
-            command(Constants.LINUX_INTEGRATION_TESTS)
+            command(Constants.LINUX_INTEGRATION_TESTS.stripIndent())
             unstableReturn(1)
         }
     }
