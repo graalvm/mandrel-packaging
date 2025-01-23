@@ -6,7 +6,7 @@ matrixJob('mandrel-24-1-macos-build-matrix') {
     axes {
         labelExpression('LABEL', ['macos_aarch64'])
         text('JDK_VERSION',
-                '23',
+                '23'
         )
         text('JDK_RELEASE',
                 'ea',
@@ -86,9 +86,9 @@ matrixJob('mandrel-24-1-macos-build-matrix') {
             remote {
                 url('https://github.com/graalvm/mx.git')
             }
-            branches('refs/tags/7.33.1')
+            branches('refs/tags/7.38.1')
             extensions {
-                localBranch('7.33.1')
+                localBranch('7.38.1')
                 relativeTargetDirectory('mx')
             }
         }

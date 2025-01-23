@@ -3,21 +3,18 @@ final Class Constants = new GroovyClassLoader(getClass().getClassLoader())
 matrixJob('mandrel-windows-quarkus-tests') {
     axes {
         text('JDK_VERSION',
-                '17',
                 '21',
-                '22',
-                '23'
+                '23',
+                '24'
         )
         text('JDK_RELEASE',
                 'ea',
                 'ga'
         )
         text('MANDREL_BUILD',
-                'mandrel-22-3-windows-build-matrix',
-                'mandrel-23-0-windows-build-matrix',
                 'mandrel-23-1-windows-build-matrix',
-                'mandrel-24-0-windows-build-matrix',
                 'mandrel-24-1-windows-build-matrix',
+                'mandrel-24-2-windows-build-matrix',
                 'mandrel-master-windows-build-matrix'
         )
         text('QUARKUS_VERSION', Constants.QUARKUS_VERSION_RELEASED)
@@ -41,7 +38,6 @@ matrixJob('mandrel-windows-quarkus-tests') {
     )
     parameters {
         stringParam('QUARKUS_REPO', 'https://github.com/quarkusio/quarkus.git', 'Quarkus repository.')
-        stringParam('QUARKUS_MODULES', '', 'Uses .github/native-tests.json unless specified here.')
         stringParam(
                 'MANDREL_BUILD_NUMBER',
                 'lastSuccessfulBuild',
@@ -56,7 +52,7 @@ matrixJob('mandrel-windows-quarkus-tests') {
     }
     steps {
         batchFile {
-            command(Constants.WINDOWS_QUARKUS_TESTS)
+            command(Constants.WINDOWS_QUARKUS_TESTS.stripIndent())
             unstableReturn(1)
         }
     }
