@@ -46,6 +46,7 @@ class Constants {
             'no-awt'
 
     static final String LINUX_PREPARE_MANDREL = '''#!/bin/bash
+    set -x
     # Prepare Mandrel
     wget --quiet "https://ci.modcluster.io/view/Mandrel/job/${MANDREL_BUILD}/JDK_VERSION=${JDK_VERSION},JDK_RELEASE=${JDK_RELEASE},LABEL=${LABEL}/${MANDREL_BUILD_NUMBER}/artifact/*zip*/archive.zip"
     if [[ ! -f "archive.zip" ]]; then
@@ -85,6 +86,7 @@ class Constants {
     '''
 
     static final String MACOS_PREPARE_MANDREL = '''#!/bin/bash
+    set -x
     # Prepare Mandrel
     wget --quiet "https://ci.modcluster.io/view/Mandrel/job/${MANDREL_BUILD}/JDK_VERSION=${JDK_VERSION},JDK_RELEASE=${JDK_RELEASE},LABEL=${LABEL}/${MANDREL_BUILD_NUMBER}/artifact/*zip*/archive.zip"
     if [[ ! -f "archive.zip" ]]; then
@@ -167,9 +169,7 @@ class Constants {
     # TestContainers tooling
     export DOCKER_HOST=unix:///run/user/${UID}/podman/podman.sock
     export TESTCONTAINERS_RYUK_DISABLED=false
-    systemctl --user enable podman.socket
-    systemctl --user start podman.socket
-    curl -H "Content-Type: application/json" --unix-socket /var/run/user/$UID/podman/podman.sock  http://localhost/_ping
+    echo -e "GET /_ping HTTP/1.0\\r\\n\\r\\n" | nc -U $(echo $DOCKER_HOST | cut -d: -f2)
     rm -rf quarkus
     git clone --quiet --depth 1 --branch ${QUARKUS_VERSION} ${QUARKUS_REPO}
     cd quarkus
@@ -227,9 +227,7 @@ class Constants {
     # TestContainers tooling
     export DOCKER_HOST=unix:///run/user/${UID}/podman/podman.sock
     export TESTCONTAINERS_RYUK_DISABLED=true
-    systemctl --user enable podman.socket
-    systemctl --user start podman.socket
-    curl -H "Content-Type: application/json" --unix-socket /var/run/user/$UID/podman/podman.sock  http://localhost/_ping
+    echo -e "GET /_ping HTTP/1.0\\r\\n\\r\\n" | nc -U $(echo $DOCKER_HOST | cut -d: -f2)
 
     export PATH="${JAVA_HOME}/bin:${PATH}"
     mvn --batch-mode clean verify -Ptestsuite-builder-image -Dquarkus.version=${QUARKUS_VERSION} \\
@@ -259,9 +257,7 @@ class Constants {
     # TestContainers tooling
     export DOCKER_HOST=unix:///run/user/${UID}/podman/podman.sock
     export TESTCONTAINERS_RYUK_DISABLED=false
-    systemctl --user enable podman.socket
-    systemctl --user start podman.socket
-    curl -H "Content-Type: application/json" --unix-socket /var/run/user/$UID/podman/podman.sock  http://localhost/_ping
+    echo -e "GET /_ping HTTP/1.0\\r\\n\\r\\n" | nc -U $(echo $DOCKER_HOST | cut -d: -f2)
     rm -rf quarkus
     git clone --quiet --depth 1 --branch ${QUARKUS_VERSION} ${QUARKUS_REPO}
     cd quarkus
