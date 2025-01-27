@@ -82,6 +82,7 @@ class Constants {
     free -h
     df -h
     ps aux | grep java
+    export QUARKUS_NATIVE_CONTAINER_BUILD=false
     mvn --batch-mode clean verify -Ptestsuite -DincludeTags=reproducers,perfcheck,runtimes -Dquarkus.version=${QUARKUS_VERSION}
     '''
 
@@ -114,6 +115,7 @@ class Constants {
     df -h
     ps aux | grep java
     export QUARKUS_NATIVE_CONTAINER_RUNTIME=podman
+    export QUARKUS_NATIVE_CONTAINER_BUILD=false
     podman machine init --now || true
     podman machine stop || true
     podman machine set --memory 8192
@@ -175,6 +177,7 @@ class Constants {
     cd quarkus
     export MAVEN_OPTS="-Xmx5g -XX:MaxMetaspaceSize=5g"
     export QUARKUS_NATIVE_CONTAINER_RUNTIME=podman
+    export QUARKUS_NATIVE_CONTAINER_BUILD=false
     # Get rid of docker.io
     find . -name "pom.xml" -exec sed -i 's~image>docker.io/~image>quay.io/karmkarm/~g' {} \\;
     find . -name "*.java" -exec sed -i 's~"apachepulsar/pulsar:~"quay.io/karmkarm/apachepulsar/pulsar:~g' {} \\;
