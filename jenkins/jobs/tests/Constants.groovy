@@ -116,7 +116,9 @@ class Constants {
     export QUARKUS_NATIVE_CONTAINER_RUNTIME=podman
     podman machine init --now || true
     podman machine stop || true
-    eval "$(podman machine start --memory 8192 | grep "DOCKER_HOST=")"
+    podman machine set --memory 8192
+    eval "$(podman machine start | grep "DOCKER_HOST=")"
+    echo -e "GET /_ping HTTP/1.0\\r\\n\\r\\n" | nc -U $(echo $DOCKER_HOST | cut -d: -f2)
     mvn --batch-mode clean verify -Ptestsuite -DincludeTags=reproducers,perfcheck,runtimes \\
     -Dquarkus.version=${QUARKUS_VERSION} -Dquarkus.native.container-runtime=podman -Dpodman.with.sudo=false
     '''
