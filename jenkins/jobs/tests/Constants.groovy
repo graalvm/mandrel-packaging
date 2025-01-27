@@ -45,8 +45,7 @@ class Constants {
             'awt,' +
             'no-awt'
 
-    static final String LINUX_PREPARE_MANDREL = '''
-    #!/bin/bash
+    static final String LINUX_PREPARE_MANDREL = '''#!/bin/bash
     # Prepare Mandrel
     wget --quiet "https://ci.modcluster.io/view/Mandrel/job/${MANDREL_BUILD}/JDK_VERSION=${JDK_VERSION},JDK_RELEASE=${JDK_RELEASE},LABEL=${LABEL}/${MANDREL_BUILD_NUMBER}/artifact/*zip*/archive.zip"
     if [[ ! -f "archive.zip" ]]; then
@@ -85,8 +84,7 @@ class Constants {
     mvn --batch-mode clean verify -Ptestsuite -DincludeTags=reproducers,perfcheck,runtimes -Dquarkus.version=${QUARKUS_VERSION}
     '''
 
-    static final String MACOS_PREPARE_MANDREL = '''
-    #!/bin/bash
+    static final String MACOS_PREPARE_MANDREL = '''#!/bin/bash
     # Prepare Mandrel
     wget --quiet "https://ci.modcluster.io/view/Mandrel/job/${MANDREL_BUILD}/JDK_VERSION=${JDK_VERSION},JDK_RELEASE=${JDK_RELEASE},LABEL=${LABEL}/${MANDREL_BUILD_NUMBER}/artifact/*zip*/archive.zip"
     if [[ ! -f "archive.zip" ]]; then
@@ -206,8 +204,7 @@ class Constants {
     done
     '''
 
-    static final String LINUX_CONTAINER_INTEGRATION_TESTS = '''
-    #!/bin/bash
+    static final String LINUX_CONTAINER_INTEGRATION_TESTS = '''#!/bin/bash
     free -h
     df -h
     ps aux | grep java
@@ -239,8 +236,7 @@ class Constants {
         -Dquarkus.native.container-runtime=podman -Dquarkus.native.builder-image=${BUILDER_IMAGE}
     '''
 
-    static final String LINUX_CONTAINER_QUARKUS_TESTS = '''
-    #!/bin/bash
+    static final String LINUX_CONTAINER_QUARKUS_TESTS = '''#!/bin/bash
     free -h
     df -h
     ps aux | grep java
