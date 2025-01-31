@@ -208,33 +208,41 @@ class Constants {
     '''
 
     static final String LINUX_CONTAINER_INTEGRATION_TESTS = '''#!/bin/bash
+    set +e
+    set -x
     free -h
     df -h
     ps aux | grep java
     export QUARKUS_NATIVE_CONTAINER_RUNTIME=podman
     source /etc/profile.d/jdks.sh
-    set +e
-       sudo podman stop $(sudo podman ps -a -q)
-       sudo podman rm $(sudo podman ps -a -q)
-       yes | sudo podman volume prune
-       rm -rf /tmp/run-1000/libpod/tmp/pause.pid
-       podman stop $(podman ps -a -q)
-       podman rm $(podman ps -a -q)
-       yes | podman volume prune
-    set -e
+    sudo podman stop $(sudo podman ps -a -q)
+    sudo podman rm $(sudo podman ps -a -q)
+    yes | sudo podman volume prune
+    rm -rf /tmp/run-1000/libpod/tmp/pause.pid
+    podman stop $(podman ps -a -q)
+    podman rm $(podman ps -a -q)
+    yes | podman volume prune
     sudo podman pull ${BUILDER_IMAGE}
     if [ "$?" -ne 0 ]; then
         echo There was a problem pulling the image ${BUILDER_IMAGE}. We cannot proceed.
         exit 1
     fi
+    sudo podman run ${BUILDER_IMAGE} --version
+    if [ "$?" -ne 0 ]; then
+        echo There was a problem running --version with  ${BUILDER_IMAGE}. We cannot proceed.
+        exit 1
+    fi
     # TestContainers tooling
     export DOCKER_HOST=unix:///run/user/${UID}/podman/podman.sock
     export TESTCONTAINERS_RYUK_DISABLED=true
+    export QUARKUS_NATIVE_CONTAINER_RUNTIME=podman
     echo -e "GET /_ping HTTP/1.0\\r\\n\\r\\n" | nc -U $(echo $DOCKER_HOST | cut -d: -f2)
 
     export PATH="${JAVA_HOME}/bin:${PATH}"
     mvn --batch-mode clean verify -Ptestsuite-builder-image -Dquarkus.version=${QUARKUS_VERSION} \\
-        -Dquarkus.native.container-runtime=podman -Dquarkus.native.builder-image=${BUILDER_IMAGE}
+        -Dquarkus.native.container-runtime=podman \\
+        -Drootless.container-runtime=false -Dpodman.with.sudo=true \\
+        -Dquarkus.native.builder-image=${BUILDER_IMAGE}
     '''
 
     static final String LINUX_CONTAINER_QUARKUS_TESTS = '''#!/bin/bash
