@@ -166,6 +166,8 @@ public class build
                 mandrelJavaHome.resolve(Path.of("lib", "svm", "clibraries", PLATFORM, "include", "amd64cpufeatures.h")));
             FileSystem.copy(mandrelRepo.resolve(Path.of("substratevm", "src", "com.oracle.svm.native.libchelper", "include", "aarch64cpufeatures.h")),
                 mandrelJavaHome.resolve(Path.of("lib", "svm", "clibraries", PLATFORM, "include", "aarch64cpufeatures.h")));
+            FileSystem.copy(mandrelRepo.resolve(Path.of("substratevm", "src", "com.oracle.svm.native.libchelper", "include", "svm_locale.h")),
+                mandrelJavaHome.resolve(Path.of("lib", "svm", "clibraries", PLATFORM, "include", "svm_locale.h")));
             Path riscv64headers = mandrelRepo.resolve(Path.of("substratevm", "src", "com.oracle.svm.native.libchelper", "include", "riscv64cpufeatures.h"));
             if (riscv64headers.toFile().exists())
             {
