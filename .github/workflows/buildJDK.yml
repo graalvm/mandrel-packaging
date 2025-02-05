@@ -123,7 +123,7 @@ jobs:
         ./implicitclass | tee native.txt
         diff java.txt native.txt
     - name: Upload Mandrel build
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: mandrel-java24-linux-amd64-test-build
         path: mandrel-java24-linux-amd64.tar.gz
@@ -134,7 +134,7 @@ jobs:
         export ARCHIVE_NAME="mandrel-java24-linux-amd64-${MANDREL_VERSION_UNTIL_SPACE}.tarxz"
         mv ${ARCHIVE_NAME} mandrel-java24-linux-amd64.tarxz
     - name: Upload tarxz Mandrel build
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: mandrel-java24-linux-amd64-test-build-tarxz
         path: mandrel-java24-linux-amd64.tarxz
@@ -148,26 +148,26 @@ jobs:
         os: [macos-latest, macos-13]
         mandrel-ref: [graal/master]
     steps:
-      - uses: actions/checkout@v3
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
         with:
           repository: graalvm/mandrel.git
           fetch-depth: 1
           ref: ${{ matrix.mandrel-ref }}
           path: ${{ github.workspace }}/mandrel
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           repository: graalvm/mx.git
           fetch-depth: 1
           ref: master
           path: ${{ github.workspace }}/mx
-      - uses: actions/cache@v3
+      - uses: actions/cache@v4
         with:
           path: ~/.mx
           key: ${{ runner.os }}-mx-${{ hashFiles('**/suite.py') }}
           restore-keys: |
             ${{ runner.os }}-mx-
-      - uses: actions/cache@v3
+      - uses: actions/cache@v4
         with:
           path: ~/.m2/repository
           key: ${{ runner.os }}-mx-${{ hashFiles('**/suite.py') }}
@@ -203,7 +203,7 @@ jobs:
       - name: Use python 3.10
         # mx uses distutils which is no longer available in python 3.12 which is the default in macos-latest
         # use 3.10 instead (the minimum supported version is 3.9) see https://github.com/graalvm/mx/issues/249
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v5
         with:
           python-version: '3.10'
       - name: Build Mandrel JDK
@@ -255,7 +255,7 @@ jobs:
           ./implicitclass | tee native.txt
           diff java.txt native.txt
       - name: Upload Mandrel build
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         env:
           ARCH: ${{ steps.build.outputs.ARCH }}
         with:
@@ -270,8 +270,8 @@ jobs:
       matrix:
         mandrel-ref: [graal/master]
     steps:
-    - uses: actions/checkout@v3
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
+    - uses: actions/checkout@v4
       with:
         repository: graalvm/mandrel.git
         fetch-depth: 1
@@ -283,13 +283,13 @@ jobs:
           VERSION=$(jq -r .mx_version ${MANDREL_REPO}/common.json)
           git clone ${GITHUB_SERVER_URL}/graalvm/mx --depth 1 --branch ${VERSION} ${MX_HOME}
           ./mx/mx --version
-    - uses: actions/cache@v3
+    - uses: actions/cache@v4
       with:
         path: ~/.mx
         key: ${{ runner.os }}-mx-${{ hashFiles('**/suite.py') }}
         restore-keys: |
           ${{ runner.os }}-mx-
-    - uses: actions/cache@v3
+    - uses: actions/cache@v4
       with:
         path: ~/.m2/repository
         key: ${{ runner.os }}-mx-${{ hashFiles('**/suite.py') }}
@@ -384,7 +384,7 @@ jobs:
         export ARCHIVE_NAME="mandrel-java24-windows-amd64-${MANDREL_VERSION_UNTIL_SPACE}.zip"
         mv ${ARCHIVE_NAME} mandrel-java24-windows-amd64.zip
     - name: Upload Mandrel build
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: mandrel-java24-windows-amd64-test-build
         path: mandrel-java24-windows-amd64.zip
@@ -397,8 +397,8 @@ jobs:
       matrix:
         mandrel-ref: [graal/master]
     steps:
-    - uses: actions/checkout@v3
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
+    - uses: actions/checkout@v4
       with:
         repository: graalvm/mandrel.git
         fetch-depth: 1
@@ -409,13 +409,13 @@ jobs:
           VERSION=$(jq -r .mx_version ${MANDREL_REPO}/common.json)
           git clone ${GITHUB_SERVER_URL}/graalvm/mx --depth 1 --branch ${VERSION} ${MX_HOME}
           ./mx/mx --version
-    - uses: actions/cache@v3
+    - uses: actions/cache@v4
       with:
         path: ~/.mx
         key: ${{ runner.os }}-mx-${{ hashFiles('**/suite.py') }}
         restore-keys: |
           ${{ runner.os }}-mx-
-    - uses: actions/cache@v3
+    - uses: actions/cache@v4
       with:
         path: ~/.m2/repository
         key: ${{ runner.os }}-mx-${{ hashFiles('**/suite.py') }}
@@ -432,7 +432,7 @@ jobs:
         ${JAVA_HOME}/bin/java --version
     - name: Use python 3.10
       # The minimum supported version is 3.9 see https://github.com/graalvm/mx/issues/249
-      uses: actions/setup-python@v4
+      uses: actions/setup-python@v5
       with:
         python-version: '3.10'
     - name: Build Mandrel JDK
@@ -496,7 +496,7 @@ jobs:
         ./implicitclass | tee native.txt
         diff java.txt native.txt
     - name: Upload Mandrel build
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: mandrel-java24-linux-amd64-2step-test-build
         path: mandrel-java24-linux-amd64.tar.gz
