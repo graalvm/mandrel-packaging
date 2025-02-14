@@ -5,7 +5,8 @@ matrixJob('mandrel-linux-integration-tests') {
         text('JDK_VERSION',
                 '21',
                 '23',
-                '24'
+                '24',
+                '25'
         )
         text('JDK_RELEASE',
                 'ea',
