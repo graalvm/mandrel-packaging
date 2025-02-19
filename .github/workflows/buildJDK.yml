@@ -19,6 +19,10 @@ env:
   MANDREL_VERSION: 10.9.8.7-dev
   MX_PYTHON: python3
   PYTHONIOENCODING: utf-8
+  TEMURIN_API_URL_LATEST: https://api.adoptium.net/v3/binary/latest/25/ea
+  # Use this to 'pin' to a specific JDK build. The respective
+  # release needs to exist.
+  #TEMURIN_PINNED_RELEASE: jdk-25%2B9-ea-beta
 
 # The following aims to reduce CI CPU cycles by:
 # 1. Cancelling any previous builds of this PR when pushing new changes to it
@@ -34,9 +38,29 @@ concurrency:
   cancel-in-progress: ${{ github.event_name == 'pull_request' || github.repository != 'graalvm/mandrel-packaging' }}
 
 jobs:
+  setup-env:
+    name: Set Temurin API URL
+    runs-on: ubuntu-latest
+    outputs:
+      api-url: ${{ steps.set-env.outputs.TEMURIN_API_URL }}
+    steps:
+    - name: Prepare
+      id: set-env
+      run: |
+        if [ "${TEMURIN_PINNED_RELEASE}_" == "_" ]; then
+          TEMURIN_API_URL="${TEMURIN_API_URL_LATEST}"
+        else
+          TEMURIN_API_URL="https://api.adoptium.net/v3/binary/version/${TEMURIN_PINNED_RELEASE}"
+        fi
+        echo "Setting TEMURIN_API_URL=${TEMURIN_API_URL}"
+        echo "TEMURIN_API_URL=${TEMURIN_API_URL}" >> "$GITHUB_OUTPUT"
+
   build-and-test:
     name: Linux Build and test ${{ matrix.mandrel-ref }} branch/tag
     runs-on: ubuntu-latest
+    needs: setup-env
+    env:
+      TEMURIN_API_URL: ${{ needs.setup-env.outputs.api-url }}
     strategy:
       fail-fast: false
       matrix:
@@ -68,8 +92,8 @@ jobs:
           ${{ runner.os }}-${{ matrix.quarkus-name }}-maven-
     - name: Get latest OpenJDK 25 with static libs
       run: |
-        curl -sL https://api.adoptium.net/v3/binary/latest/25/ea/linux/x64/jdk/hotspot/normal/eclipse -o jdk.tar.gz
-        curl -sL https://api.adoptium.net/v3/binary/latest/25/ea/linux/x64/staticlibs/hotspot/normal/eclipse -o jdk-static-libs.tar.gz
+        curl -sL ${TEMURIN_API_URL}/linux/x64/jdk/hotspot/normal/eclipse -o jdk.tar.gz
+        curl -sL ${TEMURIN_API_URL}/linux/x64/staticlibs/hotspot/normal/eclipse -o jdk-static-libs.tar.gz
         mkdir -p ${JAVA_HOME}
         tar xf jdk.tar.gz -C ${JAVA_HOME} --strip-components=1
         tar xf jdk-static-libs.tar.gz -C ${JAVA_HOME} --strip-components=1
@@ -142,6 +166,9 @@ jobs:
   build-and-test-on-mac:
     name: ${{ matrix.os }} Build and test ${{ matrix.mandrel-ref }} branch/tag
     runs-on: ${{ matrix.os }}
+    needs: setup-env
+    env:
+      TEMURIN_API_URL: ${{ needs.setup-env.outputs.api-url }}
     strategy:
       fail-fast: false
       matrix:
@@ -183,8 +210,8 @@ jobs:
         env:
           ARCH: ${{ steps.arch.outputs.ARCH }}
         run: |
-          curl -sL https://api.adoptium.net/v3/binary/latest/25/ea/mac/${ARCH}/jdk/hotspot/normal/eclipse -o jdk.tar.gz
-          curl -sL https://api.adoptium.net/v3/binary/latest/25/ea/mac/${ARCH}/staticlibs/hotspot/normal/eclipse -o jdk-static-libs.tar.gz
+          curl -sL ${TEMURIN_API_URL}/mac/${ARCH}/jdk/hotspot/normal/eclipse -o jdk.tar.gz
+          curl -sL ${TEMURIN_API_URL}/mac/${ARCH}/staticlibs/hotspot/normal/eclipse -o jdk-static-libs.tar.gz
           mkdir -p ${JAVA_HOME}
           tar xf jdk.tar.gz -C ${JAVA_HOME} --strip-components=1
           tar xf jdk-static-libs.tar.gz -C ${JAVA_HOME} --strip-components=1
@@ -265,6 +292,9 @@ jobs:
   build-and-test-on-windows:
     name: Windows Build and test ${{ matrix.mandrel-ref }} branch/tag
     runs-on: windows-2022
+    needs: setup-env
+    env:
+      TEMURIN_API_URL: ${{ needs.setup-env.outputs.api-url }}
     strategy:
       fail-fast: false
       matrix:
@@ -298,10 +328,10 @@ jobs:
     - name: Get latest OpenJDK 25 with static libs
       run: |
         $wc = New-Object System.Net.WebClient
-        $wc.DownloadFile("https://api.adoptium.net/v3/binary/latest/25/ea/windows/x64/jdk/hotspot/normal/eclipse", "$Env:temp\jdk.zip")
+        $wc.DownloadFile("$Env:TEMURIN_API_URL\/windows/x64/jdk/hotspot/normal/eclipse", "$Env:temp\jdk.zip")
         Expand-Archive "$Env:temp\jdk.zip" -DestinationPath "$Env:temp"
         Move-Item -Path "$Env:temp\jdk-*" -Destination $Env:JAVA_HOME
-        $wc.DownloadFile("https://api.adoptium.net/v3/binary/latest/25/ea/windows/x64/staticlibs/hotspot/normal/eclipse", "$Env:temp\jdk-staticlibs.zip")
+        $wc.DownloadFile("$Env:TEMURIN_API_URL\/windows/x64/staticlibs/hotspot/normal/eclipse", "$Env:temp\jdk-staticlibs.zip")
         Expand-Archive "$Env:temp\jdk-staticlibs.zip" -DestinationPath "$Env:temp"
         Move-Item -Path "$Env:temp\jdk-*\lib\static" -Destination $Env:JAVA_HOME\lib\
         Remove-Item -Recurse "$Env:temp\jdk-*"
@@ -392,6 +422,9 @@ jobs:
   build-and-test-2-step:
     name: 2-step Linux Build and test ${{ matrix.mandrel-ref }} branch/tag
     runs-on: ubuntu-latest
+    needs: setup-env
+    env:
+      TEMURIN_API_URL: ${{ needs.setup-env.outputs.api-url }}
     strategy:
       fail-fast: false
       matrix:
@@ -423,8 +456,8 @@ jobs:
           ${{ runner.os }}-${{ matrix.quarkus-name }}-maven-
     - name: Get latest OpenJDK 25 with static libs
       run: |
-        curl -sL https://api.adoptium.net/v3/binary/latest/25/ea/linux/x64/jdk/hotspot/normal/eclipse -o jdk.tar.gz
-        curl -sL https://api.adoptium.net/v3/binary/latest/25/ea/linux/x64/staticlibs/hotspot/normal/eclipse -o jdk-static-libs.tar.gz
+        curl -sL ${TEMURIN_API_URL}/linux/x64/jdk/hotspot/normal/eclipse -o jdk.tar.gz
+        curl -sL ${TEMURIN_API_URL}/linux/x64/staticlibs/hotspot/normal/eclipse -o jdk-static-libs.tar.gz
         mkdir -p ${JAVA_HOME}
         tar xf jdk.tar.gz -C ${JAVA_HOME} --strip-components=1
         tar xf jdk-static-libs.tar.gz -C ${JAVA_HOME} --strip-components=1
