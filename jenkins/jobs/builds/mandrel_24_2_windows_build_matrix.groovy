@@ -18,9 +18,9 @@ matrixJob('mandrel-24-2-windows-build-matrix') {
     logRotator {
         numToKeep(10)
     }
-    combinationFilter(
-            '!(JDK_VERSION=="24" && JDK_RELEASE=="ga")'
-    )
+    //combinationFilter(
+    //        '!(JDK_VERSION=="24" && JDK_RELEASE=="ga")'
+    //)
     parameters {
         stringParam(
                 'JDK_RELEASE_NAME',
