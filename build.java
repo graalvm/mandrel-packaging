@@ -1001,7 +1001,7 @@ class Mx
             new SimpleEntry<>("org.graalvm.nativeimage:svm-diagnostics-agent.jar",
                 new Path[]{substrateDistPath.resolve("svm-diagnostics-agent.jar"), Path.of("lib", "graalvm", "svm-diagnostics-agent.jar")}),
             new SimpleEntry<>("org.graalvm.nativeimage:svm-configure.jar",
-                new Path[]{substrateDistPath.resolve("svm-configure.jar"), Path.of("lib", "graalvm", "svm-configure.jar")}),
+                new Path[]{substrateDistPath.resolve("svm-configure.jar"), Path.of("lib", "svm", "builder", "svm-configure.jar")}),
             new SimpleEntry<>("org.graalvm.nativeimage:svm-foreign.jar",
                 new Path[]{substrateDistPath.resolve("svm-foreign.jar"), Path.of("lib", "svm", "builder", "svm-foreign.jar")})
         );
