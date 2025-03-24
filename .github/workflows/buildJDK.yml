@@ -22,7 +22,7 @@ env:
   TEMURIN_API_URL_LATEST: https://api.adoptium.net/v3/binary/latest/25/ea
   # Use this to 'pin' to a specific JDK build. The respective
   # release needs to exist.
-  #TEMURIN_PINNED_RELEASE: jdk-25%2B9-ea-beta
+  TEMURIN_PINNED_RELEASE: jdk-25%2B14-ea-beta
 
 # The following aims to reduce CI CPU cycles by:
 # 1. Cancelling any previous builds of this PR when pushing new changes to it
