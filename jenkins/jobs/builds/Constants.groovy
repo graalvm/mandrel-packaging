@@ -177,15 +177,17 @@ class Constants {
         --with-version-interim=0 \\
         --with-version-update=${JDK_UPDATE_VERSION}
 
-    make all graal-builder-image JOBS=$JOBS
+    make images JOBS=$JOBS
 
     # Archive graal-builder-image as tar.xz
+    # For plain JDK, should archive the jdk image instead
     pushd build/macosx-${JDK_ARCH}-server-release/images
     tar -cJf graal-builder-jdk.tar.xz graal-builder-jdk
     mv graal-builder-jdk.tar.xz $WORKSPACE/
     popd
 
     # Run JTreg tests
+    # For plain JDK, should run jtreg on images/jdk instead
     rm -rf jtreg_results
     mkdir -p $WORKSPACE/jtreg_results/jdk/JTwork $WORKSPACE/jtreg_results/jdk/JTreport
     jtreg -a -ignore:quiet -w:jtreg_results/jdk/JTwork -r:jtreg_results/jdk/JTreport \\
