@@ -1,14 +1,19 @@
+package jenkins.jobs.tests
+
 final Class Constants = new GroovyClassLoader(getClass().getClassLoader())
         .parseClass(readFileFromWorkspace("jenkins/jobs/tests/Constants.groovy"))
-matrixJob('mandrel-linux-container-integration-tests') {
+matrixJob('mandrel-linux-ubi9-container-integration-tests') {
     axes {
         text('BUILDER_IMAGE',
                 'quay.io/quarkus/ubi-quarkus-mandrel-builder-image:jdk-21',
                 'quay.io/quarkus/ubi-quarkus-mandrel-builder-image:jdk-23',
-                'quay.io/quarkus/ubi-quarkus-mandrel-builder-image:jdk-24'
+                'quay.io/quarkus/ubi-quarkus-mandrel-builder-image:jdk-24',
+                'quay.io/quarkus/ubi9-quarkus-mandrel-builder-image:jdk-21',
+                'quay.io/quarkus/ubi9-quarkus-mandrel-builder-image:jdk-23',
+                'quay.io/quarkus/ubi9-quarkus-mandrel-builder-image:jdk-24'
         )
         text('QUARKUS_VERSION', Constants.QUARKUS_VERSION_RELEASED)
-        labelExpression('LABEL', ['el8', 'el8_aarch64'])
+        labelExpression('LABEL', ['fedora&&aarch64', 'fedora&&amd64'])
     }
     description('Run Mandrel container integration tests')
     displayName('Linux :: Container Integration tests')

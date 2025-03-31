@@ -11,12 +11,12 @@ matrixJob('mandrel-linux-fedora-smoke-tests') {
                 'quay.io/quarkus/ubi-quarkus-mandrel-builder-image:jdk-23',
                 'quay.io/quarkus/ubi-quarkus-mandrel-builder-image:jdk-24'
         )
-        labelExpression('LABEL', ['fedora_aarch64', 'el8_aarch64', 'el8'])
+        labelExpression('LABEL', ['fedora&&aarch64', 'fedora&&amd64', 'el8_aarch64', 'el8'])
     }
     description('Run Mandrel smoke test, vanilla Fedora vs. RHEL 8')
     displayName('Linux/Fedora :: Container smoke test')
     logRotator {
-        numToKeep(100)
+        numToKeep(10)
     }
     childCustomWorkspace('${SHORT_COMBINATION}')
     wrappers {
