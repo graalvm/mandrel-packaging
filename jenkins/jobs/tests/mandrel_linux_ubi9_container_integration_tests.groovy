@@ -16,7 +16,7 @@ matrixJob('mandrel-linux-ubi9-container-integration-tests') {
         labelExpression('LABEL', ['fedora&&aarch64', 'fedora&&amd64'])
     }
     description('Run Mandrel container integration tests')
-    displayName('Linux :: Container Integration tests')
+    displayName('Linux UBI9 :: Container Integration tests')
     logRotator {
         numToKeep(10)
     }
