@@ -11,7 +11,7 @@ matrixJob('mandrel-linux-container-integration-tests') {
         labelExpression('LABEL', ['el8', 'el8_aarch64'])
     }
     description('Run Mandrel container integration tests')
-    displayName('Linux :: Container Integration tests')
+    displayName('Linux UBI8 :: Container Integration tests')
     logRotator {
         numToKeep(10)
     }
