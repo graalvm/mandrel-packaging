@@ -6,13 +6,19 @@ matrixJob('mandrel-linux-fedora-smoke-tests') {
     axes {
         text('BUILDER_IMAGE',
                 'quay.io/quarkus/ubi-quarkus-mandrel-builder-image:jdk-17',
+                'quay.io/quarkus/ubi9-quarkus-mandrel-builder-image:jdk-17',
                 'quay.io/quarkus/ubi-quarkus-mandrel-builder-image:jdk-21',
+                'quay.io/quarkus/ubi9-quarkus-mandrel-builder-image:jdk-21',
                 'quay.io/quarkus/ubi-quarkus-mandrel-builder-image:jdk-22',
+                'quay.io/quarkus/ubi9-quarkus-mandrel-builder-image:jdk-22',
                 'quay.io/quarkus/ubi-quarkus-mandrel-builder-image:jdk-23',
-                'quay.io/quarkus/ubi-quarkus-mandrel-builder-image:jdk-24'
+                'quay.io/quarkus/ubi9-quarkus-mandrel-builder-image:jdk-23',
+                'quay.io/quarkus/ubi-quarkus-mandrel-builder-image:jdk-24',
+                'quay.io/quarkus/ubi9-quarkus-mandrel-builder-image:jdk-24'
         )
-        labelExpression('LABEL', ['fedora&&aarch64', 'fedora&&amd64', 'el8_aarch64', 'el8'])
+        labelExpression('LABEL', ['fedora_aarch64', 'fedora_amd64', 'el8_aarch64', 'el8'])
     }
+    combinationFilter('!(BUILDER_IMAGE.contains("ubi9")) || LABEL in ["fedora_aarch64", "fedora_amd64"]')
     description('Run Mandrel smoke test, vanilla Fedora vs. RHEL 8')
     displayName('Linux/Fedora :: Container smoke test')
     logRotator {

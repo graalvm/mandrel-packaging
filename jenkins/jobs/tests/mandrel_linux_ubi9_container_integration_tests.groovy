@@ -13,7 +13,7 @@ matrixJob('mandrel-linux-ubi9-container-integration-tests') {
                 'quay.io/quarkus/ubi9-quarkus-mandrel-builder-image:jdk-24'
         )
         text('QUARKUS_VERSION', Constants.QUARKUS_VERSION_RELEASED)
-        labelExpression('LABEL', ['fedora&&aarch64', 'fedora&&amd64'])
+        labelExpression('LABEL', ['fedora_aarch64', 'fedora_amd64'])
     }
     description('Run Mandrel container integration tests')
     displayName('Linux UBI9 :: Container Integration tests')
