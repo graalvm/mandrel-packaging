@@ -992,6 +992,8 @@ class Mx
                 new Path[]{compilerDistPath.resolve("graal.jar"), Path.of("lib", "jvmci", "graal.jar")}),
             new SimpleEntry<>("org.graalvm.nativeimage:objectfile.jar",
                 new Path[]{substrateDistPath.resolve("objectfile.jar"), Path.of("lib", "svm", "builder", "objectfile.jar")}),
+            new SimpleEntry<>("org.graalvm.nativeimage:svm-capnproto-runtime.jar",
+                new Path[]{substrateDistPath.resolve("svm-capnproto-runtime.jar"), Path.of("lib", "svm", "builder", "svm-capnproto-runtime.jar")}),
             new SimpleEntry<>("org.graalvm.nativeimage:svm-driver.jar",
                 new Path[]{substrateDistPath.resolve("svm-driver.jar"), Path.of("lib", "graalvm", "svm-driver.jar")}),
             new SimpleEntry<>("org.graalvm.nativeimage:jvmti-agent-base.jar",
