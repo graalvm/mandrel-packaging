@@ -177,7 +177,7 @@ class Constants {
         --with-version-interim=0 \\
         --with-version-update=${JDK_UPDATE_VERSION}
 
-    make images JOBS=$JOBS
+    make all graal-builder-image JOBS=$JOBS
 
     # Archive graal-builder-image as tar.xz
     # For plain JDK, should archive the jdk image instead
