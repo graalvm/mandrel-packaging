@@ -876,6 +876,7 @@ class Mx
     final Path compilerDistPath;
     final Path truffleDistPath;
     final Path substrateDistPath;
+    final Path espressoSharedDistPath;
     final Path sdkDistPath;
 
     final String[] mxbuildDir;
@@ -961,6 +962,7 @@ class Mx
         compilerDistPath = Path.of("compiler", mxDistDir);
         truffleDistPath = Path.of("truffle", mxDistDir);
         substrateDistPath = Path.of("substratevm", mxDistDir);
+        espressoSharedDistPath = Path.of("espresso-shared", mxDistDir);
         sdkDistPath = Path.of("sdk", mxDistDir);
 
         sdkBuildPath = Path.of("sdk", mxbuildDir);
@@ -1005,7 +1007,9 @@ class Mx
             new SimpleEntry<>("org.graalvm.nativeimage:svm-configure.jar",
                 new Path[]{substrateDistPath.resolve("svm-configure.jar"), Path.of("lib", "svm", "builder", "svm-configure.jar")}),
             new SimpleEntry<>("org.graalvm.nativeimage:svm-foreign.jar",
-                new Path[]{substrateDistPath.resolve("svm-foreign.jar"), Path.of("lib", "svm", "builder", "svm-foreign.jar")})
+                new Path[]{substrateDistPath.resolve("svm-foreign.jar"), Path.of("lib", "svm", "builder", "svm-foreign.jar")}),
+            new SimpleEntry<>("org.graalvm.nativeimage:espresso-svm.jar",
+                new Path[]{espressoSharedDistPath.resolve("espresso-svm.jar"), Path.of("lib", "svm", "builder", "espresso-svm.jar")})
         );
 
         macroPaths = Map.ofEntries(
