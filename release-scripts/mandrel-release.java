@@ -494,6 +494,7 @@ class GitHubOps
             "Mac users: \n" +
             "  * Use artifact mandrel-java" + jdkMajorVersionExample + "-macos-aarch64-" + version + ".tar.gz\n" +
             "  * Use JAVA_HOME=\"$( pwd )/mandrel-java" + jdkMajorVersionExample + "-" + version + "/Contents/Home\"\n" +
+            "  * Use `xattr -c -r ./path/to/mandrel` to prevent quarantine\n" +
             "\n" +
             "```\n" +
             "$ curl -O -J -L \"https://github.com/graalvm/mandrel/releases/download/mandrel-" + version + "/mandrel-java" + jdkMajorVersionExample + "-linux-amd64-" + version + ".tar.gz\"\n" +
