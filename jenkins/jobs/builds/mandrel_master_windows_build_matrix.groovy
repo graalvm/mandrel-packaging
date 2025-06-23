@@ -17,7 +17,7 @@ matrixJob('mandrel-master-windows-build-matrix') {
         numToKeep(5)
     }
     combinationFilter(
-            '!(JDK_VERSION=="26 && JDK_RELEASE=="ga")'
+            '!(JDK_VERSION=="26" && JDK_RELEASE=="ga")'
     )
     parameters {
         stringParam(
