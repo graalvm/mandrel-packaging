@@ -6,7 +6,8 @@ matrixJob('mandrel-linux-integration-tests') {
                 '21',
                 '23',
                 '24',
-                '25'
+                '25',
+                '26'
         )
         text('JDK_RELEASE',
                 'ea',
@@ -16,6 +17,7 @@ matrixJob('mandrel-linux-integration-tests') {
                 'mandrel-23-1-linux-build-matrix',
                 'mandrel-24-1-linux-build-matrix',
                 'mandrel-24-2-linux-build-matrix',
+                'mandrel-25-0-linux-build-matrix',
                 'mandrel-master-linux-build-matrix'
         )
         text('QUARKUS_VERSION', Constants.QUARKUS_VERSION_RELEASED)

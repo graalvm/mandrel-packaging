@@ -2,24 +2,24 @@ package jenkins.jobs.builds
 
 final Class Constants = new GroovyClassLoader(getClass().getClassLoader())
         .parseClass(readFileFromWorkspace("jenkins/jobs/builds/Constants.groovy"))
-matrixJob('mandrel-master-macos-build-matrix') {
+matrixJob('mandrel-25-0-linux-build-matrix') {
     axes {
-        labelExpression('LABEL', ['macos_aarch64'])
+        labelExpression('LABEL', ['el8_aarch64', 'el8'])
         text('JDK_VERSION',
-                '26',
+                '25'
         )
         text('JDK_RELEASE',
                 'ea',
                 'ga'
         )
     }
-    displayName('MacOS Build Matrix :: master')
-    description('MacOS build for master branch.')
+    displayName('Linux Build Matrix :: 25.0')
+    description('Linux build for 25.0 branch.')
     logRotator {
-        numToKeep(5)
+        numToKeep(10)
     }
     combinationFilter(
-            '!(JDK_VERSION=="26" && JDK_RELEASE=="ga")'
+            '!(JDK_VERSION=="25" && JDK_RELEASE=="ga")'
     )
     parameters {
         stringParam(
@@ -38,7 +38,7 @@ matrixJob('mandrel-master-macos-build-matrix') {
         )
         stringParam(
                 'BRANCH_OR_TAG',
-                'graal/master',
+                'mandrel/25.0',
                 'e.g. your PR branch or a specific tag.'
         )
         choiceParam('PACKAGING_REPOSITORY', Constants.PACKAGING_REPOSITORY, 'Mandrel packaging scripts.')
@@ -52,12 +52,12 @@ matrixJob('mandrel-master-macos-build-matrix') {
         )
         stringParam(
                 'PACKAGING_REPOSITORY_BRANCH_OR_TAG',
-                'master',
+                '25.0',
                 'e.g. master if you use heads or some tag if you use tags.'
         )
         stringParam(
                 'MANDREL_VERSION_SUBSTRING',
-                'master-SNAPSHOT',
+                '25.0-SNAPSHOT',
                 'It must not contain spaces as it is used in tarball name too.'
         )
         matrixCombinationsParam('MATRIX_COMBINATIONS_FILTER', "", 'Choose which combinations to run')
@@ -86,9 +86,9 @@ matrixJob('mandrel-master-macos-build-matrix') {
             remote {
                 url('https://github.com/graalvm/mx.git')
             }
-            branches('*/master')
+            branches('refs/tags/7.56.0')
             extensions {
-                localBranch('master')
+                localBranch('7.56.0')
                 relativeTargetDirectory('mx')
             }
         }
@@ -101,7 +101,7 @@ matrixJob('mandrel-master-macos-build-matrix') {
     }
     steps {
         shell {
-            command(Constants.MACOS_BUILD_CMD)
+            command(Constants.LINUX_BUILD_CMD)
             unstableReturn(1)
         }
     }
@@ -124,6 +124,15 @@ matrixJob('mandrel-master-macos-build-matrix') {
                         recipientList()
                         attachBuildLog(true)
                     }
+                }
+            }
+        }
+        downstreamParameterized {
+            trigger(['mandrel-linux-integration-tests']) {
+                condition('SUCCESS')
+                parameters {
+                    predefinedProp('MANDREL_BUILD_NUMBER', '${BUILD_NUMBER}')
+                    matrixSubset('(MANDREL_BUILD=="${JOB_BASE_NAME}" && JDK_VERSION=="${JDK_VERSION}" && JDK_RELEASE=="${JDK_RELEASE}" && LABEL=="${LABEL}")')
                 }
             }
         }

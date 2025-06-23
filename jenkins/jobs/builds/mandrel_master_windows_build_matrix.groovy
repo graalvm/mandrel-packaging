@@ -4,7 +4,7 @@ matrixJob('mandrel-master-windows-build-matrix') {
     axes {
         labelExpression('LABEL', ['w2k19'])
         text('JDK_VERSION',
-                '25'
+                '26'
         )
         text('JDK_RELEASE',
                 'ea',
@@ -17,7 +17,7 @@ matrixJob('mandrel-master-windows-build-matrix') {
         numToKeep(5)
     }
     combinationFilter(
-            '!(JDK_VERSION=="25" && JDK_RELEASE=="ga")'
+            '!(JDK_VERSION=="26 && JDK_RELEASE=="ga")'
     )
     parameters {
         stringParam(

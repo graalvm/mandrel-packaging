@@ -10,7 +10,8 @@ matrixJob('mandrel-linux-ubi9-container-integration-tests') {
                 'quay.io/quarkus/ubi-quarkus-mandrel-builder-image:jdk-24',
                 'quay.io/quarkus/ubi9-quarkus-mandrel-builder-image:jdk-21',
                 'quay.io/quarkus/ubi9-quarkus-mandrel-builder-image:jdk-23',
-                'quay.io/quarkus/ubi9-quarkus-mandrel-builder-image:jdk-24'
+                'quay.io/quarkus/ubi9-quarkus-mandrel-builder-image:jdk-24',
+                'quay.io/quarkus/ubi9-quarkus-mandrel-builder-image:dev'
         )
         text('QUARKUS_VERSION', Constants.QUARKUS_VERSION_RELEASED)
         labelExpression('LABEL', ['fedora_aarch64', 'fedora_amd64'])

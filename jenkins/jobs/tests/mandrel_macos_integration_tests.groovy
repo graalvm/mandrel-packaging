@@ -8,7 +8,8 @@ matrixJob('mandrel-macos-integration-tests') {
                 '21',
                 '23',
                 '24',
-                '25'
+                '25',
+                '26'
         )
         text('JDK_RELEASE',
                 'ea',
@@ -18,6 +19,7 @@ matrixJob('mandrel-macos-integration-tests') {
                 'mandrel-23-1-macos-build-matrix',
                 'mandrel-24-1-macos-build-matrix',
                 'mandrel-24-2-macos-build-matrix',
+                'mandrel-25-0-macos-build-matrix',
                 'mandrel-master-macos-build-matrix'
         )
         text('QUARKUS_VERSION', Constants.QUARKUS_VERSION_MACOS)
