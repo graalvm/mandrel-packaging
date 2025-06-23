@@ -14,7 +14,9 @@ matrixJob('mandrel-linux-fedora-smoke-tests') {
                 'quay.io/quarkus/ubi-quarkus-mandrel-builder-image:jdk-23',
                 'quay.io/quarkus/ubi9-quarkus-mandrel-builder-image:jdk-23',
                 'quay.io/quarkus/ubi-quarkus-mandrel-builder-image:jdk-24',
-                'quay.io/quarkus/ubi9-quarkus-mandrel-builder-image:jdk-24'
+                'quay.io/quarkus/ubi9-quarkus-mandrel-builder-image:jdk-24',
+                'quay.io/quarkus/ubi-quarkus-mandrel-builder-image:dev',
+                'quay.io/quarkus/ubi9-quarkus-mandrel-builder-image:dev'
         )
         labelExpression('LABEL', ['fedora_aarch64', 'fedora_amd64', 'el8_aarch64', 'el8'])
     }

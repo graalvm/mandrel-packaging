@@ -5,7 +5,8 @@ matrixJob('mandrel-linux-container-integration-tests') {
         text('BUILDER_IMAGE',
                 'quay.io/quarkus/ubi-quarkus-mandrel-builder-image:jdk-21',
                 'quay.io/quarkus/ubi-quarkus-mandrel-builder-image:jdk-23',
-                'quay.io/quarkus/ubi-quarkus-mandrel-builder-image:jdk-24'
+                'quay.io/quarkus/ubi-quarkus-mandrel-builder-image:jdk-24',
+                'quay.io/quarkus/ubi-quarkus-mandrel-builder-image:dev'
         )
         text('QUARKUS_VERSION', Constants.QUARKUS_VERSION_RELEASED)
         labelExpression('LABEL', ['el8', 'el8_aarch64'])
