@@ -237,7 +237,7 @@ class Constants {
 
     # Configure and build JDK
     JOBS=$(nproc)
-    bash ./configure \\
+    scl enable gcc-toolset-10 -- bash -c "bash ./configure \\
         --enable-hsdis-bundling \\
         --with-hsdis=capstone \\
         --with-zlib=bundled \\
@@ -252,9 +252,9 @@ class Constants {
         --with-debug-level=release \\
         --with-version-feature=${JDK_FEATURE_VERSION} \\
         --with-version-interim=0 \\
-        --with-version-update=${JDK_UPDATE_VERSION}
-        
-    make all graal-builder-image JOBS=$JOBS
+        --with-version-update=${JDK_UPDATE_VERSION}"
+
+    scl enable gcc-toolset-10 -- bash -c "make all graal-builder-image JOBS=$JOBS"
 
     # Archive graal-builder-image as tar.xz
     pushd build/linux-${JDK_ARCH}-server-release/images
