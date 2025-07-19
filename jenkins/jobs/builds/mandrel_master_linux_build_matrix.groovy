@@ -58,6 +58,11 @@ matrixJob('mandrel-master-linux-build-matrix') {
                 'master-SNAPSHOT',
                 'It must not contain spaces as it is used in tarball name too.'
         )
+        stringParam(
+                'INHOUSE_JDK_FALLBACK',
+                'true',
+                'Use in-house home made JDK as a fallback.'
+        )
         matrixCombinationsParam('MATRIX_COMBINATIONS_FILTER', "", 'Choose which combinations to run')
     }
     multiscm {

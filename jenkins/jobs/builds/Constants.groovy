@@ -33,8 +33,21 @@ class Constants {
         curl -OJLs https://api.adoptium.net/v3/binary/version/${JDK_RELEASE_NAME}/linux/${JDK_ARCH}/jdk/hotspot/normal/eclipse
         curl -OJLs https://api.adoptium.net/v3/binary/version/${JDK_RELEASE_NAME}/linux/${JDK_ARCH}/staticlibs/hotspot/normal/eclipse
     fi
-    tar -xf OpenJDK*-jdk*
-    export JAVA_HOME=$( pwd )/$( echo jdk-${JDK_VERSION}* )
+    if ! ls OpenJDK*-jdk* >/dev/null 2>&1; then
+        if [[ "${INHOUSE_JDK_FALLBACK}" == "true" ]]; then
+            export MANDREL_JDK_URL="https://ci.modcluster.io/job/mandrel-jdk-build-matrix/lastSuccessfulBuild/LABEL=${LABEL}/artifact/graal-builder-jdk.tar.xz"
+            curl -OJLs "${MANDREL_JDK_URL}"
+            tar -xf graal-builder-jdk.tar.xz
+            export JAVA_HOME=$( pwd )/graal-builder-jdk
+        else
+            echo "Adoptium download failed and INHOUSE_JDK_FALLBACK is not enabled. Quitting..."
+            exit 1
+        fi
+    else
+        tar -xf OpenJDK*-jdk*
+        export JAVA_HOME=$( pwd )/$( echo jdk-${JDK_VERSION}* )
+        tar -xf OpenJDK*-static-libs* --strip-components=1 -C ${JAVA_HOME}
+    fi
     if [[ ! -e "${JAVA_HOME}/bin/java" ]]; then
         echo "Cannot find downloaded JDK. Quitting..."
         exit 1
