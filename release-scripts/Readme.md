@@ -3,12 +3,12 @@
 This folder contains a number of scripts targetting to ease the process of
 creating new Mandrel releases.
 
-## Prerequisities
+## Prerequisites
 
-1. [Install jbang](https://github.com/jbangdev/jbang#installation)
-2. Create a `~/.github` [property files](https://github-api.kohsuke.org/#Property_file) or set [environmental variables](https://github-api.kohsuke.org/#Environmental_variables)
+1. [Install jbang](https://www.jbang.dev/documentation/guide/latest/installation.html)
+2. Create a `~/.github` [property files](https://hub4j.github.io/github-api/#Property_file) or set [environmental variables](https://hub4j.github.io/github-api/#Environmental_variables)
 
-We suggest [creating a personal access token](https://docs.github.com/en/github/authenticating-to-github/creating-a-personal-access-token) and using the [property file approach](https://github-api.kohsuke.org/#Property_file) by creating a file `~/.github` with content `oauth=YOURTOKEN` 
+We suggest [creating a personal access token](https://docs.github.com/en/github/authenticating-to-github/creating-a-personal-access-token) and using the [property file approach](https://hub4j.github.io/github-api/#Property_file) by creating a file `~/.github` with content `oauth=YOURTOKEN` 
 
 ## Creating a Final release
 
