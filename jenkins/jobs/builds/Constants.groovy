@@ -314,7 +314,7 @@ class Constants {
     git clone %JTREG_REPO% jtreg
     pushd jtreg
     git checkout %JTREG_TAG%
-    bash -c "find . -type f ( -name '*.sh' -o -name '*.bash' -o -path './make/build-support/*' ) -exec dos2unix {} ;"
+    bash -c "find . -type f \\( -name '*.sh' -o -name '*.bash' -o -path './make/build-support/*' \\) -exec dos2unix {} \\;"
     bash make/build.sh --jdk "%JAVA_HOME%"
     if not exist "build\\images\\jtreg\\bin\\jtreg" (
         echo Failed to build JTreg. Quitting...
