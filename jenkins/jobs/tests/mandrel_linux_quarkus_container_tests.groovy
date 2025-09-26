@@ -4,7 +4,7 @@ matrixJob('mandrel-linux-quarkus-container-tests') {
     axes {
         text('BUILDER_IMAGE',
                 'quay.io/quarkus/ubi-quarkus-mandrel-builder-image:23.1-java21',
-                'quay.io/quarkus/ubi-quarkus-mandrel-builder-image:24.1-java23'
+                'quay.io/quarkus/ubi-quarkus-mandrel-builder-image:25.0-java25'
         )
         text('QUARKUS_VERSION', Constants.QUARKUS_VERSION_BUILDER_IMAGE)
         labelExpression('LABEL', ['el8_aarch64', 'el8'])
