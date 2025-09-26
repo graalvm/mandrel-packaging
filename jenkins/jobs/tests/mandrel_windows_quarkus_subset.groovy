@@ -43,7 +43,7 @@ matrixJob('mandrel-windows-quarkus-subset') {
                     '(JDK_VERSION.equals("21") && JDK_RELEASE.equals("ga") && MANDREL_BUILD.startsWith("mandrel-23-1")) ||' +
                     '(JDK_VERSION.equals("23") && JDK_RELEASE.equals("ga") && MANDREL_BUILD.startsWith("mandrel-24-1")) ||' +
                     '(JDK_VERSION.equals("24") && JDK_RELEASE.equals("ga") && MANDREL_BUILD.startsWith("mandrel-24-2")) ||' +
-                    '(JDK_VERSION.equals("25") && JDK_RELEASE.equals("ga") && MANDREL_BUILD.startsWith("mandrel-25-0")) ||'
+                    '(JDK_VERSION.equals("25") && JDK_RELEASE.equals("ga") && MANDREL_BUILD.startsWith("mandrel-25-0"))'
             //@formatter:on
     )
     parameters {
