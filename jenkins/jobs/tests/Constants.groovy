@@ -1,21 +1,21 @@
 class Constants {
     static final ArrayList<String> QUARKUS_VERSION_RELEASED =
             [
-                    '3.24.0',
-                    '3.20.1',
-                    '3.15.5'
+                    '3.28.1',
+                    '3.20.3',
+                    '3.15.7'
             ]
 
     static final ArrayList<String> QUARKUS_VERSION_MACOS =
             [
-                    '3.15.5',
-                    '3.8.6.1'
+                    '3.20.3',
+                    '3.15.7'
             ]
 
     static final ArrayList<String> QUARKUS_VERSION_BUILDER_IMAGE =
             [
-                    '3.20.1',
-                    '3.15.5'
+                    '3.20.3',
+                    '3.15.7'
             ]
 
     static final ArrayList<String> QUARKUS_VERSION_RELEASED_PERF = QUARKUS_VERSION_RELEASED
@@ -23,8 +23,8 @@ class Constants {
     static final String QUARKUS_VERSION_RELEASED_COMBINATION_FILTER =
             //@formatter:off
             '(' +
-                '(MANDREL_BUILD.startsWith("mandrel-23-1") && QUARKUS_VERSION.trim().matches("^3.8.*|^3.15.*|^3.20.*")) ||' +
-                '(MANDREL_BUILD.startsWith("mandrel-24-") && QUARKUS_VERSION.trim().matches("^3.2[0-].*|^3.15.*|^main.*")) ||' +
+                '(MANDREL_BUILD.startsWith("mandrel-23-1") && QUARKUS_VERSION.trim().matches("^3.15.*|^3.20.*")) ||' +
+                '(MANDREL_BUILD.startsWith("mandrel-24-") && QUARKUS_VERSION.trim().matches("^3.15.*|^main.*")) ||' +
                 '(MANDREL_BUILD.startsWith("mandrel-25-") && QUARKUS_VERSION.trim().matches("^3.2[0-].*|^main.*")) ||' +
                 '(MANDREL_BUILD.startsWith("mandrel-master") && QUARKUS_VERSION.trim().matches("^3.2[0-].*|^main.*"))' +
             ') && (' +
@@ -38,10 +38,10 @@ class Constants {
 
     static final String QUARKUS_VERSION_BUILDER_COMBINATION_FILTER =
             //@formatter:off
-            '(BUILDER_IMAGE.contains("jdk-21") && QUARKUS_VERSION.trim().matches("^3.8.*|^3.15.*|^3.20.*")) ||' +
-            '(BUILDER_IMAGE.contains("jdk-23") && QUARKUS_VERSION.trim().matches("^3.2[0-].*|^3.15.*|^main.*")) ||' +
-            '(BUILDER_IMAGE.contains("jdk-24") && QUARKUS_VERSION.trim().matches("^3.2[0-].*|^3.15.*|^main.*")) ||' +
-            '(BUILDER_IMAGE.contains("jdk-25") && QUARKUS_VERSION.trim().matches("^3.2[0-].*|^3.15.*|^main.*"))'
+            '(BUILDER_IMAGE.contains("jdk-21") && QUARKUS_VERSION.trim().matches("^3.15.*|^3.20.*")) ||' +
+            '(BUILDER_IMAGE.contains("jdk-23") && QUARKUS_VERSION.trim().matches("^3.15.*|^main.*")) ||' +
+            '(BUILDER_IMAGE.contains("jdk-24") && QUARKUS_VERSION.trim().matches("^3.15.*|^main.*")) ||' +
+            '(BUILDER_IMAGE.contains("jdk-25") && QUARKUS_VERSION.trim().matches("^3.2[0-].*|^main.*"))'
             //@formatter:on
 
     static final String QUARKUS_MODULES_SUBSET_TESTS = '' +
