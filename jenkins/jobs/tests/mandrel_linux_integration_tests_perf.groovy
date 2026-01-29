@@ -5,17 +5,16 @@ final Class Constants = new GroovyClassLoader(getClass().getClassLoader())
 matrixJob('mandrel-linux-integration-tests-perf') {
     axes {
         text('JDK_VERSION',
-                '17',
                 '21',
-                '22'
+                '25'
         )
         text('JDK_RELEASE',
                 'ea',
                 'ga'
         )
         text('MANDREL_BUILD',
-                'mandrel-22-3-linux-build-matrix',
                 'mandrel-23-1-linux-build-matrix',
+                'mandrel-25-0-linux-build-matrix',
                 'mandrel-master-linux-build-matrix'
         )
         text('QUARKUS_VERSION', Constants.QUARKUS_VERSION_RELEASED_PERF)

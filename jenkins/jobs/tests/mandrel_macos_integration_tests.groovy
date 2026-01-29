@@ -6,8 +6,6 @@ matrixJob('mandrel-macos-integration-tests') {
     axes {
         text('JDK_VERSION',
                 '21',
-                '23',
-                '24',
                 '25',
                 '26'
         )
@@ -17,8 +15,6 @@ matrixJob('mandrel-macos-integration-tests') {
         )
         text('MANDREL_BUILD',
                 'mandrel-23-1-macos-build-matrix',
-                'mandrel-24-1-macos-build-matrix',
-                'mandrel-24-2-macos-build-matrix',
                 'mandrel-25-0-macos-build-matrix',
                 'mandrel-master-macos-build-matrix'
         )
