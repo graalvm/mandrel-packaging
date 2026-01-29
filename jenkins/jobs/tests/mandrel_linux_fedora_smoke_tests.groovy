@@ -5,16 +5,10 @@ final Class Constants = new GroovyClassLoader(getClass().getClassLoader())
 matrixJob('mandrel-linux-fedora-smoke-tests') {
     axes {
         text('BUILDER_IMAGE',
-                'quay.io/quarkus/ubi-quarkus-mandrel-builder-image:jdk-17',
-                'quay.io/quarkus/ubi9-quarkus-mandrel-builder-image:jdk-17',
                 'quay.io/quarkus/ubi-quarkus-mandrel-builder-image:jdk-21',
                 'quay.io/quarkus/ubi9-quarkus-mandrel-builder-image:jdk-21',
-                'quay.io/quarkus/ubi-quarkus-mandrel-builder-image:jdk-22',
-                'quay.io/quarkus/ubi9-quarkus-mandrel-builder-image:jdk-22',
-                'quay.io/quarkus/ubi-quarkus-mandrel-builder-image:jdk-23',
-                'quay.io/quarkus/ubi9-quarkus-mandrel-builder-image:jdk-23',
-                'quay.io/quarkus/ubi-quarkus-mandrel-builder-image:jdk-24',
-                'quay.io/quarkus/ubi9-quarkus-mandrel-builder-image:jdk-24',
+                'quay.io/quarkus/ubi-quarkus-mandrel-builder-image:jdk-25',
+                'quay.io/quarkus/ubi9-quarkus-mandrel-builder-image:jdk-25',
                 'quay.io/quarkus/ubi-quarkus-mandrel-builder-image:dev',
                 'quay.io/quarkus/ubi9-quarkus-mandrel-builder-image:dev'
         )
