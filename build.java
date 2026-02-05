@@ -1027,6 +1027,7 @@ class Mx
                 "sdk:POLYGLOT," +
                 "sdk:WORD," +
                 "SVM," +
+                "SVM_CAPNPROTO_RUNTIME," +
                 "NATIVE_IMAGE_BASE," +
                 "POINTSTO," +
                 "LIBRARY_SUPPORT," +
@@ -1039,6 +1040,7 @@ class Mx
                 "SVM_DIAGNOSTICS_AGENT," +
                 "SVM_CONFIGURE," +
                 "SVM_FOREIGN," +
+                "espresso-shared:ESPRESSO_SVM," +
                 "MANDREL_PACKAGING_WRAPPER")
     );
 
