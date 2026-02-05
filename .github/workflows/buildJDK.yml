@@ -172,7 +172,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [macos-latest, macos-13]
+        os: [macos-latest]
         mandrel-ref: [mandrel/25.0]
     steps:
       - uses: actions/checkout@v4
