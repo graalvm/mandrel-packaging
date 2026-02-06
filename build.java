@@ -1023,6 +1023,7 @@ class Mx
         BuildArgs.of("--only",
                 "GRAAL_SDK," +
                 "sdk:NATIVEIMAGE," +
+                "sdk:NATIVEIMAGE_LIBGRAAL," +
                 "sdk:COLLECTIONS," +
                 "sdk:POLYGLOT," +
                 "sdk:WORD," +
