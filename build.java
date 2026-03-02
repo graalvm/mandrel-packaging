@@ -194,11 +194,13 @@ public class build
             {
                 Path libdarwinSource = null;
                 Path libContainerSource = null;
+                Path libSbomExtractSource = null;
                 Path libchelperSource = Path.of("substratevm", "mxbuild", PLATFORM, "com.oracle.svm.native.libchelper", PLATFORM, (IS_MAC ? "default" : "glibc"), "liblibchelper.a");
                 Path libjvmSource = Path.of("substratevm", "mxbuild", platformAndJDK, "com.oracle.svm.native.jvm.posix", PLATFORM, (IS_MAC ? "default" : "glibc"), "libjvm.a");
                 if (IS_LINUX)
                 {
                     libContainerSource = Path.of("substratevm", "mxbuild", PLATFORM, "com.oracle.svm.native.libcontainer", PLATFORM, "glibc", "libsvm_container.a");
+                    libSbomExtractSource = Path.of("substratevm", "mxbuild", PLATFORM, "com.oracle.svm.native.extractsbom", PLATFORM, "glibc", "libextract_sbom.a");
                 }
                 if (IS_MAC)
                 {
@@ -215,6 +217,7 @@ public class build
                 if (IS_LINUX)
                 {
                     FileSystem.copy(mandrelRepo.resolve(libContainerSource), clibsBasePath.resolve(Path.of("libsvm_container.a")));
+                    FileSystem.copy(mandrelRepo.resolve(libSbomExtractSource), clibsBasePath.resolve(Path.of("libextract_sbom.a")));
                 }
                 if (IS_MAC)
                 {
@@ -248,6 +251,8 @@ public class build
                 logger.debugf("Build native agents...");
                 buildAgents(nativeImage, fs, os);
             }
+
+            buildNativeImageUtils(nativeImage, mandrelJavaHome, fs, os);
 
             generateMandrelReleaseFile(mandrelVersionUntilSpace, mandrelHome);
         }
@@ -306,6 +311,23 @@ public class build
         os.exec(agent, false);
         final Tasks.Exec dagent = Tasks.Exec.of(Arrays.asList(nativeImage.toString(), "--macro:native-image-diagnostics-agent-library"), fs.workingDir());
         os.exec(dagent, false);
+    }
+
+    private static void buildNativeImageUtils(Path nativeImage, Path mandrelJavaHome, FileSystem fs, OperatingSystem os) {
+        if (IS_LINUX)
+        {
+            logger.debugf("Build native-image-utils...");
+            final Tasks.Exec agent = Tasks.Exec.of(Arrays.asList(nativeImage.toString(), "--macro:native-image-utils-launcher"), fs.workingDir());
+            os.exec(agent, false);
+            // Symlink native-image-utils into bin directory
+            Path parent = mandrelJavaHome.resolve("bin");
+            Path libSvmNativeImageUtils = mandrelJavaHome.resolve("lib").resolve("svm").resolve("bin").resolve("native-image-utils");
+            try {
+                Files.createSymbolicLink(parent.resolve("native-image-utils"), libSvmNativeImageUtils);
+            } catch (IOException e) {
+                throw new UncheckedIOException(e);
+            }
+        }
     }
 
     private static void createArchive(FileSystem fs, OperatingSystem os, Path mandrelHome, String archiveName)
@@ -902,7 +924,7 @@ class Mx
         Pattern.compile("\"version\"\\s*:\\s*\"([0-9.]*)\"");
 
     static final List<BuildArgs> BUILD_JAVA_STEPS = List.of(
-        BuildArgs.of("--no-native", "--dependencies", "SVM,SVM_FOREIGN,GRAAL_SDK,SVM_DRIVER,SVM_AGENT,SVM_DIAGNOSTICS_AGENT")
+        BuildArgs.of("--no-native", "--dependencies", "SVM,SVM_FOREIGN,GRAAL_SDK,SVM_DRIVER,SVM_SBOM_EXTRACT,SVM_AGENT,SVM_DIAGNOSTICS_AGENT")
         , BuildArgs.of("--only",
             build.IS_WINDOWS ?
                 "native-image.exe.image-bash," +
@@ -913,6 +935,7 @@ class Mx
                 "native-image.image-bash," +
                     "native-image-agent-library_native-image.properties," +
                     "native-image-launcher_native-image.properties," +
+                    (build.IS_LINUX ? "native-image-utils-launcher_native-image.properties," : "" )+
                     "native-image-diagnostics-agent-library_native-image.properties")
     );
 
@@ -936,6 +959,7 @@ class Mx
             if (build.IS_LINUX)
             {
                 projects += ",com.oracle.svm.native.libcontainer";
+                projects += ",com.oracle.svm.native.extractsbom";
             }
             if (build.IS_MAC)
             {
@@ -998,6 +1022,9 @@ class Mx
                 new Path[]{substrateDistPath.resolve("svm-capnproto-runtime.jar"), Path.of("lib", "svm", "builder", "svm-capnproto-runtime.jar")}),
             new SimpleEntry<>("org.graalvm.nativeimage:svm-driver.jar",
                 new Path[]{substrateDistPath.resolve("svm-driver.jar"), Path.of("lib", "graalvm", "svm-driver.jar")}),
+            // SBOM extract library for 'native-image-utils'
+            new SimpleEntry<>("org.graalvm.nativeimage:svm-sbom-extract.jar",
+                    new Path[]{substrateDistPath.resolve("svm-sbom-extract.jar"), Path.of("lib", "graalvm", "svm-sbom-extract.jar")}),
             new SimpleEntry<>("org.graalvm.nativeimage:jvmti-agent-base.jar",
                 new Path[]{substrateDistPath.resolve("jvmti-agent-base.jar"), Path.of("lib", "graalvm", "jvmti-agent-base.jar")}),
             new SimpleEntry<>("org.graalvm.nativeimage:svm-agent.jar",
@@ -1015,7 +1042,8 @@ class Mx
         macroPaths = Map.ofEntries(
             new SimpleEntry<>("native-image-agent-library", sdkBuildPath.resolve(Path.of("native-image.properties", "native-image-agent-library"))),
             new SimpleEntry<>("native-image-launcher", sdkBuildPath.resolve(Path.of("native-image.properties", "native-image-launcher"))),
-            new SimpleEntry<>("native-image-diagnostics-agent-library", sdkBuildPath.resolve(Path.of("native-image.properties", "native-image-diagnostics-agent-library")))
+            new SimpleEntry<>("native-image-diagnostics-agent-library", sdkBuildPath.resolve(Path.of("native-image.properties", "native-image-diagnostics-agent-library"))),
+            new SimpleEntry<>("native-image-utils-launcher", sdkBuildPath.resolve(Path.of("native-image.properties", "native-image-utils-launcher")))
         );
     }
 
@@ -1040,6 +1068,7 @@ class Mx
                 "SVM_AGENT," +
                 "SVM_DIAGNOSTICS_AGENT," +
                 "SVM_CONFIGURE," +
+                "SVM_SBOM_EXTRACT," +
                 "SVM_FOREIGN," +
                 "espresso-shared:ESPRESSO_SVM," +
                 "MANDREL_PACKAGING_WRAPPER")
