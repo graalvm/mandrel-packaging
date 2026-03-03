@@ -57,7 +57,7 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 @Command(name = "mandrel-release", mixinStandardHelpOptions = true,
-    subcommands = {Prepare.class, Release.class},
+    subcommands = {Prepare.class, Release.class, Version.class},
     description = "Script automating part of the Mandrel release process")
 class MandrelRelease
 {
@@ -105,9 +105,16 @@ class ReusableOptions
             Log.error("Invalid version suffix : " + suffix);
         }
 
-        if (!Path.of(mandrelRepo).toFile().exists())
-        {
-            Log.error("Path " + mandrelRepo + " does not exist");
+        // Validate mandrel repo exists
+        File repoDir = new File(mandrelRepo);
+        if (!repoDir.exists() || !repoDir.isDirectory()) {
+            Log.error("Mandrel repository not found: " + mandrelRepo);
+        }
+
+        // Check if it's a git repository
+        File gitDir = new File(repoDir, ".git");
+        if (!gitDir.exists()) {
+            Log.error("Not a git repository: " + mandrelRepo);
         }
     }
 }
@@ -991,82 +998,146 @@ class GitOps
 class MxSuiteUtils
 {
     /**
-     * Visit all suite.py files and change the "release" and "version" fields
+     * Normalize version string from X.Y.Z to X.Y.Z.0 format
+     * If already in X.Y.Z.W format, return as-is
+     */
+    static String normalizeVersion(String version)
+    {
+        if (version == null || version.isEmpty())
+        {
+            return null;
+        }
+
+        long dotCount = version.chars().filter(ch -> ch == '.').count();
+
+        if (dotCount == 2)
+        {
+            return version + ".0";
+        }
+        else if (dotCount == 3)
+        {
+            return version;
+        }
+        else
+        {
+            Log.warn("Invalid version format: " + version + " (expected X.Y.Z or X.Y.Z.W)");
+            return version;
+        }
+    }
+
+    /**
+     * Find all suite.py files in the mandrel repository
+     */
+    static Stream<File> findSuiteFiles(String mandrelRepo)
+    {
+        File cwd = new File(mandrelRepo);
+        return Stream.of(Objects.requireNonNull(cwd.listFiles()))
+            .filter(File::isDirectory)
+            .flatMap(path -> {
+                File[] files = path.listFiles();
+                return files != null ? Stream.of(files) : Stream.empty();
+            })
+            .filter(child -> child.getName().startsWith("mx."))
+            .map(path -> new File(path, "suite.py"))
+            .filter(File::exists);
+    }
+
+    /**
+     * Update release and/or version fields in a suite.py file
+     */
+    static void updateSuiteFile(File suite, String releaseValue, String version, boolean verbose)
+    {
+        try
+        {
+            Log.debug("Updating " + suite.getPath(), verbose);
+            List<String> lines = Files.readAllLines(suite.toPath());
+
+            boolean modified = false;
+
+            if (releaseValue != null)
+            {
+                final Pattern releasePattern = Pattern.compile("(.*\"release\"\\s*:\\s*)(True|False)(.*)");
+                for (int i = 0; i < lines.size(); i++)
+                {
+                    final Matcher releaseMatcher = releasePattern.matcher(lines.get(i));
+                    if (releaseMatcher.find())
+                    {
+                        String currentValue = releaseMatcher.group(2);
+                        if (!currentValue.equals(releaseValue))
+                        {
+                            String newLine = releaseMatcher.group(1) + releaseValue + releaseMatcher.group(3);
+                            lines.set(i, newLine);
+                            modified = true;
+                            Log.debug("  Changed release: " + currentValue + " -> " + releaseValue, verbose);
+                        }
+                        break;
+                    }
+                }
+            }
+
+            if (version != null)
+            {
+                final Pattern versionPattern = Pattern.compile("(.*\"version\"\\s*:\\s*\")\\d+\\.\\d+\\.\\d+(\\.\\d+)?(\".*)");
+                for (int i = 0; i < lines.size(); i++)
+                {
+                    final Matcher versionMatcher = versionPattern.matcher(lines.get(i));
+                    if (versionMatcher.find())
+                    {
+                        String currentVersion = lines.get(i).replaceAll(".*\"version\"\\s*:\\s*\"([^\"]+)\".*", "$1");
+                        if (!currentVersion.equals(version))
+                        {
+                            String newLine = versionMatcher.group(1) + version + versionMatcher.group(3);
+                            lines.set(i, newLine);
+                            modified = true;
+                            Log.debug("  Changed version: " + currentVersion + " -> " + version, verbose);
+                        }
+                        break;
+                    }
+                }
+            }
+
+            if (modified)
+            {
+                Files.write(suite.toPath(), lines, StandardCharsets.UTF_8);
+                Log.debug("  Saved changes to " + suite.getName(), verbose);
+            }
+            else
+            {
+                Log.debug("  No changes needed for " + suite.getName(), verbose);
+            }
+        }
+        catch (IOException e)
+        {
+            Log.error("Failed to update " + suite.getPath() + ": " + e.getMessage());
+        }
+    }
+
+    /**
+     * Visit all suite.py files and apply an updater function
      */
     static void updateSuites(String mandrelRepo, Consumer<File> updater)
     {
-        File cwd = new File(mandrelRepo);
-        Stream.of(Objects.requireNonNull(cwd.listFiles()))
-            .filter(File::isDirectory)
-            .flatMap(path -> Stream.of(Objects.requireNonNull(path.listFiles())).filter(child -> child.getName().startsWith("mx.")))
-            .map(path -> new File(path, "suite.py"))
-            .filter(File::exists)
-            .forEach(updater);
+        findSuiteFiles(mandrelRepo).forEach(updater);
         Log.info("Updated suites");
     }
 
     /**
-     * Visit {@code suite} file and change the "release" value to {@code asRelease}
-     *
-     * @param suite
+     * Mark suite.py file as release (set release: True)
      */
     static void markSuiteAsRelease(File suite)
     {
-        try
-        {
-            Log.info("Marking " + suite.getPath());
-            List<String> lines = Files.readAllLines(suite.toPath());
-            final String pattern = "(.*\"release\" : )False(.*)";
-            final Pattern releasePattern = Pattern.compile(pattern);
-            for (int i = 0; i < lines.size(); i++)
-            {
-                final Matcher releaseMatcher = releasePattern.matcher(lines.get(i));
-                if (releaseMatcher.find())
-                {
-                    String newLine = releaseMatcher.group(1) + "True" + releaseMatcher.group(2);
-                    lines.set(i, newLine);
-                    break;
-                }
-            }
-            Files.write(suite.toPath(), lines, StandardCharsets.UTF_8);
-        }
-        catch (IOException e)
-        {
-            e.printStackTrace();
-            Log.error(e.getMessage());
-        }
+        Log.info("Marking " + suite.getPath());
+        updateSuiteFile(suite, "True", null, false);
     }
 
+    /**
+     * Update release flag to False and bump version in suite.py file
+     */
     static void updateReleaseAndBumpVersionInSuite(MandrelVersion version, File suite)
     {
-        try
-        {
-            Log.info("Updating " + suite.getPath());
-            List<String> lines = Files.readAllLines(suite.toPath());
-            final Pattern releasePattern = Pattern.compile("(.*\"release\" : )True(.*)");
-            final Pattern versionPattern = Pattern.compile("(.*\"version\" : \")" + version.majorMinorMicroPico() + "(\".*)");
-            for (int i = 0; i < lines.size(); i++)
-            {
-                final Matcher releaseMatcher = releasePattern.matcher(lines.get(i));
-                if (releaseMatcher.find())
-                {
-                    final String newLine = releaseMatcher.group(1) + "False" + releaseMatcher.group(2);
-                    lines.set(i, newLine);
-                }
-                final Matcher versionMatcher = versionPattern.matcher(lines.get(i));
-                if (versionMatcher.find())
-                {
-                    final String newLine = versionMatcher.group(1) + version.getNewVersion().majorMinorMicroPico() + versionMatcher.group(2);
-                    lines.set(i, newLine);
-                }
-            }
-            Files.write(suite.toPath(), lines, StandardCharsets.UTF_8);
-        }
-        catch (IOException e)
-        {
-            e.printStackTrace();
-            Log.error(e.getMessage());
-        }
+        Log.info("Updating " + suite.getPath());
+        String newVersion = version.getNewVersion().majorMinorMicroPico();
+        updateSuiteFile(suite, "False", newVersion, false);
     }
 
 }
@@ -1369,5 +1440,71 @@ class Release extends ReusableOptions implements Callable<Integer>
             }
         }
         return jdkVersionsUsed;
+    }
+}
+
+@Command(name = "version", description = "Patch version in suite.py files")
+class Version extends ReusableOptions implements Callable<Integer> 
+{
+    enum ReleaseValue { True, False }
+
+    @CommandLine.Option(names = {
+            "--set-release" }, description = "Set release flag value (default: False for dev builds)", defaultValue = "False", paramLabel = "${COMPLETION-CANDIDATES}")
+    ReleaseValue releaseValue;
+    @CommandLine.Option(names = {
+            "--set-version" }, description = "Set version in suite.py files (e.g., 24.1.0 or 24.1.0.0). If X.Y.Z format is provided, it will be converted to X.Y.Z.0")
+    String version;
+
+    @Override
+    public Integer call() throws Exception 
+    {
+        checkOptions();
+        Log.info("Starting Mandrel version update");
+        Log.debug("Mandrel repository: " + mandrelRepo, verbose);
+        Log.debug("Release value: " + releaseValue, verbose);
+        Log.debug("Version: " + (version != null ? version : "not set"), verbose);
+
+        // Normalize version if provided (X.Y.Z -> X.Y.Z.0)
+        String normalizedVersion = null;
+        if (version != null)
+        {
+            normalizedVersion = MxSuiteUtils.normalizeVersion(version);
+            Log.info("Version normalized: " + version + " -> " + normalizedVersion);
+        }
+
+        // Update suite.py files using refactored MxSuiteUtils
+        Log.info("Updating suite.py files...");
+        MxSuiteUtils.updateSuites(mandrelRepo, suite -> MxSuiteUtils.updateSuiteFile(suite, releaseValue.toString(), normalizedVersion, verbose));
+        try
+        {
+            // Check if there are changes
+            File repoDir = new File(mandrelRepo);
+            try (Git git = Git.open(repoDir))
+            {
+                Status status = git.status().call();
+                if (status.hasUncommittedChanges())
+                {
+                    Log.info("Suite.py files updated successfully");
+                    Log.info("Modified files:");
+                    status.getModified().forEach(f -> Log.info("  - " + f));
+                }
+                else
+                {
+                    Log.info("No changes needed in suite.py files");
+                }
+            }
+
+            Log.info("Update completed successfully");
+            return 0;
+        } 
+        catch (Exception e)
+        {
+            Log.error("Failed to update suite.py files: " + e.getMessage());
+            if (verbose)
+            {
+                e.printStackTrace();
+            }
+            return 1;
+        }
     }
 }
