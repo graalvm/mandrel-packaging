@@ -223,7 +223,7 @@ GPG Key (fingerprint d72501ba9a2a624b000f38858cdbce4379381fc4)
 Passphrase: 
 
 Pushing branch to fork git@github.com:Karm/test-fake-graalvm-community-jdk21u.git
-PR created: https://github.com/Karm/test-fake-graalvm-community-jdk21u/pull/13
+PR created: https://github.com/Karm/test-fake-graalvm-community-jdk21u/pull/21
 Merging PR: Mark suite files for 23.1.11 release [skip ci]
    [OK] Verified suite.py (version=23.1.11, release=True)
 
@@ -241,11 +241,12 @@ Pushing refs/tags/vm-23.1.11 to origin
    [OK] Pushed refs/tags/vm-23.1.11 (OK)
 Pushing refs/tags/jdk-21.0.11 to origin
    [OK] Pushed refs/tags/jdk-21.0.11 (OK)
+Closed open milestone: 23.1.11
 Created milestone: 23.1.12
 GPG Key (fingerprint d72501ba9a2a624b000f38858cdbce4379381fc4)
 Passphrase: 
 Pushing branch to fork git@github.com:Karm/test-fake-graalvm-community-jdk21u.git
-PR created: https://github.com/Karm/test-fake-graalvm-community-jdk21u/pull/14
+PR created: https://github.com/Karm/test-fake-graalvm-community-jdk21u/pull/22
 Merging PR: Unmark suite files and bump version to 23.1.12 [skip ci]
    [OK] Verified suite.py (version=23.1.12, release=False)
    [OK] Verified tag exists remotely: vm-23.1.11
@@ -254,12 +255,14 @@ Merging PR: Unmark suite files and bump version to 23.1.12 [skip ci]
 [TEST] Executing Step 3: downstream-sync-mark
 
 Resolved conflict in: /tmp/mandrel-test-workspace/test-fake-mandrel/compiler/mx.compiler/suite.py
+Resolved conflict in: /tmp/mandrel-test-workspace/test-fake-mandrel/wasm/mx.wasm/suite.py
 GPG Key (fingerprint d72501ba9a2a624b000f38858cdbce4379381fc4)
 Passphrase: 
 Pushing branch to fork git@github.com:Karm/test-fake-mandrel.git
-PR created: https://github.com/Karm/test-fake-mandrel/pull/11
+PR created: https://github.com/Karm/test-fake-mandrel/pull/18
 Merging PR: Mark suites for 23.1.11.0-Final release [skip ci]
    [OK] Verified suite.py (version=23.1.11.0, release=True)
+   [OK] Verified wasm suite.py (version=23.1.11.0, no release attribute)
 
 [TEST] Executing Step 4: downstream-finalize
 Auto-calculated next version: 23.1.12.0
@@ -269,6 +272,7 @@ GPG Key (fingerprint d72501ba9a2a624b000f38858cdbce4379381fc4)
 Passphrase: 
 Pushing refs/tags/mandrel-23.1.11.0-Final to origin
    [OK] Pushed refs/tags/mandrel-23.1.11.0-Final (OK)
+Closed open milestone: 23.1.11.0-Final
 Created milestone: 23.1.12.0
    [OK] Verified tag exists remotely: mandrel-23.1.11.0-Final
 
@@ -301,15 +305,13 @@ Uploading asset: mandrel-java21-windows-amd64-23.1.11.0-Final.zip.sha256
 Uploading asset: mandrel-java21-macos-aarch64-23.1.11.0-Final.tar.gz
 Uploading asset: mandrel-java21-macos-aarch64-23.1.11.0-Final.tar.gz.sha1
 Uploading asset: mandrel-java21-macos-aarch64-23.1.11.0-Final.tar.gz.sha256
-Draft release created successfully: https://github.com/Karm/test-fake-mandrel/releases/tag/untagged-2f67cc41bfb90b074081
+Draft release created successfully: https://github.com/Karm/test-fake-mandrel/releases/tag/untagged-80d5423fe207d47bfb56
 
 [TEST] Publishing the draft release so Step 6 can find it
    [OK] Successfully published draft release: Mandrel 23.1.11.0-Final
 
 [TEST] Executing Step 6: update-quarkus-images
-Creating new branch: April-CPU-53f1d9
-
-
+Creating new branch: April-CPU-459cfd
 Processing updates for mandrel-23.1.11.0-Final (replacing mandrel-23.1.10.0-Final)
 Querying GitHub API for release mandrel-23.1.11.0-Final...
 Inferred new JDK version: 21.0.11
@@ -322,7 +324,7 @@ GPG Key (fingerprint d72501ba9a2a624b000f38858cdbce4379381fc4)
 Passphrase: 
 Pushing branch to fork git@github.com:Karm/test-fake-quarkus-images.git
 Opening PR on Karm/test-fake-quarkus-images...
-PR created: https://github.com/Karm/test-fake-quarkus-images/pull/4
+PR created: https://github.com/Karm/test-fake-quarkus-images/pull/7
 Merging PR: April 2026 CPU, JDK 21.0.11
    [OK] Verified mandrel.yaml contains 23.1.11.0-Final
 
@@ -331,13 +333,16 @@ Merging PR: April 2026 CPU, JDK 21.0.11
 Fetching master from https://github.com/Karm/test-fake-graalvm-community-jdk21u.git
 Merging upstream branch into current branch.
 Resolved conflict in: /tmp/mandrel-test-workspace/test-fake-mandrel/compiler/mx.compiler/suite.py
+Resolved conflict in: /tmp/mandrel-test-workspace/test-fake-mandrel/wasm/mx.wasm/suite.py
 GPG Key (fingerprint d72501ba9a2a624b000f38858cdbce4379381fc4)
 Passphrase: 
 Pushing branch to fork git@github.com:Karm/test-fake-mandrel.git
-PR created: https://github.com/Karm/test-fake-mandrel/pull/12
+Assigning Sync PR to milestone: 23.1.12.0
+PR created: https://github.com/Karm/test-fake-mandrel/pull/19
    [OK] Verified Sync PR body contains upstream PR links.
-Merging PR: Merge upstream test-fake-graalvm-community-jdk21u/master into mandrel/23.1 (2026-05-12)
+Merging PR: Merge upstream test-fake-graalvm-community-jdk21u/master into mandrel/23.1 (2026-05-13)
    [OK] Verified suite.py (version=23.1.12.0, release=False)
+   [OK] Verified wasm suite.py (version=23.1.12.0, no release attribute)
 
 [TEST] Simulating further upstream development...
 
@@ -348,9 +353,10 @@ Merging upstream branch into current branch.
 GPG Key (fingerprint d72501ba9a2a624b000f38858cdbce4379381fc4)
 Passphrase: 
 Pushing branch to fork git@github.com:Karm/test-fake-mandrel.git
-PR created: https://github.com/Karm/test-fake-mandrel/pull/13
+Assigning Sync PR to milestone: 23.1.12.0
+PR created: https://github.com/Karm/test-fake-mandrel/pull/20
    [OK] Verified Second Sync PR body correctly respects the --since bound.
-Merging PR: Merge upstream test-fake-graalvm-community-jdk21u/master into mandrel/23.1 (2026-05-12)
+Merging PR: Merge upstream test-fake-graalvm-community-jdk21u/master into mandrel/23.1 (2026-05-13)
 
 [TEST] Executing Auxiliary Step: tag-mandrel
 

@@ -119,9 +119,11 @@ class SuiteOpsUtils {
         String rSep = " : ";
         boolean hasTrailingCommaVersion = true;
         boolean hasTrailingCommaRelease = true;
+        boolean sawReleaseInConflict = false;
         for (String line : lines) {
             if (line.startsWith("<<<<<<< HEAD")) {
                 inConflict = true;
+                sawReleaseInConflict = false;
                 continue;
             }
             if (inConflict) {
@@ -130,11 +132,12 @@ class SuiteOpsUtils {
                 }
                 if (line.startsWith(">>>>>>>")) {
                     inConflict = false;
-                    resolved.add(
-                            indent + "\"version\"" + vSep + "\"" + targetVersion + "\"" + (hasTrailingCommaVersion ? "," : ""));
-                    resolved.add(indent + "\"release\"" + rSep + (targetRelease ? "True" : "False") + (hasTrailingCommaRelease
-                            ? ","
-                            : ""));
+                    resolved.add("%s\"version\"%s\"%s\"%s"
+                        .formatted(indent, vSep, targetVersion, hasTrailingCommaVersion ? "," : ""));
+                    if (sawReleaseInConflict) {
+                        resolved.add("%s\"release\"%s%s%s"
+                            .formatted(indent, rSep, targetRelease ? "True" : "False", hasTrailingCommaRelease ? "," : ""));
+                    }
                     continue;
                 }
                 final Matcher vm = VERSION_PATTERN.matcher(line);
@@ -147,6 +150,7 @@ class SuiteOpsUtils {
                 if (rm.matches()) {
                     rSep = rm.group(2);
                     hasTrailingCommaRelease = rm.group(4).trim().endsWith(",");
+                    sawReleaseInConflict = true;
                 }
             } else {
                 resolved.add(line);
@@ -157,6 +161,41 @@ class SuiteOpsUtils {
         }
         Files.write(file.toPath(), resolved, StandardCharsets.UTF_8);
         System.out.println("Resolved conflict in: " + file.getPath());
+    }
+
+    static GHMilestone inferOpenMilestone(GHRepository repo, File repoDir, String nextVersion) throws Exception {
+        String currentVersion = null;
+        // a bold assumption that compiler module keeps existing
+        final File suitePy = new File(repoDir, "compiler/mx.compiler/suite.py");
+        if (suitePy.exists()) {
+            final List<String> lines = Files.readAllLines(suitePy.toPath());
+            for (String l : lines) {
+                final Matcher m = VERSION_PATTERN.matcher(l);
+                if (m.matches()) {
+                    currentVersion = m.group(3);
+                    break;
+                }
+            }
+        }
+        GHMilestone fallback = null;
+        int openCount = 0;
+        for (GHMilestone m : repo.listMilestones(GHIssueState.OPEN)) {
+            openCount++;
+            fallback = m;
+            // better exact match with target nextVersion if provided
+            if (nextVersion != null && m.getTitle().contains(nextVersion)) {
+                return m;
+            }
+            // fallback to match with the version extracted from suite.py
+            if (currentVersion != null && m.getTitle().contains(currentVersion)) {
+                return m;
+            }
+        }
+        // one open milestone, it's clear which one to pick...
+        if (openCount == 1) {
+            return fallback;
+        }
+        return null;
     }
 
     private static boolean isRelevantSuite(List<String> lines, String targetVersion) {
@@ -1027,6 +1066,11 @@ class SyncUpstream implements Callable<Integer> {
                 final GitHub github = SuiteOpsUtils.connectToGitHub();
                 final GHRepository repo = github.getRepository(downstreamRepo);
                 final GHPullRequest pr = repo.createPullRequest(prTitle, head, baseBranch, commitMessage, true, false);
+                final GHMilestone milestone = SuiteOpsUtils.inferOpenMilestone(repo, repoDir, nextVersion);
+                if (milestone != null) {
+                    System.out.println("Assigning Sync PR to milestone: " + milestone.getTitle());
+                    pr.setMilestone(milestone);
+                }
                 if (!testRun) {
                     SuiteOpsUtils.setupPRReviewers(github, pr, false);
                 }

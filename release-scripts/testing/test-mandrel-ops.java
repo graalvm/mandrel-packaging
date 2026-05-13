@@ -105,6 +105,7 @@ class TestMandrelOps {
                 "--test-run");
         mergeLatestPR(github, DOWNSTREAM_REPO);
         verifySuitePy(new File(WORK_DIR, "test-fake-mandrel"), "23.1.11.0", true);
+        verifyWasmSuitePy(new File(WORK_DIR, "test-fake-mandrel"), "23.1.11.0");
 
         // STEP 4: Downstream Finalize
         System.out.println("\n[TEST] Executing Step 4: downstream-finalize");
@@ -172,6 +173,7 @@ class TestMandrelOps {
         System.out.println("   [OK] Verified Sync PR body contains upstream PR links.");
         mergeLatestPR(github, DOWNSTREAM_REPO);
         verifySuitePy(new File(WORK_DIR, "test-fake-mandrel"), "23.1.12.0", false);
+        verifyWasmSuitePy(new File(WORK_DIR, "test-fake-mandrel"), "23.1.12.0");
 
         // STEP 8: Second Sync Upstream (Verifying --since)
         System.out.println("\n[TEST] Simulating further upstream development...");
@@ -342,12 +344,23 @@ class TestMandrelOps {
             final File suiteDir = new File(local, "compiler/mx.compiler");
             suiteDir.mkdirs();
             final File suite = new File(suiteDir, "suite.py");
-            Files.writeString(suite.toPath(), "suite = {\n  \"version\" : \"23.1.11\",\n  \"release\" : False,\n}", StandardCharsets.UTF_8);
+            final File wasmDir = new File(local, "wasm/mx.wasm");
+            wasmDir.mkdirs();
+            final File wasmSuite = new File(wasmDir, "suite.py");
+            Files.writeString(suite.toPath(), "suite = {\n  \"version\" : \"23.1.10\",\n  \"release\" : True,\n}", StandardCharsets.UTF_8);
+            Files.writeString(wasmSuite.toPath(), "suite = {\n  \"version\" : \"23.1.10\",\n}", StandardCharsets.UTF_8);
             git.add().addFilepattern(".").call();
-            git.commit().setSign(false).setMessage("Initial upstream state").call();
+            git.commit().setSign(false).setMessage("Release 23.1.10").call();
+            git.tag().setName("vm-23.1.10").setSigned(false).setForceUpdate(true).call();
+            git.tag().setName("jdk-21.0.10").setSigned(false).setForceUpdate(true).call();
+            Files.writeString(suite.toPath(), "suite = {\n  \"version\" : \"23.1.11\",\n  \"release\" : False,\n}", StandardCharsets.UTF_8);
+            Files.writeString(wasmSuite.toPath(), "suite = {\n  \"version\" : \"23.1.11\",\n}", StandardCharsets.UTF_8);
+            git.add().addFilepattern(".").call();
+            git.commit().setSign(false).setMessage("Bump version to 23.1.11").call();
             git.tag().setName("initial-pristine-state").setSigned(false).setForceUpdate(true).call();
             git.remoteAdd().setName("origin").setUri(new URIish("git@github.com:" + GH_ORG + "/" + repoName + ".git")).call();
             git.push().setForce(true).setPushAll().setPushTags().call();
+            repo.createMilestone("23.1.11", "Dummy milestone");
         }
     }
 
@@ -360,12 +373,23 @@ class TestMandrelOps {
             final File suiteDir = new File(local, "compiler/mx.compiler");
             suiteDir.mkdirs();
             final File suite = new File(suiteDir, "suite.py");
-            Files.writeString(suite.toPath(), "suite = {\n  \"version\" : \"23.1.11.0\",\n  \"release\" : False,\n}", StandardCharsets.UTF_8);
+            final File wasmDir = new File(local, "wasm/mx.wasm");
+            wasmDir.mkdirs();
+            final File wasmSuite = new File(wasmDir, "suite.py");
+            Files.writeString(suite.toPath(), "suite = {\n  \"version\" : \"23.1.10.0\",\n  \"release\" : True,\n}", StandardCharsets.UTF_8);
+            Files.writeString(wasmSuite.toPath(), "suite = {\n  \"version\" : \"23.1.10.0\",\n}", StandardCharsets.UTF_8);
             git.add().addFilepattern(".").call();
-            git.commit().setSign(false).setMessage("Initial downstream state").call();
+            git.commit().setSign(false).setMessage("Release 23.1.10.0").call();
+            git.tag().setName("mandrel-23.1.10.0-Final").setSigned(false).setForceUpdate(true).call();
+            Files.writeString(suite.toPath(), "suite = {\n  \"version\" : \"23.1.11.0\",\n  \"release\" : False,\n}", StandardCharsets.UTF_8);
+            Files.writeString(wasmSuite.toPath(), "suite = {\n  \"version\" : \"23.1.11.0\",\n}", StandardCharsets.UTF_8);
+            git.add().addFilepattern(".").call();
+            git.commit().setSign(false).setMessage("Bump to 23.1.11.0").call();
             git.tag().setName("initial-pristine-state").setSigned(false).setForceUpdate(true).call();
             git.remoteAdd().setName("origin").setUri(new URIish("git@github.com:" + GH_ORG + "/" + repoName + ".git")).call();
             git.push().setForce(true).setPushAll().setPushTags().call();
+            repo.createMilestone("23.1.11.0-Final", "Dummy milestone");
+            repo.createRelease("mandrel-23.1.10.0-Final").name("Mandrel 23.1.10.0").body("OpenJDK used: 21.0.10\n").create();
         }
     }
 
@@ -506,5 +530,20 @@ class TestMandrelOps {
         if (p.waitFor() != 0) {
             throw new RuntimeException("mandrel-ops " + args[0] + " failed.");
         }
+    }
+
+    private static void verifyWasmSuitePy(File repoDir, String expectedVersion) throws Exception {
+        final File suitePy = new File(repoDir, "wasm/mx.wasm/suite.py");
+        if (!suitePy.exists()) {
+            return;
+        }
+        final String content = Files.readString(suitePy.toPath());
+        if (!content.contains("\"version\" : \"" + expectedVersion + "\"")) {
+            throw new RuntimeException("Verification failed: Expected version " + expectedVersion + " in wasm suite.py");
+        }
+        if (content.contains("\"release\"")) {
+            throw new RuntimeException("Verification failed: wasm suite.py should NOT contain release attribute.");
+        }
+        System.out.println("   [OK] Verified wasm suite.py (version=" + expectedVersion + ", no release attribute)");
     }
 }
