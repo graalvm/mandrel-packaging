@@ -248,6 +248,11 @@ public class build
                 logger.debugf("Build native agents...");
                 buildAgents(nativeImage, fs, os);
             }
+            logger.debugf("Build native-image-configure and rename to native-image-utils...");
+            buildNativeImageConfigure(nativeImage, fs, os);
+            Path from = mandrelJavaHome.resolve(Path.of("lib", "svm", "bin", "native-image-configure" + (IS_WINDOWS ? ".exe" : "")));
+            Path to = mandrelJavaHome.resolve(Path.of("bin", "native-image-configure"  + (IS_WINDOWS ? ".exe" : "")));
+            Files.move(from, to);
 
             generateMandrelReleaseFile(mandrelVersionUntilSpace, mandrelHome);
         }
@@ -306,6 +311,12 @@ public class build
         os.exec(agent, false);
         final Tasks.Exec dagent = Tasks.Exec.of(Arrays.asList(nativeImage.toString(), "--macro:native-image-diagnostics-agent-library"), fs.workingDir());
         os.exec(dagent, false);
+    }
+
+    private static void buildNativeImageConfigure(Path nativeImage, FileSystem fs, OperatingSystem os)
+    {
+        final Tasks.Exec agent = Tasks.Exec.of(Arrays.asList(nativeImage.toString(), "--macro:native-image-configure-launcher"), fs.workingDir());
+        os.exec(agent, false);
     }
 
     private static void createArchive(FileSystem fs, OperatingSystem os, Path mandrelHome, String archiveName)
@@ -902,17 +913,21 @@ class Mx
         Pattern.compile("\"version\"\\s*:\\s*\"([0-9.]*)\"");
 
     static final List<BuildArgs> BUILD_JAVA_STEPS = List.of(
-        BuildArgs.of("--no-native", "--dependencies", "SVM,SVM_FOREIGN,GRAAL_SDK,SVM_DRIVER,SVM_AGENT,SVM_DIAGNOSTICS_AGENT")
+        BuildArgs.of("--no-native", "--dependencies", "SVM,SVM_CONFIGURE,SVM_FOREIGN,GRAAL_SDK,SVM_DRIVER,SVM_AGENT,SVM_DIAGNOSTICS_AGENT")
         , BuildArgs.of("--only",
             build.IS_WINDOWS ?
                 "native-image.exe.image-bash," +
+                    "native-image-configure.exe.image-bash," +
                     "native-image-agent-library_native-image.properties," +
                     "native-image-launcher_native-image.properties," +
+                    "native-image-configure-launcher_native-image.properties," +
                     "native-image-diagnostics-agent-library_native-image.properties"
                 :
                 "native-image.image-bash," +
+                    "native-image-configure.image-bash," +
                     "native-image-agent-library_native-image.properties," +
                     "native-image-launcher_native-image.properties," +
+                    "native-image-configure-launcher_native-image.properties," +
                     "native-image-diagnostics-agent-library_native-image.properties")
     );
 
@@ -1015,6 +1030,7 @@ class Mx
         macroPaths = Map.ofEntries(
             new SimpleEntry<>("native-image-agent-library", sdkBuildPath.resolve(Path.of("native-image.properties", "native-image-agent-library"))),
             new SimpleEntry<>("native-image-launcher", sdkBuildPath.resolve(Path.of("native-image.properties", "native-image-launcher"))),
+            new SimpleEntry<>("native-image-configure-launcher", sdkBuildPath.resolve(Path.of("native-image.properties", "native-image-configure-launcher"))),
             new SimpleEntry<>("native-image-diagnostics-agent-library", sdkBuildPath.resolve(Path.of("native-image.properties", "native-image-diagnostics-agent-library")))
         );
     }
@@ -1028,6 +1044,7 @@ class Mx
                 "sdk:POLYGLOT," +
                 "sdk:WORD," +
                 "SVM," +
+                "SVM_CONFIGURE," +
                 "SVM_CAPNPROTO_RUNTIME," +
                 "NATIVE_IMAGE_BASE," +
                 "POINTSTO," +
@@ -1222,7 +1239,7 @@ class Mx
                     , "--java-home"
                     , javaHome.toString()
                     , "--native-images=lib:native-image-agent,lib:native-image-diagnostics-agent"
-                    , "--components=ni"
+                    , "--components=ni,nic"
                     , "--exclude-components=nju,svmnfi,svml,tflm,svmt"
                     , options.disableDebuginfoStripping ? "--disable-debuginfo-stripping" : ""
                     , "build"
