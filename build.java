@@ -175,6 +175,12 @@ public class build
             }
             FileSystem.copy(mandrelRepo.resolve(Path.of("substratevm", "src", "com.oracle.svm.libffi", "include", "svm_libffi.h")),
                 mandrelJavaHome.resolve(Path.of("lib", "svm", "clibraries", PLATFORM, "include", "svm_libffi.h")));
+            // The reachability metadata schema is required by the native-maven-plugin
+            // (https://github.com/graalvm/native-build-tools/tree/master/native-maven-plugin/)
+            // to validate reachability metadata repositories.
+            // See: https://github.com/graalvm/mandrel/issues/983
+            FileSystem.copy(mandrelRepo.resolve(Path.of("substratevm", "schemas", "reachability-metadata-schema-v1.2.0.json")),
+                mandrelJavaHome.resolve(Path.of("lib", "svm", "schemas", "reachability-metadata-schema.json")));
             FileSystem.copy(mandrelRepo.resolve(Path.of("truffle", "src", "com.oracle.truffle.nfi.native", "include", "trufflenfi.h")),
                 mandrelJavaHome.resolve(Path.of("lib", "svm", "clibraries", PLATFORM, "include", "trufflenfi.h")));
             String platformAndJDK = PLATFORM + "-" + JDK_VERSION;
