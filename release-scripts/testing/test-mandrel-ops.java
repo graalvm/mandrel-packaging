@@ -6,6 +6,7 @@
 //DEPS org.kohsuke:github-api:1.316
 
 import org.eclipse.jgit.api.Git;
+import org.eclipse.jgit.api.ResetCommand;
 import org.eclipse.jgit.console.ConsoleCredentialsProvider;
 import org.eclipse.jgit.lib.StoredConfig;
 import org.eclipse.jgit.transport.URIish;
@@ -50,6 +51,16 @@ class TestMandrelOps {
 
     static final File WORK_DIR = new File("/tmp/mandrel-test-workspace");
 
+    static class PrInfo {
+        String sinceSha;
+        int prNumber;
+
+        PrInfo(String sinceSha, int prNumber) {
+            this.sinceSha = sinceSha;
+            this.prNumber = prNumber;
+        }
+    }
+
     public static void main(String[] args) throws Exception {
         ConsoleCredentialsProvider.install();
         System.out.println("Starting Integration Test for Mandrel Release Ops...");
@@ -74,7 +85,7 @@ class TestMandrelOps {
                 "--base-branch", upstreamBase,
                 "--version", "23.1.11",
                 "--test-run");
-        mergeLatestPR(github, UPSTREAM_REPO);
+        mergeLatestPR(github, UPSTREAM_REPO, upstreamBase);
         verifySuitePy(new File(WORK_DIR, "test-fake-graalvm-community-jdk21u"), "23.1.11", true);
 
         // STEP 2: Upstream Finalize
@@ -88,7 +99,7 @@ class TestMandrelOps {
                 "--jdk-version", "21.0.11",
                 "--upstream-remote", "origin",
                 "--test-run");
-        mergeLatestPR(github, UPSTREAM_REPO);
+        mergeLatestPR(github, UPSTREAM_REPO, upstreamBase);
         verifySuitePy(new File(WORK_DIR, "test-fake-graalvm-community-jdk21u"), "23.1.12", false);
         verifyTagExists(github, UPSTREAM_REPO, "vm-23.1.11");
         verifyTagExists(github, UPSTREAM_REPO, "jdk-21.0.11");
@@ -103,7 +114,7 @@ class TestMandrelOps {
                 "--upstream-url", "https://github.com/" + UPSTREAM_REPO + ".git",
                 "--upstream-tag", "vm-23.1.11",
                 "--test-run");
-        mergeLatestPR(github, DOWNSTREAM_REPO);
+        mergeLatestPR(github, DOWNSTREAM_REPO, "mandrel/23.1");
         verifySuitePy(new File(WORK_DIR, "test-fake-mandrel"), "23.1.11.0", true);
         verifyWasmSuitePy(new File(WORK_DIR, "test-fake-mandrel"), "23.1.11.0");
 
@@ -149,7 +160,7 @@ class TestMandrelOps {
                 "--base-branch", quarkusBase,
                 "--mandrel-repo", DOWNSTREAM_REPO,
                 "--test-run");
-        mergeLatestPR(github, QUARKUS_REPO);
+        mergeLatestPR(github, QUARKUS_REPO, quarkusBase);
         verifyQuarkusYaml(new File(WORK_DIR, "test-fake-quarkus-images"), "23.1.11.0-Final");
 
         // STEP 7: Sync Upstream (Post-Release)
@@ -171,15 +182,15 @@ class TestMandrelOps {
                     "Verification failed: Sync PR body does not contain upstream PR links! Body:\n" + syncPr.getBody());
         }
         System.out.println("   [OK] Verified Sync PR body contains upstream PR links.");
-        mergeLatestPR(github, DOWNSTREAM_REPO);
+        mergeLatestPR(github, DOWNSTREAM_REPO, "mandrel/23.1");
         verifySuitePy(new File(WORK_DIR, "test-fake-mandrel"), "23.1.12.0", false);
         verifyWasmSuitePy(new File(WORK_DIR, "test-fake-mandrel"), "23.1.12.0");
 
-        // STEP 8: Second Sync Upstream (Verifying --since)
-        System.out.println("\n[TEST] Simulating further upstream development...");
-        String previousUpstreamHead = createAndMergeDummyUpstreamPR(github, UPSTREAM_REPO, upstreamBase);
+        // STEP 8: Second Sync Upstream (Verifying explicit --since)
+        System.out.println("\n[TEST] Simulating further upstream development (feature-A)...");
+        final PrInfo featureA = createAndMergeMultiCommitUpstreamPR(github, UPSTREAM_REPO, upstreamBase, "feature-A");
 
-        System.out.println("\n[TEST] Executing Step 8: sync-upstream (Second sync with --since)");
+        System.out.println("\n[TEST] Executing Step 8: sync-upstream (Second sync with explicit --since)");
         runOps("sync-upstream",
                 "--dir", new File(WORK_DIR, "test-fake-mandrel").getAbsolutePath(),
                 "--fork", DOWNSTREAM_REPO,
@@ -187,20 +198,89 @@ class TestMandrelOps {
                 "--base-branch", "mandrel/23.1",
                 "--upstream-url", "https://github.com/" + UPSTREAM_REPO + ".git",
                 "--upstream-branch", upstreamBase,
-                "--since", previousUpstreamHead,
+                "--since", featureA.sinceSha,
                 "--test-run");
 
         final GHPullRequest syncPr2 = downstreamGhRepo.getPullRequests(GHIssueState.OPEN).getFirst();
-        if (!syncPr2.getBody().contains("/pull/")) {
+        if (!syncPr2.getBody().contains("/pull/" + featureA.prNumber)) {
             throw new RuntimeException("Verification failed: Second Sync PR does not contain the new feature PR link.");
         }
         // it shouldn't contain the PR link from Step 1 or Step 2
         if (syncPr2.getBody().contains("/pull/1\n") || syncPr2.getBody().contains("/pull/2\n")) {
             throw new RuntimeException(
-                    "Verification failed: Second Sync PR contains old PR links from the previous sync. Body:\n" + syncPr2.getBody());
+                    "Verification failed: Second Sync PR contains old PR links from previous syncs. Body:\n" + syncPr2.getBody());
         }
-        System.out.println("   [OK] Verified Second Sync PR body correctly respects the --since bound.");
-        mergeLatestPR(github, DOWNSTREAM_REPO);
+        System.out.println("   [OK] Verified Second Sync PR body correctly respects the explicit --since bound.");
+        mergeLatestPR(github, DOWNSTREAM_REPO, "mandrel/23.1");
+
+        // STEP 9: Third Sync Upstream (Verifying auto-calculated merge base)
+        System.out.println("\n[TEST] Simulating further upstream development for auto-since (feature-B)...");
+        final PrInfo featureB = createAndMergeMultiCommitUpstreamPR(github, UPSTREAM_REPO, upstreamBase, "feature-B");
+
+        System.out.println("\n[TEST] Executing Step 9: sync-upstream (Third sync without --since)");
+        runOps("sync-upstream",
+                "--dir", new File(WORK_DIR, "test-fake-mandrel").getAbsolutePath(),
+                "--fork", DOWNSTREAM_REPO,
+                "--repo", DOWNSTREAM_REPO,
+                "--base-branch", "mandrel/23.1",
+                "--upstream-url", "https://github.com/" + UPSTREAM_REPO + ".git",
+                "--upstream-branch", upstreamBase,
+                "--test-run");
+
+        final GHPullRequest syncPr3 = downstreamGhRepo.getPullRequests(GHIssueState.OPEN).getFirst();
+        if (!syncPr3.getBody().contains("/pull/" + featureB.prNumber)) {
+            throw new RuntimeException("Verification failed: Third Sync PR does not contain the feature-B PR link.");
+        }
+        if (syncPr3.getBody().contains("/pull/" + featureA.prNumber)) {
+            throw new RuntimeException(
+                    "Verification failed: Third Sync PR contains old feature-A PR links from the previous sync. Body:\n" + syncPr3.getBody());
+        }
+        System.out.println("   [OK] Verified Third Sync PR body correctly auto-calculated the merge-base bound.");
+        mergeLatestPR(github, DOWNSTREAM_REPO, "mandrel/23.1");
+
+        // STEP 10: Cherry-pick auto-detection failure test
+        System.out.println("\n[TEST] Executing Step 10: Testing Cherry-pick bail out");
+        try (Git git = Git.open(new File(WORK_DIR, "test-fake-mandrel"))) {
+            git.checkout().setName("mandrel/23.1").call(); // Guarantee we are on the base branch!
+            Files.writeString(new File(WORK_DIR, "test-fake-mandrel/cherry-pick.txt").toPath(), "cherry", StandardCharsets.UTF_8);
+            git.add().addFilepattern("cherry-pick.txt").call();
+            git.commit().setSign(false).setMessage("Fix some issue\n\n(cherry picked from commit 12345678)").call();
+        }
+        runOpsExpectingFailure("There seems to be cherry-picked commits in history",
+                "sync-upstream",
+                "--dir", new File(WORK_DIR, "test-fake-mandrel").getAbsolutePath(),
+                "--fork", DOWNSTREAM_REPO,
+                "--repo", DOWNSTREAM_REPO,
+                "--base-branch", "mandrel/23.1",
+                "--upstream-url", "https://github.com/" + UPSTREAM_REPO + ".git",
+                "--upstream-branch", upstreamBase,
+                "--test-run");
+        try (Git git = Git.open(new File(WORK_DIR, "test-fake-mandrel"))) {
+            git.checkout().setName("mandrel/23.1").call();
+            git.reset().setMode(ResetCommand.ResetType.HARD).setRef("HEAD~1").call();
+        }
+
+        // STEP 11: Squash auto-detection failure test
+        System.out.println("\n[TEST] Executing Step 11: Testing Squash bail out");
+        try (Git git = Git.open(new File(WORK_DIR, "test-fake-mandrel"))) {
+            git.checkout().setName("mandrel/23.1").call(); // Guarantee we are on the base branch!
+            Files.writeString(new File(WORK_DIR, "test-fake-mandrel/squash.txt").toPath(), "squash", StandardCharsets.UTF_8);
+            git.add().addFilepattern("squash.txt").call();
+            git.commit().setSign(false).setMessage("Squash merge PR #123\n\nSquashed commit of the following:").call();
+        }
+        runOpsExpectingFailure("There seems to be squash commits in history",
+                "sync-upstream",
+                "--dir", new File(WORK_DIR, "test-fake-mandrel").getAbsolutePath(),
+                "--fork", DOWNSTREAM_REPO,
+                "--repo", DOWNSTREAM_REPO,
+                "--base-branch", "mandrel/23.1",
+                "--upstream-url", "https://github.com/" + UPSTREAM_REPO + ".git",
+                "--upstream-branch", upstreamBase,
+                "--test-run");
+        try (Git git = Git.open(new File(WORK_DIR, "test-fake-mandrel"))) {
+            git.checkout().setName("mandrel/23.1").call();
+            git.reset().setMode(ResetCommand.ResetType.HARD).setRef("HEAD~1").call();
+        }
 
         // AUX STEP: Tag Mandrel Packaging
         System.out.println("\n[TEST] Executing Auxiliary Step: tag-mandrel");
@@ -215,25 +295,26 @@ class TestMandrelOps {
         System.out.println("\nLocal repositories have been left in " + WORK_DIR.getAbsolutePath());
     }
 
-    private static String createAndMergeDummyUpstreamPR(GitHub github, String repoName, String baseBranch) throws Exception {
+    private static PrInfo createAndMergeMultiCommitUpstreamPR(GitHub github, String repoName, String baseBranch, String branchPrefix) throws Exception {
         final File localClone = new File(WORK_DIR, repoName.split("/")[1]);
         try (Git git = Git.open(localClone)) {
             git.checkout().setName(baseBranch).call();
             git.pull().setRemote("origin").call();
             // record the SHA right before our new PR to use as the --since marker
             final String sinceSha = git.getRepository().resolve("HEAD").getName();
-            final String workBranch = "feature-" + System.currentTimeMillis();
+            final String workBranch = branchPrefix + "-" + System.currentTimeMillis();
             git.checkout().setCreateBranch(true).setName(workBranch).setStartPoint(baseBranch).call();
-            Files.writeString(new File(localClone, "feature.txt").toPath(), "Content", StandardCharsets.UTF_8);
-            git.add().addFilepattern("feature.txt").call();
-            git.commit().setSign(false).setMessage("Add new feature").call();
+            Files.writeString(new File(localClone, workBranch + "-1.txt").toPath(), "Content 1", StandardCharsets.UTF_8);
+            git.add().addFilepattern(workBranch + "-1.txt").call();
+            git.commit().setSign(false).setMessage("Add " + workBranch + " commit 1").call();
+            Files.writeString(new File(localClone, workBranch + "-2.txt").toPath(), "Content 2", StandardCharsets.UTF_8);
+            git.add().addFilepattern(workBranch + "-2.txt").call();
+            git.commit().setSign(false).setMessage("Add " + workBranch + " commit 2").call();
             git.push().setRemote("origin").add(workBranch).call();
             final GHRepository repo = github.getRepository(repoName);
-            final GHPullRequest pr = repo.createPullRequest("Add new feature", workBranch, baseBranch, "Feature body", true,
-                    false);
-            // formatted like a GitHub merge to test the regex
-            pr.merge("Merge pull request #" + pr.getNumber() + " from " + GH_ORG + "/" + workBranch + "\n\nAdd new feature");
-            return sinceSha;
+            final GHPullRequest pr = repo.createPullRequest("Add multi-commit feature " + branchPrefix, workBranch, baseBranch, "Feature body", true, false);
+            pr.merge("Merge pull request #" + pr.getNumber() + " from " + GH_ORG + "/" + workBranch + "\n\nAdd multi-commit feature " + branchPrefix);
+            return new PrInfo(sinceSha, pr.getNumber());
         }
     }
 
@@ -502,7 +583,7 @@ class TestMandrelOps {
         }
     }
 
-    private static void mergeLatestPR(GitHub github, String repoName) throws Exception {
+    private static void mergeLatestPR(GitHub github, String repoName, String branchName) throws Exception {
         final GHRepository repo = github.getRepository(repoName);
         final List<GHPullRequest> prs = repo.getPullRequests(GHIssueState.OPEN);
         if (prs.isEmpty()) {
@@ -514,6 +595,8 @@ class TestMandrelOps {
         pr.merge("Merge pull request #" + pr.getNumber() + " from " + GH_ORG + "/test-branch\n\n" + pr.getTitle());
         final File localClone = new File(WORK_DIR, repoName.split("/")[1]);
         try (Git git = Git.open(localClone)) {
+            // ensure we are on the base branch before pulling
+            git.checkout().setName(branchName).call();
             git.pull().setRemote("origin").call();
         }
     }
@@ -530,6 +613,28 @@ class TestMandrelOps {
         if (p.waitFor() != 0) {
             throw new RuntimeException("mandrel-ops " + args[0] + " failed.");
         }
+    }
+
+    private static void runOpsExpectingFailure(String expectedErrorStr, String... args) throws Exception {
+        final ProcessBuilder pb = new ProcessBuilder();
+        final List<String> command = new ArrayList<>();
+        command.add("jbang");
+        command.add("mandrel-ops.java");
+        command.addAll(List.of(args));
+        pb.command(command);
+        final File errLog = File.createTempFile("err", ".log");
+        pb.redirectError(errLog);
+        pb.redirectOutput(ProcessBuilder.Redirect.INHERIT);
+        final Process p = pb.start();
+        if (p.waitFor() == 0) {
+            throw new RuntimeException("Expected mandrel-ops to fail, but it succeeded!");
+        }
+        final String errContent = Files.readString(errLog.toPath());
+        if (!errContent.contains(expectedErrorStr)) {
+            throw new RuntimeException("Expected error containing '" + expectedErrorStr + "' but got:\n" + errContent);
+        }
+        System.out.println("   [OK] Script correctly bailed out with expected error.");
+        errLog.delete();
     }
 
     private static void verifyWasmSuitePy(File repoDir, String expectedVersion) throws Exception {

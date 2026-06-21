@@ -13,6 +13,8 @@ import org.eclipse.jgit.console.ConsoleCredentialsProvider;
 import org.eclipse.jgit.lib.ObjectId;
 import org.eclipse.jgit.lib.Ref;
 import org.eclipse.jgit.revwalk.RevCommit;
+import org.eclipse.jgit.revwalk.RevWalk;
+import org.eclipse.jgit.revwalk.filter.RevFilter;
 import org.eclipse.jgit.transport.PushResult;
 import org.eclipse.jgit.transport.RefSpec;
 import org.eclipse.jgit.transport.RemoteRefUpdate;
@@ -89,7 +91,7 @@ class TagMandrel implements Callable<Integer> {
 
     @Override
     public Integer call() throws Exception {
-        ConsoleCredentialsProvider.install();
+        SuiteOpsUtils.installConsoleCredentials();
         try (Git git = Git.open(repoDir)) {
             git.checkout().setName(branch).call();
             git.pull().setRemote(upstreamRemote).setRemoteBranchName(branch).call();
@@ -105,6 +107,12 @@ class TagMandrel implements Callable<Integer> {
 class SuiteOpsUtils {
     private static final Pattern VERSION_PATTERN = Pattern.compile("^([ \\t]{1,4})\"version\"(\\s*:\\s*)\"([^\"]+)\"(.*)$");
     private static final Pattern RELEASE_PATTERN = Pattern.compile("^([ \\t]{1,4})\"release\"(\\s*:\\s*)(True|False)(.*)$");
+
+    static void installConsoleCredentials() {
+        if (System.console() != null) {
+            ConsoleCredentialsProvider.install();
+        }
+    }
 
     /**
      * There is this one specific kind of conflict in suite.py files, it's the version, three versus four digits and release:
@@ -133,10 +141,10 @@ class SuiteOpsUtils {
                 if (line.startsWith(">>>>>>>")) {
                     inConflict = false;
                     resolved.add("%s\"version\"%s\"%s\"%s"
-                        .formatted(indent, vSep, targetVersion, hasTrailingCommaVersion ? "," : ""));
+                            .formatted(indent, vSep, targetVersion, hasTrailingCommaVersion ? "," : ""));
                     if (sawReleaseInConflict) {
                         resolved.add("%s\"release\"%s%s%s"
-                            .formatted(indent, rSep, targetRelease ? "True" : "False", hasTrailingCommaRelease ? "," : ""));
+                                .formatted(indent, rSep, targetRelease ? "True" : "False", hasTrailingCommaRelease ? "," : ""));
                     }
                     continue;
                 }
@@ -325,36 +333,36 @@ class SuiteOpsUtils {
         }
     }
 
-     static void dealWithMilestones( GHRepository repo, String version, String nextVersion, boolean dryRun) throws IOException {
-         boolean currentClosed = false;
-         boolean nextExists = false;
-         for (GHMilestone ms : repo.listMilestones(GHIssueState.OPEN)) {
-             if (ms.getTitle().equals(version)) {
-                 if (!dryRun) {
-                     ms.close();
-                 }
-                 System.out.println("Closed open milestone: " + version);
-                 currentClosed = true;
-             }
-             if (ms.getTitle().equals(nextVersion)) {
-                 System.out.println("Verified: Next milestone already exists -> " + nextVersion);
-                 nextExists = true;
-             }
-         }
-         if (!currentClosed) {
-             for (GHMilestone ms : repo.listMilestones(GHIssueState.CLOSED)) {
-                 if (ms.getTitle().equals(version)) {
-                     System.out.println("Verified: Milestone " + version + " is already closed.");
-                     break;
-                 }
-             }
-         }
-         if (!nextExists) {
-             if (!dryRun) {
-                 repo.createMilestone(nextVersion, "Created by mandrel-ops.java");
-             }
-             System.out.println("Created milestone: " + nextVersion);
-         }
+    static void dealWithMilestones(GHRepository repo, String version, String nextVersion, boolean dryRun) throws IOException {
+        boolean currentClosed = false;
+        boolean nextExists = false;
+        for (GHMilestone ms : repo.listMilestones(GHIssueState.OPEN)) {
+            if (ms.getTitle().equals(version)) {
+                if (!dryRun) {
+                    ms.close();
+                }
+                System.out.println("Closed open milestone: " + version);
+                currentClosed = true;
+            }
+            if (ms.getTitle().equals(nextVersion)) {
+                System.out.println("Verified: Next milestone already exists -> " + nextVersion);
+                nextExists = true;
+            }
+        }
+        if (!currentClosed) {
+            for (GHMilestone ms : repo.listMilestones(GHIssueState.CLOSED)) {
+                if (ms.getTitle().equals(version)) {
+                    System.out.println("Verified: Milestone " + version + " is already closed.");
+                    break;
+                }
+            }
+        }
+        if (!nextExists) {
+            if (!dryRun) {
+                repo.createMilestone(nextVersion, "Created by mandrel-ops.java");
+            }
+            System.out.println("Created milestone: " + nextVersion);
+        }
     }
 }
 
@@ -381,7 +389,7 @@ class UpstreamMark implements Callable<Integer> {
 
     @Override
     public Integer call() throws Exception {
-        ConsoleCredentialsProvider.install();
+        SuiteOpsUtils.installConsoleCredentials();
         final String branchName = "release-prep-" + System.currentTimeMillis();
         try (Git git = Git.open(repoDir)) {
             git.checkout().setName(baseBranch).call();
@@ -437,7 +445,7 @@ class UpstreamFinalize implements Callable<Integer> {
 
     @Override
     public Integer call() throws Exception {
-        ConsoleCredentialsProvider.install();
+        SuiteOpsUtils.installConsoleCredentials();
         if (nextVersion == null) {
             final String[] parts = version.split("\\.");
             parts[2] = String.valueOf(Integer.parseInt(parts[2]) + 1);
@@ -544,7 +552,7 @@ class DownstreamSyncMark implements Callable<Integer> {
 
     @Override
     public Integer call() throws Exception {
-        ConsoleCredentialsProvider.install();
+        SuiteOpsUtils.installConsoleCredentials();
         final String branchName = "release-prep-" + System.currentTimeMillis();
         try (Git git = Git.open(repoDir)) {
             git.checkout().setName(baseBranch).call();
@@ -614,7 +622,7 @@ class DownstreamFinalize implements Callable<Integer> {
 
     @Override
     public Integer call() throws Exception {
-        ConsoleCredentialsProvider.install();
+        SuiteOpsUtils.installConsoleCredentials();
         if (nextVersion == null) {
             final String cleanVersion = version.replace("mandrel-", "").replace("-Final", "");
             final String[] parts = cleanVersion.split("\\.");
@@ -847,7 +855,7 @@ class UpdateQuarkusImages implements Callable<Integer> {
 
     @Override
     public Integer call() throws Exception {
-        ConsoleCredentialsProvider.install();
+        SuiteOpsUtils.installConsoleCredentials();
         // ...perhaps many more months :)
         final Set<String> validMonths = Set.of("January", "April", "July", "October");
         if (!validMonths.contains(month)) {
@@ -980,7 +988,7 @@ class UpdateQuarkusImages implements Callable<Integer> {
 }
 
 /**
- * STEP 7: SYNC UPSTREAM
+ * STEP 7 & 8: SYNC UPSTREAM
  * See README.md
  */
 @Command(name = "sync-upstream", description = "Merges upstream branch into downstream and opens a Sync PR")
@@ -999,7 +1007,7 @@ class SyncUpstream implements Callable<Integer> {
     String upstreamBranch;
     @Option(names = { "-n", "--next-version" }, description = "Downstream version to enforce in suite.py (e.g. 23.1.12.0)")
     String nextVersion;
-    @Option(names = { "-S", "--since" }, description = "Commit SHA or tag to start PR parsing from (default: downstream HEAD)")
+    @Option(names = { "-S", "--since" }, description = "Commit SHA or tag to start PR parsing from (default: auto-calculated merge base)")
     String sinceCommit;
     @Option(names = { "-D", "--dry-run" })
     boolean dryRun;
@@ -1008,7 +1016,7 @@ class SyncUpstream implements Callable<Integer> {
 
     @Override
     public Integer call() throws Exception {
-        ConsoleCredentialsProvider.install();
+        SuiteOpsUtils.installConsoleCredentials();
         try (Git git = Git.open(repoDir)) {
             git.checkout().setName(baseBranch).call();
             git.pull().setRemote("origin").setRemoteBranchName(baseBranch).call();
@@ -1022,9 +1030,44 @@ class SyncUpstream implements Callable<Integer> {
             git.fetch().setRemote(upstreamUrl)
                     .setRefSpecs(new RefSpec("+refs/heads/" + upstreamBranch + ":refs/remotes/TEMP_UPSTREAM")).call();
             final ObjectId fetchHead = git.getRepository().resolve("refs/remotes/TEMP_UPSTREAM");
-            final ObjectId sinceId = sinceCommit != null ? git.getRepository().resolve(sinceCommit) : git.getRepository().resolve("HEAD");
-            if (sinceId == null && sinceCommit != null) {
-                throw new RuntimeException("ABORT: Could not resolve --since commit or tag: " + sinceCommit);
+            final ObjectId localHead = git.getRepository().resolve("HEAD");
+            final ObjectId sinceId;
+            if (sinceCommit != null) {
+                sinceId = git.getRepository().resolve(sinceCommit);
+                if (sinceId == null) {
+                    throw new RuntimeException("ABORT: Could not resolve --since commit or tag: " + sinceCommit);
+                }
+                System.out.println("Using explicitly provided --since commit: " + sinceId.getName());
+            } else {
+                System.out.println("No --since provided. Calculating the merge base between downstream and upstream...");
+                try (RevWalk walk = new RevWalk(git.getRepository())) {
+                    final RevCommit headCommit = walk.parseCommit(localHead);
+                    final RevCommit upstreamCommit = walk.parseCommit(fetchHead);
+                    walk.setRevFilter(RevFilter.MERGE_BASE);
+                    walk.markStart(headCommit);
+                    walk.markStart(upstreamCommit);
+                    final RevCommit mergeBase = walk.next();
+                    if (mergeBase != null) {
+                        sinceId = mergeBase.getId();
+                        System.out.println("Calculated merge base: " + mergeBase.getName() + " (" + mergeBase.getShortMessage() + ")");
+                        // check on downstream commits since the merge base
+                        final Iterable<RevCommit> downstreamCommits = git.log().add(localHead).call();
+                        for (RevCommit c : downstreamCommits) {
+                            if (c.getId().equals(sinceId)) {
+                                break;
+                            }
+                            final String msg = c.getFullMessage().toLowerCase();
+                            if (msg.contains("squash merge") || msg.contains("squashed commit of")) {
+                                throw new RuntimeException("ABORT: There seems to be squash commits in history (" + c.abbreviate(7).name() + "). Please provide concrete --since manually.");
+                            }
+                            if (msg.contains("cherry-pick") || msg.contains("cherry picked from")) {
+                                throw new RuntimeException("ABORT: There seems to be cherry-picked commits in history (" + c.abbreviate(7).name() + "). Please provide concrete --since manually.");
+                            }
+                        }
+                    } else {
+                        throw new RuntimeException("ABORT: No common ancestor found between downstream and upstream. You must provide --since explicitly.");
+                    }
+                }
             }
             final StringBuilder prList = new StringBuilder();
             final Iterable<RevCommit> commits = git.log().addRange(sinceId, fetchHead).call();

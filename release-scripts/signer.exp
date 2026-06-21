@@ -1,0 +1,19 @@
+#!/usr/bin/expect -f
+
+set timeout -1
+if {![info exists env(GPG_PASSPHRASE)]} {
+    puts "Error: GPG_PASSPHRASE environment variable is not set."
+    exit 1
+}
+set passphrase $env(GPG_PASSPHRASE)
+
+spawn {*}$argv
+
+expect {
+    "Passphrase: " {
+        send "$passphrase\r"
+        exp_continue
+    }
+    eof
+}
+
