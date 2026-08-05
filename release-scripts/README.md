@@ -106,6 +106,8 @@ Completes the cycle for the `mandrel` repo. Tags the release and manages downstr
 
 Downloads the release artifacts from Jenkins skipping already downloaded files, validates the OpenJDK version from downloaded `MANDREL.md`, and creates a draft release on GitHub. It relies on the presence of `release-template.md` in the execution directory (can be overridden via `-T /path/to/template.md`). Make sure you use the correct Jenkins build numbers, those that passed QA.
 
+*Note: The JDK major version is automatically inferred from the upstream-repo name (e.g., 25 from jdk25u). Alternatively, it can be provided explicitly using the `-j` or `--jdk-major` option.*
+
 **Example for 25.0:**
 ```bash
 ./mandrel-ops.java publish-release \

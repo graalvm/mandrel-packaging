@@ -668,8 +668,8 @@ class PublishRelease implements Callable<Integer> {
     String upstreamRepo;
     @Option(names = { "-t", "--upstream-tag" }, required = true, description = "Upstream tag (e.g., vm-25.0.3)")
     String upstreamTag;
-    @Option(names = { "-j", "--jdk-version" }, required = true, description = "JDK version string (e.g., 25.0.2+10-LTS)")
-    String jdkVersion;
+    @Option(names = { "-j", "--jdk-major" }, description = "JDK major version (e.g., 25). Inferred from upstream-repo if omitted.")
+    String jdkMajorOpt;
     @Option(names = { "--linux-build" }, defaultValue = "-1")
     int linuxBuild;
     @Option(names = { "--windows-build" }, defaultValue = "-1")
@@ -697,7 +697,16 @@ class PublishRelease implements Callable<Integer> {
         final int major = Integer.parseInt(parts[0]);
         final int minor = Integer.parseInt(parts[1]);
         final String jobPrefix = "mandrel-" + major + "-" + minor;
-        final String jdkMajor = jdkVersion.split("[\\.\\+]")[0];
+        String jdkMajor = jdkMajorOpt;
+        if (jdkMajor == null || jdkMajor.isBlank()) {
+            final Matcher m = Pattern.compile("jdk(\\d+)u?").matcher(upstreamRepo);
+            if (m.find()) {
+                jdkMajor = m.group(1);
+                System.out.println("Inferred JDK major version " + jdkMajor + " from upstream repo " + upstreamRepo);
+            } else {
+                throw new RuntimeException("ABORT: Could not infer JDK major version from upstream-repo '" + upstreamRepo + "'. Please provide --jdk-major explicitly.");
+            }
+        }
         final List<String> targetUrls = new ArrayList<>();
         final Set<String> discoveredJdkVersions = new HashSet<>();
         System.out.println("Resolving Jenkins artifacts and fetching MANDREL.md...");

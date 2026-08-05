@@ -137,7 +137,6 @@ class TestMandrelOps {
                 "--prev-version", "mandrel-23.1.10.0-Final",
                 "--upstream-repo", UPSTREAM_REPO,
                 "--upstream-tag", "vm-23.1.11",
-                "--jdk-version", "21.0.11",
                 "--linux-build", "331",
                 "--windows-build", "216",
                 "--macos-build", "237",
