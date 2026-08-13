@@ -119,6 +119,7 @@ class SuiteOpsUtils {
      * true or false. The script autoresolves this one and only this one kind of conflict automatically.
      */
     static void resolveSuiteConflict(File file, String targetVersion, boolean targetRelease) throws IOException {
+        assert targetVersion != null;
         final List<String> lines = Files.readAllLines(file.toPath());
         final List<String> resolved = new ArrayList<>();
         boolean inConflict = false;
@@ -1098,6 +1099,10 @@ class SyncUpstream implements Callable<Integer> {
                         if (!conflictingPath.endsWith("suite.py")) {
                             throw new RuntimeException(
                                     "Unexpected conflict: " + conflictingPath + ". Please resolve manually.");
+                        }
+                        if (nextVersion == null) {
+                            throw new RuntimeException(
+                                    "Suite.py conflict resolution requires explicitly defining the Mandrel version through --next-version or -n.");
                         }
                         SuiteOpsUtils.resolveSuiteConflict(new File(repoDir, conflictingPath), nextVersion, false);
                         git.add().addFilepattern(conflictingPath).call();
