@@ -1,6 +1,6 @@
 # Mandrel
 
-Mandrel {{FULL_VERSION}} is a downstream distribution of the [GraalVM community edition](https://github.com/{{UPSTREAM_REPO}}/releases/tag/{{UPSTREAM_TAG}}).
+{{CSPU_HEADER}}Mandrel {{FULL_VERSION}} is a downstream distribution of the [GraalVM community edition](https://github.com/{{UPSTREAM_REPO}}/releases/tag/{{UPSTREAM_TAG}}).
 Mandrel's main goal is to provide a `native-image` release specifically to support [Quarkus](https://quarkus.io).
 The aim is to align the `native-image` capabilities from GraalVM with OpenJDK and Red Hat Enterprise Linux libraries to improve maintainability for native Quarkus applications.
 
@@ -51,17 +51,17 @@ Mac users:
 * Use JAVA_HOME="$( pwd )/mandrel-java{{JDK_MAJOR}}-{{FULL_VERSION}}/Contents/Home"
 * Use `xattr -c -r ./path/to/mandrel` to prevent quarantine
 
-```
-$ curl -O -J -L 'https://github.com/graalvm/mandrel/releases/download/{{VERSION}}/mandrel-java{{JDK_MAJOR}}-linux-amd64-{{FULL_VERSION}}.tar.gz'
-$ tar -xf mandrel-java{{JDK_MAJOR}}-linux-amd64-{{FULL_VERSION}}.tar.gz
-$ export JAVA_HOME="$( pwd )/mandrel-java{{JDK_MAJOR}}-{{FULL_VERSION}}"
-$ export GRAALVM_HOME="${JAVA_HOME}"
-$ export PATH="${JAVA_HOME}/bin:${PATH}"
-$ curl -O -J "https://code.quarkus.io/d?e=rest&cn=code.quarkus.io&j={{JDK_MAJOR}}"
-$ unzip code-with-quarkus.zip
-$ cd code-with-quarkus/
-$ ./mvnw package -Pnative
-$ ./target/code-with-quarkus-1.0.0-SNAPSHOT-runner
+```bash
+curl -O -J -L 'https://github.com/graalvm/mandrel/releases/download/{{VERSION}}/mandrel-java{{JDK_MAJOR}}-linux-amd64-{{FULL_VERSION}}.tar.gz'
+tar -xf mandrel-java{{JDK_MAJOR}}-linux-amd64-{{FULL_VERSION}}.tar.gz
+export JAVA_HOME="$( pwd )/mandrel-java{{JDK_MAJOR}}-{{FULL_VERSION}}"
+export GRAALVM_HOME="${JAVA_HOME}"
+export PATH="${JAVA_HOME}/bin:${PATH}"
+curl -O -J "https://code.quarkus.io/d?e=rest&cn=code.quarkus.io&j={{JDK_MAJOR}}&S=io.quarkus.platform%3A{{QUARKUS_VERSION}}"
+unzip code-with-quarkus.zip
+cd code-with-quarkus/
+./mvnw package -Pnative
+./target/code-with-quarkus-1.0.0-SNAPSHOT-runner
 ```
 
 ## Quick start Windows
@@ -75,7 +75,7 @@ SET JAVA_HOME=%CD%\mandrel-java{{JDK_MAJOR}}-{{FULL_VERSION}}
 SET GRAALVM_HOME=%JAVA_HOME%
 SET PATH=%JAVA_HOME%\bin;%PATH%
 vcvars64
-powershell -Command "Invoke-WebRequest -Uri 'https://code.quarkus.io/d?e=rest&cn=code.quarkus.io&j={{JDK_MAJOR}}' -OutFile 'code-with-quarkus.zip'"
+powershell -Command "Invoke-WebRequest -Uri 'https://code.quarkus.io/d?e=rest&cn=code.quarkus.io&j={{JDK_MAJOR}}&S=io.quarkus.platform%3A{{QUARKUS_VERSION}}' -OutFile 'code-with-quarkus.zip'"
 powershell -c "Expand-Archive -Path code-with-quarkus.zip -DestinationPath . -Force"
 cd code-with-quarkus
 mvnw package -Pnative
@@ -87,7 +87,7 @@ target\code-with-quarkus-1.0.0-SNAPSHOT-runner
 Mandrel Quarkus builder image can be used to build a Quarkus native Linux executable right away without any GRAALVM_HOME setup.
 
 ```bash
-curl -O -J 'https://code.quarkus.io/d?e=rest&cn=code.quarkus.io'
+curl -O -J 'https://code.quarkus.io/d?e=rest&cn=code.quarkus.io&j={{JDK_MAJOR}}&S=io.quarkus.platform%3A{{QUARKUS_VERSION}}'
 unzip code-with-quarkus.zip
 cd code-with-quarkus
 ./mvnw package -Pnative -Dquarkus.native.container-build=true -Dquarkus.native.builder-image=quay.io/quarkus/ubi-quarkus-mandrel-builder-image:jdk-{{JDK_MAJOR}}
@@ -97,7 +97,7 @@ cd code-with-quarkus
 One can use the builder image on Windows with e.g. Podman Desktop, see [Podman For Windows](https://quarkus.io/blog/podman-for-windows/).
 
 ```batchfile
-powershell -c "Invoke-WebRequest -OutFile quarkus.zip -Uri https://code.quarkus.io/d?e=rest&cn=code.quarkus.io"
+powershell -c "Invoke-WebRequest -OutFile quarkus.zip -Uri 'https://code.quarkus.io/d?e=rest&cn=code.quarkus.io&j={{JDK_MAJOR}}&S=io.quarkus.platform%3A{{QUARKUS_VERSION}}'"
 powershell -c "Expand-Archive -Path quarkus.zip -DestinationPath . -Force"
 cd code-with-quarkus
 mvnw package -Pnative -Dquarkus.native.container-build=true -Dquarkus.native.builder-image=quay.io/quarkus/ubi-quarkus-mandrel-builder-image:jdk-{{JDK_MAJOR}}
@@ -105,9 +105,7 @@ podman build -f src/main/docker/Dockerfile.native -t my-quarkus-mandrel-app .
 podman run -i --rm -p 8080:8080 my-quarkus-mandrel-app
 ```
 
-### Changelog
-
-For a complete list of changes please visit https://github.com/graalvm/mandrel/compare/{{PREV_VERSION}}...{{VERSION}}
+{{CHANGELOG_SECTION}}
 
 ---
 Mandrel {{FULL_VERSION}}
