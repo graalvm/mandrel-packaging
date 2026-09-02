@@ -170,6 +170,25 @@ class SuiteOpsUtils {
     }
 
     /**
+     * Boldly assumes that compiler module keeps existing
+     * and that we have a consistent repo with all the suite.py requiring "release" : True/False
+     * having the *same* "version".
+     */
+    static String getCurrentVersion(File repoDir) throws IOException {
+        final File suitePy = new File(repoDir, "compiler/mx.compiler/suite.py");
+        if (suitePy.exists()) {
+            final List<String> lines = Files.readAllLines(suitePy.toPath());
+            for (String l : lines) {
+                final Matcher m = VERSION_PATTERN.matcher(l);
+                if (m.matches()) {
+                    return m.group(3);
+                }
+            }
+        }
+        throw new RuntimeException("Could not find version in " + suitePy.getAbsolutePath());
+    }
+
+    /**
      * There is this one specific kind of conflict in suite.py files, it's the version, three versus four digits and release:
      * true or false. The script autoresolves this one and only this one kind of conflict automatically.
      */
@@ -228,17 +247,10 @@ class SuiteOpsUtils {
 
     static GHMilestone inferOpenMilestone(GHRepository repo, File repoDir, String nextVersion) throws Exception {
         String currentVersion = null;
-        // a bold assumption that compiler module keeps existing
-        final File suitePy = new File(repoDir, "compiler/mx.compiler/suite.py");
-        if (suitePy.exists()) {
-            final List<String> lines = Files.readAllLines(suitePy.toPath());
-            for (String l : lines) {
-                final Matcher m = VERSION_PATTERN.matcher(l);
-                if (m.matches()) {
-                    currentVersion = m.group(3);
-                    break;
-                }
-            }
+        try {
+            currentVersion = getCurrentVersion(repoDir);
+        } catch (Exception e) {
+            System.out.println("WARN: getCurrentVersion(" + repoDir.getAbsolutePath() + ") failed, keeping fallback option. Reason: " + e.getMessage());
         }
         GHMilestone fallback = null;
         int openCount = 0;
@@ -1383,6 +1395,7 @@ class SyncUpstream implements Callable<Integer> {
                 }
             }
             System.out.println("Merging upstream branch into current branch.");
+            final String effectiveVersion = nextVersion != null ? nextVersion : SuiteOpsUtils.getCurrentVersion(repoDir);
             final MergeResult mergeResult = git.merge().include(fetchHead).setCommit(false).call();
             if (!mergeResult.getMergeStatus().isSuccessful() && mergeResult.getMergeStatus() != MergeResult.MergeStatus.ALREADY_UP_TO_DATE) {
                 if (mergeResult.getMergeStatus() == MergeResult.MergeStatus.CONFLICTING) {
@@ -1391,7 +1404,7 @@ class SyncUpstream implements Callable<Integer> {
                             throw new RuntimeException(
                                     "Unexpected conflict: " + conflictingPath + ". Please resolve manually.");
                         }
-                        SuiteOpsUtils.resolveSuiteConflict(new File(repoDir, conflictingPath), nextVersion, false);
+                        SuiteOpsUtils.resolveSuiteConflict(new File(repoDir, conflictingPath), effectiveVersion, false);
                         git.add().addFilepattern(conflictingPath).call();
                     }
                 } else {
