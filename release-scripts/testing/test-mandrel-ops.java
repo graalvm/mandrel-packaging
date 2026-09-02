@@ -294,6 +294,39 @@ class TestMandrelOps {
             git.reset().setMode(ResetCommand.ResetType.HARD).setRef("HEAD~1").call();
         }
 
+        // STEP 12: Fourth Sync Upstream (Testing auto-resolve of suite.py without --next-version)
+        System.out.println("\n[TEST] Executing Step 12: Testing auto-resolve of suite.py without --next-version");
+        try (Git git = Git.open(new File(WORK_DIR, "test-fake-graalvm-community-jdk21u"))) {
+            git.checkout().setName(upstreamBase21u).call();
+            final String workBranch = "suite-conflict-test-" + System.currentTimeMillis();
+            git.checkout().setCreateBranch(true).setName(workBranch).setStartPoint(upstreamBase21u).call();
+            // suite.py to trigger the conflict
+            final File suitePy = new File(WORK_DIR, "test-fake-graalvm-community-jdk21u/compiler/mx.compiler/suite.py");
+            final String content = Files.readString(suitePy.toPath()).replace("23.1.13", "23.1.99");
+            Files.writeString(suitePy.toPath(), content, StandardCharsets.UTF_8);
+            git.add().addFilepattern("compiler/mx.compiler/suite.py").call();
+            // add change so the merge branch ain't identical to the downstream base branch
+            Files.writeString(new File(WORK_DIR, "test-fake-graalvm-community-jdk21u/feature-C.txt").toPath(), "Content C", StandardCharsets.UTF_8);
+            git.add().addFilepattern("feature-C.txt").call();
+            git.commit().setSign(false).setMessage("Bump upstream version to 23.1.99 and add feature-C").call();
+            git.push().setForce(true).setRemote("origin").add(workBranch).call();
+            GHPullRequest pr = github.getRepository(UPSTREAM_REPO_21U).createPullRequest("Bump version and feature", workBranch, upstreamBase21u, "Trigger conflict", true, false);
+            pr.merge("Merge pull request #" + pr.getNumber() + " from " + GH_ORG + "/" + workBranch + "\n\nBump version and feature");
+        }
+
+        runOps("sync-upstream",
+                "--dir", new File(WORK_DIR, "test-fake-mandrel").getAbsolutePath(),
+                "--fork", DOWNSTREAM_REPO,
+                "--repo", DOWNSTREAM_REPO,
+                "--base-branch", "mandrel/23.1",
+                "--upstream-url", "https://github.com/" + UPSTREAM_REPO_21U + ".git",
+                "--upstream-branch", upstreamBase21u,
+                "--test-run");
+
+        mergeLatestPR(github, DOWNSTREAM_REPO, "mandrel/23.1");
+        verifySuitePy(new File(WORK_DIR, "test-fake-mandrel"), "23.1.13.0", false);
+        System.out.println("   [OK] Verified suite.py conflict auto-resolved correctly, preserving 23.1.13.0");
+
         //  CSPU EMPTY FLOW TESTS (25.0.4.0 -> 25.0.4.1)
         // ..."empty" as in no GraalVM patches in this CSPU, just the OpenJDK rebuild
         System.out.println("\n[TEST] Executing CSPU Step 1: upstream-mark (Empty Diff)");
