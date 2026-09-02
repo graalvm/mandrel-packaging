@@ -10,6 +10,8 @@ import org.eclipse.jgit.api.Git;
 import org.eclipse.jgit.api.MergeResult;
 import org.eclipse.jgit.api.errors.GitAPIException;
 import org.eclipse.jgit.console.ConsoleCredentialsProvider;
+import org.eclipse.jgit.diff.DiffEntry;
+import org.eclipse.jgit.diff.DiffFormatter;
 import org.eclipse.jgit.lib.ObjectId;
 import org.eclipse.jgit.lib.Ref;
 import org.eclipse.jgit.revwalk.RevCommit;
@@ -19,6 +21,10 @@ import org.eclipse.jgit.transport.PushResult;
 import org.eclipse.jgit.transport.RefSpec;
 import org.eclipse.jgit.transport.RemoteRefUpdate;
 import org.eclipse.jgit.transport.URIish;
+import org.eclipse.jgit.util.io.DisabledOutputStream;
+import org.kohsuke.github.GHAsset;
+import org.kohsuke.github.GHCommit;
+import org.kohsuke.github.GHCompare;
 import org.kohsuke.github.GHIssueState;
 import org.kohsuke.github.GHMilestone;
 import org.kohsuke.github.GHPullRequest;
@@ -47,13 +53,23 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
-import java.util.UUID;
 import java.util.concurrent.Callable;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Stream;
+
+class MandrelConfig {
+    // Used in Quickstarts markdown text, github release body.
+    // e.g. powershell -Command "Invoke-WebRequest -Uri 'https://code.quarkus.io/d?e=rest&cn=code.quarkus.io&j=21&S=io.quarkus.platform%3A3.27' -OutFile 'code-with-quarkus.zip'"
+    static final Map<String, String> QUARKUS_VERSIONS = Map.of(
+            // which mandrel : which quarkus
+            "23.1", "3.27",
+            "25.0", "3.39"
+    );
+}
 
 /**
  * The file is just a collection of isolated steps. Each step is documented in the README.md.
@@ -112,6 +128,61 @@ class SuiteOpsUtils {
         if (System.console() != null) {
             ConsoleCredentialsProvider.install();
         }
+    }
+
+    static File downloadIfNotExists(String urlStr, File dir) throws Exception {
+        final URI uri = URI.create(urlStr);
+        final String path = uri.getPath();
+        final String fileName = path.substring(path.lastIndexOf('/') + 1);
+        final File dest = new File(dir, fileName);
+        if (dest.exists() && dest.length() > 0) {
+            System.out.println("File " + fileName + " already exists locally. Skipping download.");
+            return dest;
+        }
+        System.out.println("Downloading " + fileName + "...");
+        final HttpRequest request = HttpRequest.newBuilder().uri(uri).GET().build();
+        try (HttpClient client = HttpClient.newBuilder().followRedirects(HttpClient.Redirect.NORMAL).build()) {
+            final HttpResponse<Path> response = client.send(request,
+                    HttpResponse.BodyHandlers.ofFile(dest.toPath(),
+                            StandardOpenOption.CREATE,
+                            StandardOpenOption.WRITE,
+                            StandardOpenOption.TRUNCATE_EXISTING));
+            if (response.statusCode() >= 400) {
+                Files.deleteIfExists(dest.toPath());
+                throw new RuntimeException("Failed to download " + fileName + " (HTTP " + response.statusCode() + ")");
+            }
+        }
+        return dest;
+    }
+
+    static boolean isEmptyCSPU(final Git git, final boolean cspu, final ObjectId base, final ObjectId target) throws Exception {
+        if (!cspu || base == null || target == null) {
+            return false;
+        }
+        try (RevWalk walk = new RevWalk(git.getRepository())) {
+            final RevCommit baseCommit = walk.parseCommit(base);
+            final RevCommit targetCommit = walk.parseCommit(target);
+            return UpstreamMark.walkTheDiff(git, baseCommit, targetCommit);
+        }
+    }
+
+    /**
+     * Boldly assumes that compiler module keeps existing
+     * and that we have a consistent repo with all the suite.py requiring "release" : True/False
+     * having the *same* "version".
+     */
+    static String getCurrentVersion(File repoDir) throws IOException {
+        final File suitePy = new File(repoDir, "compiler/mx.compiler/suite.py");
+        if (suitePy.exists()) {
+            final List<String> lines = Files.readAllLines(suitePy.toPath());
+            for (String l : lines) {
+                final Matcher m = VERSION_PATTERN.matcher(l);
+                if (m.matches()) {
+                    return m.group(3);
+                }
+            }
+        }
+        throw new RuntimeException("Could not find version in " + suitePy.getAbsolutePath());
     }
 
     /**
@@ -173,17 +244,10 @@ class SuiteOpsUtils {
 
     static GHMilestone inferOpenMilestone(GHRepository repo, File repoDir, String nextVersion) throws Exception {
         String currentVersion = null;
-        // a bold assumption that compiler module keeps existing
-        final File suitePy = new File(repoDir, "compiler/mx.compiler/suite.py");
-        if (suitePy.exists()) {
-            final List<String> lines = Files.readAllLines(suitePy.toPath());
-            for (String l : lines) {
-                final Matcher m = VERSION_PATTERN.matcher(l);
-                if (m.matches()) {
-                    currentVersion = m.group(3);
-                    break;
-                }
-            }
+        try {
+            currentVersion = getCurrentVersion(repoDir);
+        } catch (Exception e) {
+            System.out.println("WARN: getCurrentVersion(" + repoDir.getAbsolutePath() + ") failed, keeping fallback option. Reason: " + e.getMessage());
         }
         GHMilestone fallback = null;
         int openCount = 0;
@@ -220,7 +284,10 @@ class SuiteOpsUtils {
         return false;
     }
 
-    static void modifySuitesReleaseState(File repoDir, boolean release, String targetVersion) {
+    /**
+     * @param release can be null, e.g. empty CSPU won't modify `release: True/False' in suite.py
+     */
+    static void modifySuitesReleaseState(File repoDir, Boolean release, String targetVersion) {
         Stream.of(Objects.requireNonNull(repoDir.listFiles()))
                 .filter(File::isDirectory)
                 .flatMap(path -> Stream.of(Objects.requireNonNull(path.listFiles()))
@@ -238,7 +305,7 @@ class SuiteOpsUtils {
                         boolean releaseUpdated = false;
                         for (int i = 0; i < lines.size(); i++) {
                             final String line = lines.get(i);
-                            if (!releaseUpdated) {
+                            if (release != null && !releaseUpdated) {
                                 final Matcher rm = RELEASE_PATTERN.matcher(line);
                                 if (rm.matches()) {
                                     lines.set(i,
@@ -344,7 +411,7 @@ class SuiteOpsUtils {
                 System.out.println("Closed open milestone: " + version);
                 currentClosed = true;
             }
-            if (ms.getTitle().equals(nextVersion)) {
+            if (nextVersion != null && ms.getTitle().equals(nextVersion)) {
                 System.out.println("Verified: Next milestone already exists -> " + nextVersion);
                 nextExists = true;
             }
@@ -357,7 +424,7 @@ class SuiteOpsUtils {
                 }
             }
         }
-        if (!nextExists) {
+        if (nextVersion != null && !nextExists) {
             if (!dryRun) {
                 repo.createMilestone(nextVersion, "Created by mandrel-ops.java");
             }
@@ -386,6 +453,8 @@ class UpstreamMark implements Callable<Integer> {
     boolean dryRun;
     @Option(names = { "--test-run" })
     boolean testRun;
+    @Option(names = { "--cspu" }, description = "Flag for CSPU release")
+    boolean cspu;
 
     @Override
     public Integer call() throws Exception {
@@ -393,10 +462,15 @@ class UpstreamMark implements Callable<Integer> {
         final String branchName = "release-prep-" + System.currentTimeMillis();
         try (Git git = Git.open(repoDir)) {
             git.checkout().setName(baseBranch).call();
+            final boolean emptyCspu = isEmptyCSPU(git, cspu, version);
             git.checkout().setCreateBranch(true).setName(branchName).setStartPoint(baseBranch).call();
-            SuiteOpsUtils.modifySuitesReleaseState(repoDir, true, version);
-            final String titleAndCommit = "Mark suite files for " + version + " release [skip ci]";
-            git.commit().setAll(true).setMessage(titleAndCommit).setSign(true).call();
+            SuiteOpsUtils.modifySuitesReleaseState(repoDir, emptyCspu ? null : true, version);
+            final String titleAndCommit = emptyCspu ? "Bump version for CSPU " + version + " [skip ci]" : "Mark suite files for " + version + " release [skip ci]";
+            if (!git.status().call().hasUncommittedChanges()) {
+                System.out.println("WARN: No changes to commit. Suites already configured.");
+            } else {
+                git.commit().setAll(true).setMessage(titleAndCommit).setSign(true).call();
+            }
             if (!dryRun) {
                 SuiteOpsUtils.pushToFork(git, forkName, branchName);
                 final GitHub github = SuiteOpsUtils.connectToGitHub();
@@ -413,6 +487,46 @@ class UpstreamMark implements Callable<Integer> {
             }
         }
         return 0;
+    }
+
+    public static boolean isEmptyCSPU(final Git git, final boolean cspu, final String version) throws Exception {
+        if (!cspu) {
+            return false;
+        }
+        final String[] parts = version.split("\\.");
+        final int last = Integer.parseInt(parts[parts.length - 1]);
+        final String baseTag;
+        if (last > 1) {
+            parts[parts.length - 1] = String.valueOf(last - 1);
+            baseTag = "vm-" + String.join(".", parts);
+        } else {
+            baseTag = "vm-" + version.substring(0, version.lastIndexOf('.'));
+        }
+        final ObjectId baseId = git.getRepository().resolve("refs/tags/" + baseTag);
+        if (baseId != null) {
+            try (RevWalk walk = new RevWalk(git.getRepository())) {
+                final RevCommit baseCommit = walk.parseCommit(baseId);
+                final RevCommit headCommit = walk.parseCommit(git.getRepository().resolve("HEAD"));
+                return walkTheDiff(git, baseCommit, headCommit);
+            }
+        }
+        return true;
+    }
+
+    public static boolean walkTheDiff(Git git, RevCommit baseCommit, RevCommit headCommit) throws IOException {
+        try (DiffFormatter diffFormatter = new DiffFormatter(DisabledOutputStream.INSTANCE)) {
+            diffFormatter.setRepository(git.getRepository());
+            for (DiffEntry entry : diffFormatter.scan(baseCommit.getTree(), headCommit.getTree())) {
+                String path = entry.getNewPath();
+                if (DiffEntry.DEV_NULL.equals(path)) {
+                    path = entry.getOldPath();
+                }
+                if (!path.endsWith("suite.py")) {
+                    return false;
+                }
+            }
+        }
+        return true;
     }
 }
 
@@ -442,19 +556,23 @@ class UpstreamFinalize implements Callable<Integer> {
     boolean dryRun;
     @Option(names = { "--test-run" })
     boolean testRun;
+    @Option(names = { "--cspu" }, description = "Flag for CSPU release")
+    boolean cspu;
 
     @Override
     public Integer call() throws Exception {
         SuiteOpsUtils.installConsoleCredentials();
         if (nextVersion == null) {
             final String[] parts = version.split("\\.");
-            parts[2] = String.valueOf(Integer.parseInt(parts[2]) + 1);
+            // CSPU version bumping is always about the last digit.
+            parts[parts.length - 1] = String.valueOf(Integer.parseInt(parts[parts.length - 1]) + 1);
             nextVersion = String.join(".", parts);
             System.out.println("Auto-calculated next version: " + nextVersion);
         }
         try (Git git = Git.open(repoDir)) {
             git.checkout().setName(baseBranch).call();
             git.pull().setRemote(upstreamRemote).setRemoteBranchName(baseBranch).call();
+            final boolean emptyCspu = UpstreamMark.isEmptyCSPU(git, cspu, version);
             System.out.println("Checking remote tags on " + upstreamRemote + "...");
             final Collection<Ref> remoteRefs = git.lsRemote().setTags(true).setRemote(upstreamRemote).call();
             boolean vmTagExistsRemotely = false;
@@ -487,13 +605,21 @@ class UpstreamFinalize implements Callable<Integer> {
             }
             final GitHub github = SuiteOpsUtils.connectToGitHub();
             final GHRepository repo = github.getRepository(upstreamRepo);
+            if (emptyCspu) {
+                System.out.println("Empty CSPU detected. Skipping Milestone and Unmark suites PR creation.");
+                return 0;
+            }
             SuiteOpsUtils.dealWithMilestones(repo, version, nextVersion, dryRun);
             // Prep next
             final String branchName = "bump-version-" + nextVersion + "-" + System.currentTimeMillis();
             git.checkout().setCreateBranch(true).setName(branchName).setStartPoint(baseBranch).call();
             SuiteOpsUtils.modifySuitesReleaseState(repoDir, false, nextVersion);
             final String titleAndCommit = "Unmark suite files and bump version to " + nextVersion + " [skip ci]";
-            git.commit().setAll(true).setMessage(titleAndCommit).setSign(true).call();
+            if (!git.status().call().hasUncommittedChanges()) {
+                System.out.println("WARN: No changes to commit. Suites already configured.");
+            } else {
+                git.commit().setAll(true).setMessage(titleAndCommit).setSign(true).call();
+            }
             if (!dryRun) {
                 SuiteOpsUtils.pushToFork(git, forkName, branchName);
                 final String head = forkName.split("/")[0] + ":" + branchName;
@@ -549,6 +675,8 @@ class DownstreamSyncMark implements Callable<Integer> {
     boolean dryRun;
     @Option(names = { "--test-run" })
     boolean testRun;
+    @Option(names = { "--cspu" }, description = "Flag for CSPU release")
+    boolean cspu;
 
     @Override
     public Integer call() throws Exception {
@@ -556,15 +684,32 @@ class DownstreamSyncMark implements Callable<Integer> {
         final String branchName = "release-prep-" + System.currentTimeMillis();
         try (Git git = Git.open(repoDir)) {
             git.checkout().setName(baseBranch).call();
+            boolean emptyCspu = false;
+            if (cspu) {
+                final String[] parts = upstreamTag.split("\\.");
+                final int last = Integer.parseInt(parts[parts.length - 1]);
+                final String baseTag;
+                if (last > 1) {
+                    parts[parts.length - 1] = String.valueOf(last - 1);
+                    baseTag = String.join(".", parts);
+                } else {
+                    baseTag = upstreamTag.substring(0, upstreamTag.lastIndexOf('.'));
+                }
+                git.fetch().setRemote(upstreamUrl).setRefSpecs(new RefSpec("+refs/tags/" + baseTag + ":refs/tags/" + baseTag)).call();
+                final ObjectId baseId = git.getRepository().resolve("refs/tags/" + baseTag);
+                git.fetch().setRemote(upstreamUrl).setRefSpecs(new RefSpec("+refs/tags/" + upstreamTag + ":refs/tags/" + upstreamTag)).call();
+                final ObjectId tagId = git.getRepository().resolve("refs/tags/" + upstreamTag);
+                emptyCspu = SuiteOpsUtils.isEmptyCSPU(git, cspu, baseId, tagId);
+            }
+            final String rawUpstreamVersion = upstreamTag.replace("vm-", "");
+            final String mandrelVersion = cspu ? rawUpstreamVersion : rawUpstreamVersion + "." + suffix;
             git.checkout().setCreateBranch(true).setName(branchName).setStartPoint(baseBranch).call();
             git.fetch().setRemote(upstreamUrl)
                     .setRefSpecs(new RefSpec("+refs/tags/*:refs/tags/*")).call();
             final ObjectId tagId = git.getRepository().resolve(upstreamTag);
             final MergeResult mergeResult = git.merge().include(upstreamTag, tagId).setCommit(false).call();
-            final String rawUpstreamVersion = upstreamTag.replace("vm-", "");
-            final String mandrelVersion = rawUpstreamVersion + "." + suffix;
-            final String prTitleVersion = mandrelVersion + "-Final";
-            if (!mergeResult.getMergeStatus().isSuccessful()) {
+            final String prTitleVersion = mandrelVersion + (cspu ? "" : "-Final");
+            if (!mergeResult.getMergeStatus().isSuccessful() && mergeResult.getMergeStatus() != MergeResult.MergeStatus.ALREADY_UP_TO_DATE) {
                 if (mergeResult.getMergeStatus() == MergeResult.MergeStatus.CONFLICTING) {
                     for (String conflictingPath : mergeResult.getConflicts().keySet()) {
                         if (!conflictingPath.endsWith("suite.py")) {
@@ -577,18 +722,20 @@ class DownstreamSyncMark implements Callable<Integer> {
                     throw new RuntimeException("Merge failed: " + mergeResult.getMergeStatus());
                 }
             }
-            SuiteOpsUtils.modifySuitesReleaseState(repoDir, true, mandrelVersion);
+            SuiteOpsUtils.modifySuitesReleaseState(repoDir, emptyCspu ? null : true, mandrelVersion);
             git.add().addFilepattern(".").call();
-            final String titleAndCommit = "Mark suites for " + prTitleVersion + " release [skip ci]";
-            git.commit().setAll(true).setMessage(titleAndCommit).setSign(true).call();
+            final String titleAndCommit = emptyCspu ? "[Backport] Bump version for CSPU " + prTitleVersion + " [skip ci]" : "Mark suites for " + prTitleVersion + " release [skip ci]";
+            if (!git.status().call().hasUncommittedChanges()) {
+                System.out.println("WARN: No changes to commit. Suites already configured.");
+            } else {
+                git.commit().setAll(true).setMessage(titleAndCommit).setSign(true).call();
+            }
             if (!dryRun) {
-                SuiteOpsUtils.pushToFork(git, forkName, branchName);
                 final GitHub github = SuiteOpsUtils.connectToGitHub();
-                final GHRepository repo = github.getRepository(downstreamRepo);
-                final String head = forkName.split("/")[0] + ":" + branchName;
+                SuiteOpsUtils.pushToFork(git, forkName, branchName);
                 final String tagLink = upstreamUrl.replaceAll("\\.git$", "") + "/releases/tag/" + upstreamTag;
-                final GHPullRequest pr =
-                        repo.createPullRequest(titleAndCommit, head, baseBranch, "Upstream tag: " + tagLink, true, false);
+                final GHPullRequest pr = github.getRepository(downstreamRepo)
+                        .createPullRequest(titleAndCommit, forkName.split("/")[0] + ":" + branchName, baseBranch, "Upstream tag: " + tagLink, true, false);
                 if (!testRun) {
                     SuiteOpsUtils.setupPRReviewers(github, pr, false);
                 }
@@ -619,6 +766,8 @@ class DownstreamFinalize implements Callable<Integer> {
     String nextVersion;
     @Option(names = { "-D", "--dry-run" })
     boolean dryRun;
+    @Option(names = { "--cspu" }, description = "Flag for CSPU release")
+    boolean cspu;
 
     @Override
     public Integer call() throws Exception {
@@ -626,11 +775,17 @@ class DownstreamFinalize implements Callable<Integer> {
         if (nextVersion == null) {
             final String cleanVersion = version.replace("mandrel-", "").replace("-Final", "");
             final String[] parts = cleanVersion.split("\\.");
-            parts[2] = String.valueOf(Integer.parseInt(parts[2]) + 1);
-            if (parts.length >= 4) {
-                parts[3] = "0";
+            // CSPU: We increment the last digit
+            if (cspu) {
+                parts[parts.length - 1] = String.valueOf(Integer.parseInt(parts[parts.length - 1]) + 1);
+            } else {
+                parts[2] = String.valueOf(Integer.parseInt(parts[2]) + 1);
+                if (parts.length >= 4) {
+                    parts[3] = "0";
+                }
             }
-            nextVersion = String.join(".", parts);
+            // Used in milestones names too, we want -Final for milestones names.
+            nextVersion = String.join(".", parts) + "-Final";
             System.out.println("Auto-calculated next version: " + nextVersion);
         }
         final String currentMilestoneTitle = version.replace("mandrel-", "");
@@ -638,9 +793,16 @@ class DownstreamFinalize implements Callable<Integer> {
             git.checkout().setName(baseBranch).call();
             git.pull().setRemote(upstreamRemote).setRemoteBranchName(baseBranch).call();
             System.out.println("Creating signed tag: " + version);
-            git.tag().setName(version).setMessage(version).setSigned(true).call();
-            if (!dryRun) {
-                SuiteOpsUtils.pushRef(git, upstreamRemote, "refs/tags/" + version);
+            try {
+                git.tag().setName(version).setMessage(version).setSigned(true).call();
+                if (!dryRun) {
+                    SuiteOpsUtils.pushRef(git, upstreamRemote, "refs/tags/" + version);
+                }
+            } catch (org.eclipse.jgit.api.errors.RefAlreadyExistsException e) {
+                System.out.println("Tag " + version + " already exists locally. Assuming tag is correct and proceeding.");
+                if (!dryRun) {
+                    SuiteOpsUtils.pushRef(git, upstreamRemote, "refs/tags/" + version);
+                }
             }
             final GitHub github = SuiteOpsUtils.connectToGitHub();
             final GHRepository repo = github.getRepository(downstreamRepo);
@@ -670,6 +832,8 @@ class PublishRelease implements Callable<Integer> {
     String upstreamTag;
     @Option(names = { "-j", "--jdk-major" }, description = "JDK major version (e.g., 25). Inferred from upstream-repo if omitted.")
     String jdkMajorOpt;
+    @Option(names = { "-q", "--quarkus-version" }, description = "Quarkus platform version (e.g., 3.27). Inferred from Mandrel version if omitted.")
+    String quarkusVersionOpt;
     @Option(names = { "--linux-build" }, defaultValue = "-1")
     int linuxBuild;
     @Option(names = { "--windows-build" }, defaultValue = "-1")
@@ -683,6 +847,8 @@ class PublishRelease implements Callable<Integer> {
     File templateFile;
     @Option(names = { "-D", "--dry-run" })
     boolean dryRun;
+    @Option(names = { "--cspu" }, description = "Flag for CSPU release")
+    boolean cspu;
 
     @Override
     public Integer call() throws Exception {
@@ -707,6 +873,17 @@ class PublishRelease implements Callable<Integer> {
                 throw new RuntimeException("ABORT: Could not infer JDK major version from upstream-repo '" + upstreamRepo + "'. Please provide --jdk-major explicitly.");
             }
         }
+        // We directly print Q version in the release Markdown to prevent it from
+        // pulling incompatible Q releases later in future.
+        String quarkusVersion = quarkusVersionOpt;
+        if (quarkusVersion == null || quarkusVersion.isBlank()) {
+            quarkusVersion = MandrelConfig.QUARKUS_VERSIONS.entrySet().stream()
+                    .filter(e -> fullVersion.startsWith(e.getKey()))
+                    .map(Map.Entry::getValue)
+                    .findFirst()
+                    .orElseThrow(() -> new RuntimeException("ABORT: Could not infer Quarkus version from Mandrel version '" + fullVersion + "'. Please provide -q or --quarkus-version explicitly."));
+            System.out.println("Inferred Quarkus version " + quarkusVersion + " from Mandrel version " + fullVersion);
+        }
         final List<String> targetUrls = new ArrayList<>();
         final Set<String> discoveredJdkVersions = new HashSet<>();
         System.out.println("Resolving Jenkins artifacts and fetching MANDREL.md...");
@@ -730,31 +907,66 @@ class PublishRelease implements Callable<Integer> {
         final List<File> downloadedFiles = new ArrayList<>();
         System.out.println("Downloading " + targetUrls.size() + " artifact files...");
         for (String url : targetUrls) {
-            downloadedFiles.add(downloadIfNotExists(url, downloadDir));
+            downloadedFiles.add(SuiteOpsUtils.downloadIfNotExists(url, downloadDir));
+        }
+        final GitHub github = SuiteOpsUtils.connectToGitHub();
+        final GHRepository repo = github.getRepository(repoName);
+        boolean emptyCspu = false;
+        if (cspu) {
+            try {
+                final GHCompare compare = repo.getCompare(prevVersion, version);
+                emptyCspu = true;
+                // An empty CSPU has the only diff: suite.py and nothing else.
+                for (GHCommit.File file : compare.getFiles()) {
+                    if (!file.getFileName().endsWith("suite.py")) {
+                        emptyCspu = false;
+                        break;
+                    }
+                }
+            } catch (Exception e) {
+                System.out.println("WARN: Could not compare versions via GH API, assuming non-empty CSPU.");
+            }
+        }
+        String cspuHeader = "";
+        if (cspu) {
+            cspuHeader = "This is a Critical Security Patch Update (CSPU).\n";
+            if (emptyCspu) {
+                cspuHeader += "It brings updated JDK " + exactJdkVersion + ", but is otherwise identical to " + prevVersion.replace("mandrel-", "").replace("-Final", "") + ".\n\n";
+            } else {
+                cspuHeader += "\n";
+            }
+        }
+        String changelogSection;
+        if (emptyCspu) {
+            changelogSection = "### Changelog\n\nThis release has an empty changelog, as the only change is the updated OpenJDK.";
+        } else {
+            changelogSection = "### Changelog\n\nFor a complete list of changes please visit https://github.com/graalvm/mandrel/compare/" + prevVersion + "..." + version;
         }
         final String templateText = Files.readString(templateFile.toPath(), StandardCharsets.UTF_8);
         final String body = templateText
+                .replace("{{CSPU_HEADER}}", cspuHeader)
+                .replace("{{CHANGELOG_SECTION}}", changelogSection)
                 .replace("{{FULL_VERSION}}", fullVersion)
                 .replace("{{VERSION}}", version)
                 .replace("{{PREV_VERSION}}", prevVersion)
                 .replace("{{UPSTREAM_REPO}}", upstreamRepo)
                 .replace("{{UPSTREAM_TAG}}", upstreamTag)
                 .replace("{{JDK_VERSION}}", exactJdkVersion)
-                .replace("{{JDK_MAJOR}}", jdkMajor);
-        final GitHub github = SuiteOpsUtils.connectToGitHub();
-        final GHRepository repo = github.getRepository(repoName);
+                .replace("{{JDK_MAJOR}}", jdkMajor)
+                .replace("{{QUARKUS_VERSION}}", quarkusVersion);
+        final String releaseTitle = cspu ? "Mandrel " + fullVersion + " CSPU" : "Mandrel " + fullVersion;
         if (dryRun) {
             System.out.println("\n[DRY RUN] Release Body Preview:");
             System.out.println("==================================================");
             System.out.println(body);
             System.out.println("==================================================");
             System.out.println(
-                    "[DRY RUN] Would upload " + downloadedFiles.size() + " artifacts to a Draft release titled 'Mandrel " + fullVersion + "'.");
+                    "[DRY RUN] Would upload " + downloadedFiles.size() + " artifacts to a Draft release titled '" + releaseTitle + "'.");
             return 0;
         }
         System.out.println("Creating draft GitHub release for " + version + "...");
         final GHRelease release = repo.createRelease(version)
-                .name("Mandrel " + fullVersion)
+                .name(releaseTitle)
                 .prerelease(!fullVersion.contains("Final"))
                 .body(body)
                 .draft(true)
@@ -802,31 +1014,6 @@ class PublishRelease implements Callable<Integer> {
             }
         }
     }
-
-    private File downloadIfNotExists(String urlStr, File dir) throws Exception {
-        final URI uri = URI.create(urlStr);
-        final String path = uri.getPath();
-        final String fileName = path.substring(path.lastIndexOf('/') + 1);
-        final File dest = new File(dir, fileName);
-        if (dest.exists() && dest.length() > 0) {
-            System.out.println("File " + fileName + " already exists locally. Skipping download.");
-            return dest;
-        }
-        System.out.println("Downloading " + fileName + "...");
-        final HttpRequest request = HttpRequest.newBuilder().uri(uri).GET().build();
-        try (HttpClient client = HttpClient.newBuilder().followRedirects(HttpClient.Redirect.NORMAL).build()) {
-            final HttpResponse<Path> response = client.send(request,
-                    HttpResponse.BodyHandlers.ofFile(dest.toPath(),
-                            StandardOpenOption.CREATE,
-                            StandardOpenOption.WRITE,
-                            StandardOpenOption.TRUNCATE_EXISTING));
-            if (response.statusCode() >= 400) {
-                Files.deleteIfExists(dest.toPath());
-                throw new RuntimeException("Failed to download " + fileName + " (HTTP " + response.statusCode() + ")");
-            }
-        }
-        return dest;
-    }
 }
 
 /**
@@ -843,10 +1030,10 @@ class UpdateQuarkusImages implements Callable<Integer> {
     @Option(names = { "-m", "--month" }, required = true, description = "Month for PR title (e.g., January)")
     String month;
     @Option(names = { "-v",
-            "--version" }, required = true, split = ",", description = "Release tags to update (e.g., mandrel-25.0.3.0-Final,mandrel-23.1.11.0-Final)")
+            "--version" }, required = true, split = ",", description = "Release tags to update (e.g., mandrel-25.0.3.0-Final,mandrel-23.1.11.0-Final,graal-25.3.4.1)")
     List<String> versions;
     @Option(names = { "-p",
-            "--prev-version" }, required = true, split = ",", description = "Previous release tags to replace (e.g., mandrel-25.0.2.0-Final,mandrel-23.1.10.0-Final)")
+            "--prev-version" }, required = true, split = ",", description = "Previous release tags to replace (e.g., mandrel-25.0.2.0-Final,mandrel-23.1.10.0-Final,graal-25.2.4)")
     List<String> prevVersions;
     @Option(names = { "-O",
             "--download-dir" }, defaultValue = "./artifacts", description = "Directory containing the downloaded sha256 files")
@@ -861,12 +1048,14 @@ class UpdateQuarkusImages implements Callable<Integer> {
     boolean dryRun;
     @Option(names = { "--test-run" })
     boolean testRun;
+    @Option(names = { "--cspu" })
+    boolean cspu;
 
     @Override
     public Integer call() throws Exception {
         SuiteOpsUtils.installConsoleCredentials();
-        // ...perhaps many more months :)
-        final Set<String> validMonths = Set.of("January", "April", "July", "October");
+        // When we know for sure, we can enforce that CPU/CSPU happens only at certain hardcoded months.
+        final Set<String> validMonths = Set.of("January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December");
         if (!validMonths.contains(month)) {
             throw new RuntimeException(
                     "ABORT: Invalid month provided. Must be fully spelled out with capital first letter (e.g., January). You provided: " + month);
@@ -876,108 +1065,220 @@ class UpdateQuarkusImages implements Callable<Integer> {
                     "ABORT: The number of --version arguments must match the number of --prev-version arguments.");
         }
         try (Git git = Git.open(repoDir)) {
-            if (!git.status().call().isClean()) {
+            // isClean is too harsh, jgit was picking e.g. IDEA untracked files that git had excluded globally...
+            if (git.status().call().hasUncommittedChanges()) {
                 throw new RuntimeException(
                         "ABORT: Local repository " + repoDir.getAbsolutePath() + " has uncommitted changes.");
             }
-            final String branchName = month + "-CPU-" + UUID.randomUUID().toString().substring(0, 6);
-            System.out.println("Creating new branch: " + branchName);
             git.checkout().setName(baseBranch).call();
+            final String branchName = month + "-" + (cspu ? "CSPU" : "CPU") + "-" + System.currentTimeMillis();
             git.checkout().setCreateBranch(true).setName(branchName).setStartPoint(baseBranch).call();
             final GitHub github = SuiteOpsUtils.connectToGitHub();
             final GHRepository mandrelRepo = github.getRepository(mandrelRepoName);
-            final File yamlFile = new File(repoDir, "quarkus-mandrel-builder-image/mandrel.yaml");
-            if (!yamlFile.exists()) {
+            final File mandrelYamlFile = new File(repoDir, "quarkus-mandrel-builder-image/mandrel.yaml");
+            if (!mandrelYamlFile.exists()) {
                 throw new RuntimeException(
                         "ABORT: Could not find quarkus-mandrel-builder-image/mandrel.yaml in " + repoDir.getAbsolutePath());
             }
-            final List<String> lines = Files.readAllLines(yamlFile.toPath(), StandardCharsets.UTF_8);
             final List<String> extractedJdkVersionsForTitle = new ArrayList<>();
             for (int j = 0; j < versions.size(); j++) {
                 final String versionTag = versions.get(j);
                 final String prevVersionTag = prevVersions.get(j);
+                // There are a lot of hardcoded assumptions about what a graalvm/graalvm-ce-builds released tarball
+                // look like. Inevitably fragile.
+                if (versionTag.startsWith("graal-")) {
+                    System.out.println("\nProcessing updates for GraalVM " + versionTag + " (replacing " + prevVersionTag + ")");
+                    System.out.println("Querying GitHub API for GraalVM release " + versionTag + "...");
+                    final GHRepository graalRepo = github.getRepository("graalvm/graalvm-ce-builds");
+                    final GHRelease release = graalRepo.getReleaseByTagName(versionTag);
+                    if (release == null) {
+                        System.err.println("WARNING: Could not find GitHub release for tag " + versionTag);
+                        continue;
+                    }
+                    final Matcher m = Pattern.compile("jdk (\\d+\\.\\d+\\.\\d+(?:\\.\\d+)?)").matcher(release.getName());
+                    if (!m.find()) {
+                        throw new RuntimeException("ABORT: Could not infer JDK version from GraalVM release name: " + release.getName());
+                    }
+                    final String newJdkVersion = m.group(1);
+                    extractedJdkVersionsForTitle.add(newJdkVersion);
+                    System.out.println("Inferred new JDK version: " + newJdkVersion);
+                    String amdSha = null;
+                    String armSha = null;
+                    String extractedGraalvmVersion = null;
+                    for (final GHAsset asset : release.getAssets()) {
+                        final String name = asset.getName();
+                        if (name.endsWith("linux-x64_bin.tar.gz.sha256")) {
+                            if (!name.contains("-" + newJdkVersion + "_")) {
+                                System.err.println("WARNING: GraalVM artifact name does not contain the expected JDK version '" + newJdkVersion + "': " + name);
+                            }
+                            final Matcher gvMatcher = Pattern.compile("jdk-([^-]+)-").matcher(name);
+                            if (gvMatcher.find()) {
+                                extractedGraalvmVersion = gvMatcher.group(1);
+                            }
+                            final File downloaded = SuiteOpsUtils.downloadIfNotExists(asset.getBrowserDownloadUrl(), downloadDir);
+                            amdSha = Files.readString(downloaded.toPath()).trim().split("\\s+")[0];
+                        } else if (name.endsWith("linux-aarch64_bin.tar.gz.sha256")) {
+                            if (!name.contains("-" + newJdkVersion + "_")) {
+                                System.err.println("WARNING: GraalVM artifact name does not contain the expected JDK version '" + newJdkVersion + "': " + name);
+                            }
+                            final File downloaded = SuiteOpsUtils.downloadIfNotExists(asset.getBrowserDownloadUrl(), downloadDir);
+                            armSha = Files.readString(downloaded.toPath()).trim().split("\\s+")[0];
+                        }
+                    }
+                    if (amdSha == null || armSha == null) {
+                        throw new RuntimeException("ABORT: Could not find sha256 assets for linux-x64 or linux-aarch64 in GraalVM release.");
+                    }
+                    if (extractedGraalvmVersion == null) {
+                        System.err.println("WARNING: Could not extract graalvm-version (e.g. 25i3) from artifact name.");
+                    }
+                    System.out.println("Loaded amd64 sha256: " + amdSha);
+                    System.out.println("Loaded aarch64 sha256: " + armSha);
+                    final String prevVersionTagClean = prevVersionTag.replace("graal-", "");
+                    final String versionTagClean = versionTag.replace("graal-", "");
+                    final List<File> targetYamlFiles = List.of(
+                            new File(repoDir, "quarkus-native-s2i/graalvm.yaml"),
+                            new File(repoDir, "quarkus-graalvm-builder-image/graalvm.yaml")
+                    );
+                    for (final File yamlFile : targetYamlFiles) {
+                        if (!yamlFile.exists()) {
+                            System.err.println("WARNING: Could not find " + yamlFile.getAbsolutePath());
+                            continue;
+                        }
+                        final List<String> yLines = Files.readAllLines(yamlFile.toPath(), StandardCharsets.UTF_8);
+                        int blockStartIndex = -1;
+                        for (int i = 0; i < yLines.size(); i++) {
+                            final String line = yLines.get(i);
+                            if (line.contains("releases/tag/" + prevVersionTag)) {
+                                yLines.set(i, line.replace(prevVersionTag, versionTag));
+                            }
+                            if (line.contains("- graalvm-version:")) {
+                                blockStartIndex = i;
+                            }
+                            if (line.contains("graalvm-release-tag: " + prevVersionTag)) {
+                                if (blockStartIndex != -1 && extractedGraalvmVersion != null) {
+                                    final String gvLine = yLines.get(blockStartIndex);
+                                    yLines.set(blockStartIndex, gvLine.replaceFirst("graalvm-version: .*", "graalvm-version: " + extractedGraalvmVersion));
+                                }
+                                yLines.set(i, line.replaceFirst("graalvm-release-tag: .*", "graalvm-release-tag: " + versionTag));
+                                for (int k = i + 1; k < yLines.size(); k++) {
+                                    final String innerLine = yLines.get(k);
+                                    if (innerLine.contains("- graalvm-version:")) {
+                                        break;
+                                    }
+                                    if (innerLine.contains("java-version:")) {
+                                        yLines.set(k, innerLine.replaceFirst("java-version: .*", "java-version: " + newJdkVersion));
+                                    } else if (innerLine.contains("tags:")) {
+                                        yLines.set(k, innerLine.replace(prevVersionTagClean, versionTagClean));
+                                    } else if (innerLine.contains("sha:")) {
+                                        if (k - 1 >= 0 && yLines.get(k - 1).contains("arch: amd64") && amdSha != null) {
+                                            yLines.set(k, innerLine.replaceFirst("sha: .*", "sha: " + amdSha));
+                                        } else if (k - 1 >= 0 && yLines.get(k - 1).contains("arch: arm64") && armSha != null) {
+                                            yLines.set(k, innerLine.replaceFirst("sha: .*", "sha: " + armSha));
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                        Files.write(yamlFile.toPath(), yLines, StandardCharsets.UTF_8);
+                        git.add().addFilepattern(repoDir.toURI().relativize(yamlFile.toURI()).getPath()).call();
+                    }
+                    System.out.println("GraalVM YAMLs updated successfully.");
+                    continue;
+                }
+                // Mandrel Logic
+                final List<String> lines = Files.readAllLines(mandrelYamlFile.toPath(), StandardCharsets.UTF_8);
                 final String fullVersion = versionTag.replace("mandrel-", "");
                 final String prevFullVersion = prevVersionTag.replace("mandrel-", "");
-                final String releaseName = "Mandrel " + fullVersion;
-                System.out.println("\nProcessing updates for " + versionTag + " (replacing " + prevVersionTag + ")");
+                final String releaseName = (cspu && !fullVersion.contains("-Final")) ? "Mandrel " + fullVersion + " CSPU" : "Mandrel " + fullVersion;
+                System.out.println("\nProcessing updates for Mandrel " + versionTag + " (replacing " + prevVersionTag + ")");
                 System.out.println("Querying GitHub API for release " + versionTag + "...");
-                GHRelease release = null;
-                for (GHRelease r : mandrelRepo.listReleases()) {
-                    if (versionTag.equals(r.getTagName())) {
-                        release = r;
-                        break;
+                GHRelease release = mandrelRepo.getReleaseByTagName(versionTag);
+                if (release == null) {
+                    for (GHRelease r : mandrelRepo.listReleases()) {
+                        if (releaseName.equals(r.getName())) {
+                            release = r;
+                            break;
+                        }
                     }
                 }
                 if (release == null) {
                     System.err.println("WARNING: Could not find GitHub release for tag " + versionTag + ". " +
                             "It likely means it's still a DRAFT. Script can continue, but Quarkus Images CI would fail, " +
                             "so you should release the draft now.");
-                }
-                for (GHRelease r : mandrelRepo.listReleases()) {
-                    if (releaseName.equals(r.getName())) {
-                        release = r;
-                        break;
+                } else {
+                    final Matcher m = Pattern.compile("OpenJDK used: (\\d+\\.\\d+\\.\\d+(?:\\.\\d+)?)").matcher(release.getBody());
+                    if (!m.find()) {
+                        throw new RuntimeException("ABORT: Could not infer JDK version from release body of " + versionTag);
                     }
-                }
-                if (release == null) {
-                    throw new RuntimeException(
-                            "ABORT: Could not find GitHub release for tag " + versionTag + " or name " + releaseName);
-                }
-                final Matcher m = Pattern.compile("OpenJDK used: (\\d+\\.\\d+\\.\\d+)").matcher(release.getBody());
-                if (!m.find()) {
-                    throw new RuntimeException("ABORT: Could not infer JDK version from release body of " + versionTag);
-                }
-                final String newJdkVersion = m.group(1);
-                extractedJdkVersionsForTitle.add(newJdkVersion);
-                System.out.println("Inferred new JDK version: " + newJdkVersion);
-                final String jdkMajor = newJdkVersion.split("\\.")[0];
-                final String amdSha = getSha(downloadDir, jdkMajor, fullVersion, "amd64");
-                final String armSha = getSha(downloadDir, jdkMajor, fullVersion, "aarch64");
-                System.out.println("Loaded amd64 sha256: " + amdSha);
-                System.out.println("Loaded aarch64 sha256: " + armSha);
-                // YAML
-                boolean inBlock = false;
-                for (int i = 0; i < lines.size(); i++) {
-                    final String line = lines.get(i);
-                    if (line.contains("mandrel-" + prevFullVersion)) {
-                        lines.set(i, line.replace(prevFullVersion, fullVersion));
-                    } else if (line.contains("graalvm-version: " + prevFullVersion)) {
-                        lines.set(i, line.replace(prevFullVersion, fullVersion));
-                        inBlock = true;
-                    } else if (inBlock) {
-                        if (line.contains("tags:")) {
-                            lines.set(i, line.replaceAll("jdk-\\d+\\.\\d+\\.\\d+", "jdk-" + newJdkVersion));
-                        } else if (line.contains("sha:")) {
-                            if (i + 1 < lines.size() && lines.get(i + 1).contains("arch: amd64")) {
-                                lines.set(i, line.replaceFirst("sha: [a-fA-F0-9]+", "sha: " + amdSha));
-                            } else if (i + 1 < lines.size() && lines.get(i + 1).contains("arch: arm64")) {
-                                lines.set(i, line.replaceFirst("sha: [a-fA-F0-9]+", "sha: " + armSha));
-                                inBlock = false; //tehre are only two archs, end of block
+                    final String newJdkVersion = m.group(1);
+                    extractedJdkVersionsForTitle.add(newJdkVersion);
+                    System.out.println("Inferred new JDK version: " + newJdkVersion);
+                    final String jdkMajor = newJdkVersion.split("\\.")[0];
+                    final String amdSha = getSha(downloadDir, jdkMajor, fullVersion, "amd64");
+                    final String armSha = getSha(downloadDir, jdkMajor, fullVersion, "aarch64");
+                    System.out.println("Loaded amd64 sha256: " + amdSha);
+                    System.out.println("Loaded aarch64 sha256: " + armSha);
+                    // YAML
+                    boolean inBlock = false;
+                    for (int i = 0; i < lines.size(); i++) {
+                        final String line = lines.get(i);
+                        if (line.contains("releases/tag/" + prevVersionTag)) {
+                            lines.set(i, line.replace(prevVersionTag, versionTag));
+                        }
+                        if (line.contains("mandrel-" + prevFullVersion)) {
+                            lines.set(i, line.replace(prevFullVersion, fullVersion));
+                        } else if (line.contains("graalvm-version: " + prevFullVersion)) {
+                            lines.set(i, line.replace(prevFullVersion, fullVersion));
+                            inBlock = true;
+                        } else if (inBlock) {
+                            if (line.contains("tags:")) {
+                                lines.set(i, line.replaceAll("jdk-\\d+\\.\\d+\\.\\d+(?:\\.\\d+)?", "jdk-" + newJdkVersion));
+                            } else if (line.contains("sha:")) {
+                                if (i + 1 < lines.size() && lines.get(i + 1).contains("arch: amd64")) {
+                                    lines.set(i, line.replaceFirst("sha: [a-fA-F0-9]+", "sha: " + amdSha));
+                                } else if (i + 1 < lines.size() && lines.get(i + 1).contains("arch: arm64")) {
+                                    lines.set(i, line.replaceFirst("sha: [a-fA-F0-9]+", "sha: " + armSha));
+                                    inBlock = false; //there are only two archs, end of block
+                                }
                             }
                         }
                     }
                 }
+                Files.write(mandrelYamlFile.toPath(), lines, StandardCharsets.UTF_8);
+                System.out.println("\nMandrel YAML updated successfully.");
+                git.add().addFilepattern("quarkus-mandrel-builder-image/mandrel.yaml").call();
             }
-            Files.write(yamlFile.toPath(), lines, StandardCharsets.UTF_8);
-            System.out.println("\nYAML updated successfully.");
-            git.add().addFilepattern("quarkus-mandrel-builder-image/mandrel.yaml").call();
+
             // build title
-            extractedJdkVersionsForTitle.sort(Collections.reverseOrder());
-            final String prTitle = month + " " + Year.now().getValue() + " CPU, JDK " + String.join(", ",
-                    extractedJdkVersionsForTitle);
+            final List<String> uniqueJdks = new ArrayList<>(new HashSet<>(extractedJdkVersionsForTitle));
+            uniqueJdks.sort(Collections.reverseOrder());
+            final String prTitle = month + " " + Year.now().getValue() + " " + (cspu ? "CSPU" : "CPU") + ", JDK " + String.join(", ", uniqueJdks);
             final String prBody = "SSIA";
-            System.out.println("Committing changes: " + prTitle);
-            git.commit().setAll(true).setMessage(prTitle).setSign(true).call();
+            if (!git.status().call().hasUncommittedChanges()) {
+                System.out.println("WARN: No changes to commit. YAMLs already updated.");
+            } else {
+                git.commit().setAll(true).setMessage(prTitle).setSign(true).call();
+            }
             if (!dryRun) {
-                SuiteOpsUtils.pushToFork(git, forkName, branchName);
                 final GHRepository targetRepo = github.getRepository(upstreamRepo);
-                final String head = forkName.split("/")[0] + ":" + branchName;
-                System.out.println("Opening PR on " + upstreamRepo + "...");
-                final GHPullRequest pr = targetRepo.createPullRequest(prTitle, head, baseBranch, prBody, true, false);
-                if (!testRun) {
-                    SuiteOpsUtils.setupPRReviewers(github, pr, true);
+                boolean prExists = false;
+                for (GHPullRequest existingPr : targetRepo.getPullRequests(GHIssueState.OPEN)) {
+                    if (existingPr.getHead().getRef().equals(branchName)) {
+                        prExists = true;
+                        System.out.println("WARN: PR already exists: " + existingPr.getHtmlUrl());
+                        break;
+                    }
                 }
-                System.out.println("PR created: " + pr.getHtmlUrl());
+                if (!prExists) {
+                    SuiteOpsUtils.pushToFork(git, forkName, branchName);
+                    final String head = forkName.split("/")[0] + ":" + branchName;
+                    System.out.println("Opening PR on " + upstreamRepo + "...");
+                    final GHPullRequest pr = targetRepo.createPullRequest(prTitle, head, baseBranch, prBody, true, false);
+                    if (!testRun) {
+                        SuiteOpsUtils.setupPRReviewers(github, pr, true);
+                    }
+                    System.out.println("PR created: " + pr.getHtmlUrl());
+                }
             } else {
                 System.out.println("[DRY RUN] Would push branch and create PR with title: " + prTitle);
             }
@@ -991,8 +1292,7 @@ class UpdateQuarkusImages implements Callable<Integer> {
         if (!shaFile.exists()) {
             throw new RuntimeException("ABORT: Expected SHA file missing: " + shaFile.getAbsolutePath());
         }
-        final String content = Files.readString(shaFile.toPath()).trim();
-        return content.split("\\s+")[0];
+        return Files.readString(shaFile.toPath()).trim().split("\\s+")[0];
     }
 }
 
@@ -1042,8 +1342,7 @@ class SyncUpstream implements Callable<Integer> {
             final ObjectId localHead = git.getRepository().resolve("HEAD");
             final ObjectId sinceId;
             if (sinceCommit != null) {
-                sinceId = git.getRepository().resolve(sinceCommit);
-                if (sinceId == null) {
+                if ((sinceId = git.getRepository().resolve(sinceCommit)) == null) {
                     throw new RuntimeException("ABORT: Could not resolve --since commit or tag: " + sinceCommit);
                 }
                 System.out.println("Using explicitly provided --since commit: " + sinceId.getName());
@@ -1091,15 +1390,16 @@ class SyncUpstream implements Callable<Integer> {
                 }
             }
             System.out.println("Merging upstream branch into current branch.");
+            final String effectiveVersion = nextVersion != null ? nextVersion : SuiteOpsUtils.getCurrentVersion(repoDir);
             final MergeResult mergeResult = git.merge().include(fetchHead).setCommit(false).call();
-            if (!mergeResult.getMergeStatus().isSuccessful()) {
+            if (!mergeResult.getMergeStatus().isSuccessful() && mergeResult.getMergeStatus() != MergeResult.MergeStatus.ALREADY_UP_TO_DATE) {
                 if (mergeResult.getMergeStatus() == MergeResult.MergeStatus.CONFLICTING) {
                     for (String conflictingPath : mergeResult.getConflicts().keySet()) {
                         if (!conflictingPath.endsWith("suite.py")) {
                             throw new RuntimeException(
                                     "Unexpected conflict: " + conflictingPath + ". Please resolve manually.");
                         }
-                        SuiteOpsUtils.resolveSuiteConflict(new File(repoDir, conflictingPath), nextVersion, false);
+                        SuiteOpsUtils.resolveSuiteConflict(new File(repoDir, conflictingPath), effectiveVersion, false);
                         git.add().addFilepattern(conflictingPath).call();
                     }
                 } else {
@@ -1111,22 +1411,36 @@ class SyncUpstream implements Callable<Integer> {
                 git.add().addFilepattern(".").call();
             }
             final String commitMessage = prTitle + "\n\nThis is a merge from upstream which includes the following upstream changes:\n" + prList;
-            git.commit().setAll(true).setMessage(commitMessage).setSign(true).call();
+            if (!git.status().call().hasUncommittedChanges()) {
+                System.out.println("WARN: No changes to commit. Upstream sync already merged.");
+            } else {
+                git.commit().setAll(true).setMessage(commitMessage).setSign(true).call();
+            }
             if (!dryRun) {
-                SuiteOpsUtils.pushToFork(git, forkName, workBranch);
-                final String head = forkName.split("/")[0] + ":" + workBranch;
                 final GitHub github = SuiteOpsUtils.connectToGitHub();
                 final GHRepository repo = github.getRepository(downstreamRepo);
-                final GHPullRequest pr = repo.createPullRequest(prTitle, head, baseBranch, commitMessage, true, false);
-                final GHMilestone milestone = SuiteOpsUtils.inferOpenMilestone(repo, repoDir, nextVersion);
-                if (milestone != null) {
-                    System.out.println("Assigning Sync PR to milestone: " + milestone.getTitle());
-                    pr.setMilestone(milestone);
+                boolean prExists = false;
+                for (GHPullRequest existingPr : repo.getPullRequests(GHIssueState.OPEN)) {
+                    if (existingPr.getHead().getRef().equals(workBranch)) {
+                        prExists = true;
+                        System.out.println("WARN: PR already exists: " + existingPr.getHtmlUrl());
+                        break;
+                    }
                 }
-                if (!testRun) {
-                    SuiteOpsUtils.setupPRReviewers(github, pr, false);
+                if (!prExists) {
+                    SuiteOpsUtils.pushToFork(git, forkName, workBranch);
+                    final String head = forkName.split("/")[0] + ":" + workBranch;
+                    final GHPullRequest pr = repo.createPullRequest(prTitle, head, baseBranch, commitMessage, true, false);
+                    final GHMilestone milestone = SuiteOpsUtils.inferOpenMilestone(repo, repoDir, nextVersion);
+                    if (milestone != null) {
+                        System.out.println("Assigning Sync PR to milestone: " + milestone.getTitle());
+                        pr.setMilestone(milestone);
+                    }
+                    if (!testRun) {
+                        SuiteOpsUtils.setupPRReviewers(github, pr, false);
+                    }
+                    System.out.println("PR created: " + pr.getHtmlUrl());
                 }
-                System.out.println("PR created: " + pr.getHtmlUrl());
             } else {
                 System.out.println("[DRY RUN] Would push branch and create PR with title: " + prTitle);
             }
