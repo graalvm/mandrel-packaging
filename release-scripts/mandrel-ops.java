@@ -1006,6 +1006,8 @@ class SyncUpstream implements Callable<Integer> {
     File repoDir;
     @Option(names = { "-f", "--fork" }, required = true)
     String forkName;
+    @Option(names = { "-g", "--git-remote-name" }, defaultValue = "origin")
+    String repoRemoteName;
     @Option(names = { "-b", "--base-branch" }, required = true)
     String baseBranch;
     @Option(names = { "-r", "--repo" }, required = true)
@@ -1028,7 +1030,7 @@ class SyncUpstream implements Callable<Integer> {
         SuiteOpsUtils.installConsoleCredentials();
         try (Git git = Git.open(repoDir)) {
             git.checkout().setName(baseBranch).call();
-            git.pull().setRemote("origin").setRemoteBranchName(baseBranch).call();
+            git.pull().setRemote(repoRemoteName).setRemoteBranchName(baseBranch).call();
             final String date = java.time.LocalDate.now().toString();
             final String upstreamRepoName = upstreamUrl.substring(upstreamUrl.lastIndexOf('/') + 1).replace(".git", "");
             final String prTitle =
