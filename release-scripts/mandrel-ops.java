@@ -6,6 +6,7 @@
 //DEPS info.picocli:picocli:4.7.7
 //DEPS org.kohsuke:github-api:1.330
 
+import org.bouncycastle.jce.provider.BouncyCastleProvider;
 import org.eclipse.jgit.api.Git;
 import org.eclipse.jgit.api.MergeResult;
 import org.eclipse.jgit.api.errors.GitAPIException;
@@ -41,6 +42,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
+import java.security.Security;
 import java.time.Year;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -91,7 +93,7 @@ class TagMandrel implements Callable<Integer> {
 
     @Override
     public Integer call() throws Exception {
-        SuiteOpsUtils.installConsoleCredentials();
+        SuiteOpsUtils.setup();
         try (Git git = Git.open(repoDir)) {
             git.checkout().setName(branch).call();
             git.pull().setRemote(upstreamRemote).setRemoteBranchName(branch).call();
@@ -108,10 +110,11 @@ class SuiteOpsUtils {
     private static final Pattern VERSION_PATTERN = Pattern.compile("^([ \\t]{1,4})\"version\"(\\s*:\\s*)\"([^\"]+)\"(.*)$");
     private static final Pattern RELEASE_PATTERN = Pattern.compile("^([ \\t]{1,4})\"release\"(\\s*:\\s*)(True|False)(.*)$");
 
-    static void installConsoleCredentials() {
+    static void setup() {
         if (System.console() != null) {
             ConsoleCredentialsProvider.install();
         }
+        Security.addProvider(new BouncyCastleProvider());
     }
 
     /**
@@ -389,7 +392,7 @@ class UpstreamMark implements Callable<Integer> {
 
     @Override
     public Integer call() throws Exception {
-        SuiteOpsUtils.installConsoleCredentials();
+        SuiteOpsUtils.setup();
         final String branchName = "release-prep-" + System.currentTimeMillis();
         try (Git git = Git.open(repoDir)) {
             git.checkout().setName(baseBranch).call();
@@ -445,7 +448,7 @@ class UpstreamFinalize implements Callable<Integer> {
 
     @Override
     public Integer call() throws Exception {
-        SuiteOpsUtils.installConsoleCredentials();
+        SuiteOpsUtils.setup();
         if (nextVersion == null) {
             final String[] parts = version.split("\\.");
             parts[2] = String.valueOf(Integer.parseInt(parts[2]) + 1);
@@ -552,7 +555,7 @@ class DownstreamSyncMark implements Callable<Integer> {
 
     @Override
     public Integer call() throws Exception {
-        SuiteOpsUtils.installConsoleCredentials();
+        SuiteOpsUtils.setup();
         final String branchName = "release-prep-" + System.currentTimeMillis();
         try (Git git = Git.open(repoDir)) {
             git.checkout().setName(baseBranch).call();
@@ -622,7 +625,7 @@ class DownstreamFinalize implements Callable<Integer> {
 
     @Override
     public Integer call() throws Exception {
-        SuiteOpsUtils.installConsoleCredentials();
+        SuiteOpsUtils.setup();
         if (nextVersion == null) {
             final String cleanVersion = version.replace("mandrel-", "").replace("-Final", "");
             final String[] parts = cleanVersion.split("\\.");
@@ -864,7 +867,7 @@ class UpdateQuarkusImages implements Callable<Integer> {
 
     @Override
     public Integer call() throws Exception {
-        SuiteOpsUtils.installConsoleCredentials();
+        SuiteOpsUtils.setup();
         // ...perhaps many more months :)
         final Set<String> validMonths = Set.of("January", "April", "July", "October");
         if (!validMonths.contains(month)) {
@@ -1027,7 +1030,7 @@ class SyncUpstream implements Callable<Integer> {
 
     @Override
     public Integer call() throws Exception {
-        SuiteOpsUtils.installConsoleCredentials();
+        SuiteOpsUtils.setup();
         try (Git git = Git.open(repoDir)) {
             git.checkout().setName(baseBranch).call();
             git.pull().setRemote(repoRemoteName).setRemoteBranchName(baseBranch).call();
