@@ -1,10 +1,10 @@
 //usr/bin/env jbang --ea "$0" "$@" ; exit $?
 //JAVA 21+
-//DEPS org.eclipse.jgit:org.eclipse.jgit:5.13.0.202109080827-r
-//DEPS org.eclipse.jgit:org.eclipse.jgit.pgm:5.13.0.202109080827-r
-//DEPS org.eclipse.jgit:org.eclipse.jgit.gpg.bc:5.13.0.202109080827-r
-//DEPS info.picocli:picocli:4.5.0
-//DEPS org.kohsuke:github-api:1.316
+//DEPS org.eclipse.jgit:org.eclipse.jgit:7.8.0.202609011348-r
+//DEPS org.eclipse.jgit:org.eclipse.jgit.pgm:7.8.0.202609011348-r
+//DEPS org.eclipse.jgit:org.eclipse.jgit.gpg.bc:7.8.0.202609011348-r
+//DEPS info.picocli:picocli:4.7.7
+//DEPS org.kohsuke:github-api:1.330
 
 import org.eclipse.jgit.api.Git;
 import org.eclipse.jgit.api.MergeResult;
