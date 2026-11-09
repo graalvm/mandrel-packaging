@@ -51,7 +51,7 @@ class TestMandrelOps {
     static final String PACKAGING_REPO = GH_ORG + "/test-fake-mandrel-packaging";
     static final String QUARKUS_REPO = GH_ORG + "/test-fake-quarkus-images";
     static final File WORK_DIR = new File("/tmp/mandrel-test-workspace");
-    // Saves time white running TS many times.
+    // Saves time when running TS many times.
     static final File ARTIFACTS_DIR = new File("/tmp/mandrel-test-workspace-artifacts");
     // Jenkins Build Artifact IDs for 23.1.12.0
     static final int LINUX_BUILD_23_1_12_0 = 346;
