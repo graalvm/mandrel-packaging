@@ -113,7 +113,14 @@ class TagMandrel implements Callable<Integer> {
         try (Git git = Git.open(repoDir)) {
             git.checkout().setName(branch).call();
             git.pull().setRemote(upstreamRemote).setRemoteBranchName(branch).call();
-            git.tag().setName(version).setMessage(version).setSigned(true).call();
+            try {
+                git.tag().setName(version).setMessage(version).setSigned(true).call();
+                System.out.println("Created local tag: " + version);
+            } catch (org.eclipse.jgit.api.errors.RefAlreadyExistsException e) {
+                // Tag already exists - verify it points to HEAD
+                UpstreamFinalize.verifyExistingTag(git, version);
+                System.out.println("Tag " + version + " already exists locally and points to current HEAD. Proceeding.");
+            }
             if (!dryRun) {
                 SuiteOpsUtils.pushRef(git, upstreamRemote, "refs/tags/" + version);
             }
@@ -916,19 +923,31 @@ class UpstreamFinalize implements Callable<Integer> {
         return 0;
     }
 
-    private boolean needsPush(Git git, String tag, boolean existsRemotely) throws GitAPIException {
+    private boolean needsPush(Git git, String tag, boolean existsRemotely) throws Exception {
         try {
             git.tag().setName(tag).setMessage(tag).setSigned(true).call();
             System.out.println("Created local tag: " + tag);
             return true;
         } catch (org.eclipse.jgit.api.errors.RefAlreadyExistsException e) {
-            System.out.println("Tag " + tag + " already exists locally.");
+            // Tag already exists - verify it points to HEAD
+            verifyExistingTag(git, tag);
+            System.out.println("Tag " + tag + " already exists locally and points to current HEAD.");
             if (!existsRemotely) {
                 System.out.println(" -> But it is missing remotely. Will push.");
                 return true;
             }
         }
         return false;
+    }
+
+    static void verifyExistingTag(Git git, String tag) throws IOException {
+        final ObjectId headId = git.getRepository().resolve("HEAD");
+        final ObjectId tagId = git.getRepository().resolve("refs/tags/" + tag);
+        if (tagId != null && !tagId.equals(headId)) {
+            throw new RuntimeException("Tag " + tag + " already exists but points to commit " +
+                    tagId.getName() + " instead of current HEAD " + headId.getName() +
+                    ". Delete the tag first if you want to re-tag: git tag -d " + tag);
+        }
     }
 }
 
@@ -1067,7 +1086,9 @@ class DownstreamFinalize implements Callable<Integer> {
                     SuiteOpsUtils.pushRef(git, upstreamRemote, "refs/tags/" + version);
                 }
             } catch (org.eclipse.jgit.api.errors.RefAlreadyExistsException e) {
-                System.out.println("Tag " + version + " already exists locally. Assuming tag is correct and proceeding.");
+                // Tag already exists - verify it points to HEAD
+                UpstreamFinalize.verifyExistingTag(git, version);
+                System.out.println("Tag " + version + " already exists locally and points to current HEAD. Proceeding.");
                 if (!dryRun) {
                     SuiteOpsUtils.pushRef(git, upstreamRemote, "refs/tags/" + version);
                 }
