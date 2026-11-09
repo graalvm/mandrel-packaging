@@ -837,6 +837,8 @@ class PublishRelease implements Callable<Integer> {
     String jdkMajorOpt;
     @Option(names = { "-q", "--quarkus-version" }, description = "Quarkus platform version (e.g., 3.27). Inferred from Mandrel version if omitted.")
     String quarkusVersionOpt;
+    @Option(names = { "-J", "--jdk-version" }, description = "Exact OpenJDK version (e.g., 25.0.5+9-LTS). When provided, skips Jenkins download and uses local artifacts only.")
+    String jdkVersionOpt;
     @Option(names = { "--linux-build" }, defaultValue = "-1")
     int linuxBuild;
     @Option(names = { "--windows-build" }, defaultValue = "-1")
@@ -889,28 +891,47 @@ class PublishRelease implements Callable<Integer> {
         }
         final List<String> targetUrls = new ArrayList<>();
         final Set<String> discoveredJdkVersions = new HashSet<>();
-        System.out.println("Resolving Jenkins artifacts and fetching MANDREL.md...");
-        resolvePlatform(targetUrls, discoveredJdkVersions, jobPrefix, linuxBuild, "linux", "el8", jdkMajor, fullVersion,
-                "amd64");
-        resolvePlatform(targetUrls, discoveredJdkVersions, jobPrefix, linuxBuild, "linux", "el8_aarch64", jdkMajor, fullVersion,
-                "aarch64");
-        resolvePlatform(targetUrls, discoveredJdkVersions, jobPrefix, windowsBuild, "windows", "w2k19", jdkMajor, fullVersion,
-                "amd64");
-        resolvePlatform(targetUrls, discoveredJdkVersions, jobPrefix, macosBuild, "macos", "macos_aarch64", jdkMajor,
-                fullVersion, "aarch64");
-        if (discoveredJdkVersions.isEmpty()) {
-            throw new RuntimeException("ABORT: No OpenJDK version could be determined from MANDREL.md files.");
-        }
-        if (discoveredJdkVersions.size() > 1) {
-            throw new RuntimeException(
-                    "ABORT: Multiple mismatching OpenJDK versions detected across builds. " + discoveredJdkVersions);
-        }
-        final String exactJdkVersion = discoveredJdkVersions.iterator().next();
-        System.out.println("Verified uniform OpenJDK version across all platforms: " + exactJdkVersion);
+        final String exactJdkVersion;
         final List<File> downloadedFiles = new ArrayList<>();
-        System.out.println("Downloading " + targetUrls.size() + " artifact files...");
-        for (String url : targetUrls) {
-            downloadedFiles.add(SuiteOpsUtils.downloadIfNotExists(url, downloadDir));
+
+        if (jdkVersionOpt != null && !jdkVersionOpt.isBlank()) {
+            // Skip Jenkins download, use local artifacts only
+            exactJdkVersion = jdkVersionOpt;
+            System.out.println("Using provided OpenJDK version: " + exactJdkVersion);
+            System.out.println("Skipping Jenkins download, collecting local artifacts from: " + downloadDir.getAbsolutePath());
+
+            // Collect local artifact files (all platforms - build numbers are ignored)
+            collectLocalArtifacts(downloadedFiles, jdkMajor, fullVersion, downloadDir);
+
+            if (downloadedFiles.isEmpty()) {
+                throw new RuntimeException("ABORT: No local artifacts found in " + downloadDir.getAbsolutePath() +
+                    ". Expected files matching pattern: mandrel-java" + jdkMajor + "-{platform}-{arch}-" + fullVersion + ".*");
+            }
+            System.out.println("Found " + downloadedFiles.size() + " local artifact files to upload.");
+        } else {
+            // Original behavior: fetch from Jenkins
+            System.out.println("Resolving Jenkins artifacts and fetching MANDREL.md...");
+            resolvePlatform(targetUrls, discoveredJdkVersions, jobPrefix, linuxBuild, "linux", "el8", jdkMajor, fullVersion,
+                    "amd64");
+            resolvePlatform(targetUrls, discoveredJdkVersions, jobPrefix, linuxBuild, "linux", "el8_aarch64", jdkMajor, fullVersion,
+                    "aarch64");
+            resolvePlatform(targetUrls, discoveredJdkVersions, jobPrefix, windowsBuild, "windows", "w2k19", jdkMajor, fullVersion,
+                    "amd64");
+            resolvePlatform(targetUrls, discoveredJdkVersions, jobPrefix, macosBuild, "macos", "macos_aarch64", jdkMajor,
+                    fullVersion, "aarch64");
+            if (discoveredJdkVersions.isEmpty()) {
+                throw new RuntimeException("ABORT: No OpenJDK version could be determined from MANDREL.md files.");
+            }
+            if (discoveredJdkVersions.size() > 1) {
+                throw new RuntimeException(
+                        "ABORT: Multiple mismatching OpenJDK versions detected across builds. " + discoveredJdkVersions);
+            }
+            exactJdkVersion = discoveredJdkVersions.iterator().next();
+            System.out.println("Verified uniform OpenJDK version across all platforms: " + exactJdkVersion);
+            System.out.println("Downloading " + targetUrls.size() + " artifact files...");
+            for (String url : targetUrls) {
+                downloadedFiles.add(SuiteOpsUtils.downloadIfNotExists(url, downloadDir));
+            }
         }
         final GitHub github = SuiteOpsUtils.connectToGitHub();
         final GHRepository repo = github.getRepository(repoName);
@@ -982,6 +1003,36 @@ class PublishRelease implements Callable<Integer> {
         }
         System.out.println("Draft release created successfully: " + release.getHtmlUrl());
         return 0;
+    }
+
+    private void collectLocalArtifacts(List<File> files, String jdkMajor, String fullVersion, File downloadDir) {
+        // Collect all platform artifacts (build numbers are not needed when using local files)
+        // Linux amd64 artifacts
+        addLocalArtifact(files, downloadDir, "mandrel-java" + jdkMajor + "-linux-amd64-" + fullVersion + ".tar.gz");
+        addLocalArtifact(files, downloadDir, "mandrel-java" + jdkMajor + "-linux-amd64-" + fullVersion + ".tar.gz.sha1");
+        addLocalArtifact(files, downloadDir, "mandrel-java" + jdkMajor + "-linux-amd64-" + fullVersion + ".tar.gz.sha256");
+        // Linux aarch64 artifacts
+        addLocalArtifact(files, downloadDir, "mandrel-java" + jdkMajor + "-linux-aarch64-" + fullVersion + ".tar.gz");
+        addLocalArtifact(files, downloadDir, "mandrel-java" + jdkMajor + "-linux-aarch64-" + fullVersion + ".tar.gz.sha1");
+        addLocalArtifact(files, downloadDir, "mandrel-java" + jdkMajor + "-linux-aarch64-" + fullVersion + ".tar.gz.sha256");
+        // Windows artifacts
+        addLocalArtifact(files, downloadDir, "mandrel-java" + jdkMajor + "-windows-amd64-" + fullVersion + ".zip");
+        addLocalArtifact(files, downloadDir, "mandrel-java" + jdkMajor + "-windows-amd64-" + fullVersion + ".zip.sha1");
+        addLocalArtifact(files, downloadDir, "mandrel-java" + jdkMajor + "-windows-amd64-" + fullVersion + ".zip.sha256");
+        // macOS artifacts
+        addLocalArtifact(files, downloadDir, "mandrel-java" + jdkMajor + "-macos-aarch64-" + fullVersion + ".tar.gz");
+        addLocalArtifact(files, downloadDir, "mandrel-java" + jdkMajor + "-macos-aarch64-" + fullVersion + ".tar.gz.sha1");
+        addLocalArtifact(files, downloadDir, "mandrel-java" + jdkMajor + "-macos-aarch64-" + fullVersion + ".tar.gz.sha256");
+    }
+
+    private void addLocalArtifact(List<File> files, File downloadDir, String filename) {
+        final File file = new File(downloadDir, filename);
+        if (file.exists() && file.isFile()) {
+            files.add(file);
+            System.out.println("  Found: " + filename);
+        } else {
+            System.out.println("  WARN: Missing expected file: " + filename);
+        }
     }
 
     private void resolvePlatform(List<String> urls, Set<String> jdkVersions, String jobPrefix, int buildNum, String platform,
