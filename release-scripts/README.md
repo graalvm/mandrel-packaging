@@ -319,6 +319,16 @@ The `mandrel-packaging` repo does not use milestones or `suite.py` files. It onl
 
 # Testing
 
+The tag verification regression tests run locally without GitHub access or a signing key:
+
+```bash
+jbang testing/test-tag-verification.java
+```
+
+They verify that annotated and lightweight tags targeting HEAD are accepted, and tags targeting a different commit are rejected.
+
+## End-to-end tests
+
 It is rather cumbersome to test this properly. It requires signed tags, i.e. gpg infra, pushing to GitHub repositories, having local repositories, downloadoing and uploading artifacts etc. The way it is written now, you can use `expect` in a small script and give your passphrase to your env so as jgit doesn't keep prompting you for one, e.g. `$ GPG_PASSPHRASE="changeit" ./signer.exp ./testing/test-mandrel-ops.java`. Usual word of caution about leaking your passphrase to an env.
 
 
