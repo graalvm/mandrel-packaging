@@ -942,7 +942,8 @@ class UpstreamFinalize implements Callable<Integer> {
 
     static void verifyExistingTag(Git git, String tag) throws IOException {
         final ObjectId headId = git.getRepository().resolve("HEAD");
-        final ObjectId tagId = git.getRepository().resolve("refs/tags/" + tag);
+        // Signed and annotated tag refs identify tag objects, not their target commits.
+        final ObjectId tagId = git.getRepository().resolve("refs/tags/" + tag + "^{commit}");
         if (tagId != null && !tagId.equals(headId)) {
             throw new RuntimeException("Tag " + tag + " already exists but points to commit " +
                     tagId.getName() + " instead of current HEAD " + headId.getName() +
