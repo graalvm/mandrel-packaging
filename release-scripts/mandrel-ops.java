@@ -774,49 +774,46 @@ class UpstreamMark implements Callable<Integer> {
             diffFormatter.setContext(0); // Only changed lines, no context
             diffFormatter.format(entry);
 
-            final String diffText = out.toString(StandardCharsets.UTF_8);
-            final String[] lines = diffText.split("\n");
+            return isBenignSuitePyPatch(out.toString(StandardCharsets.UTF_8));
+        }
+    }
 
-            for (String line : lines) {
-                // Skip diff metadata lines
-                if (line.startsWith("diff ") || line.startsWith("index ") ||
-                    line.startsWith("--- ") || line.startsWith("+++ ") ||
-                    line.startsWith("@@ ")) {
-                    continue;
-                }
-
-                // Only examine added/removed lines (starts with + or -)
-                if (!line.startsWith("+") && !line.startsWith("-")) {
-                    continue;
-                }
-
-                // Remove the +/- prefix to get actual line content
-                final String content = line.substring(1);
-                final String trimmed = content.trim();
-
-                // Empty lines are benign (whitespace changes)
-                if (trimmed.isEmpty()) {
-                    continue;
-                }
-
-                // Structural/syntax characters are benign (braces, brackets, commas)
-                if (trimmed.matches("^[\\{\\}\\[\\],]+$")) {
-                    continue;
-                }
-
-                // Check if this line matches version or release pattern
-                final boolean isVersionLine = SuiteOpsUtils.VERSION_PATTERN.matcher(content).matches();
-                final boolean isReleaseLine = SuiteOpsUtils.RELEASE_PATTERN.matcher(content).matches();
-
-                if (!isVersionLine && !isReleaseLine) {
-                    // This is a change to something other than version/release
-                    // (e.g., dependency update, new library, etc.)
-                    System.out.println("Non-benign change detected in suite.py: " + trimmed);
-                    return false;
-                }
+    /** Shared by the local Git detector and GitHub release publishing. */
+    static boolean isBenignSuitePyPatch(String patch) {
+        if (patch == null || patch.isBlank()) {
+            return false;
+        }
+        boolean sawChange = false;
+        for (String line : patch.split("\n")) {
+            // Skip diff metadata lines (GitHub patches contain only hunks).
+            if (line.startsWith("diff ") || line.startsWith("index ") ||
+                line.startsWith("--- ") || line.startsWith("+++ ") ||
+                line.startsWith("@@ ")) {
+                continue;
+            }
+            // Only examine added/removed lines (starts with + or -)
+            if (!line.startsWith("+") && !line.startsWith("-")) {
+                continue;
+            }
+            sawChange = true;
+            // Remove the +/- prefix to get actual line content
+            final String content = line.substring(1);
+            final String trimmed = content.trim();
+            // Empty lines are benign (whitespace changes)
+            // Structural/syntax characters are benign (braces, brackets, commas)
+            if (trimmed.isEmpty() || trimmed.matches("^[\\{\\}\\[\\],]+$")) {
+                continue;
+            }
+            // Check if this line matches version or release pattern
+            if (!SuiteOpsUtils.VERSION_PATTERN.matcher(content).matches() &&
+                !SuiteOpsUtils.RELEASE_PATTERN.matcher(content).matches()) {
+                // This is a change to something other than version/release
+                // (e.g., dependency update, new library, etc.)
+                System.out.println("Non-benign change detected in suite.py: " + trimmed);
+                return false;
             }
         }
-        return true;
+        return sawChange;
     }
 }
 
@@ -1293,14 +1290,7 @@ class PublishRelease implements Callable<Integer> {
         if (cspu) {
             try {
                 final GHCompare compare = repo.getCompare(prevVersion, version);
-                emptyCspu = true;
-                // An empty CSPU has the only diff: suite.py and nothing else.
-                for (GHCommit.File file : compare.getFiles()) {
-                    if (!file.getFileName().endsWith("suite.py")) {
-                        emptyCspu = false;
-                        break;
-                    }
-                }
+                emptyCspu = isEmptyCSPU(compare.getFiles());
             } catch (Exception e) {
                 System.out.println("WARN: Could not compare versions via GH API, assuming non-empty CSPU.");
             }
@@ -1359,6 +1349,26 @@ class PublishRelease implements Callable<Integer> {
         }
         System.out.println("Draft release created successfully: " + release.getHtmlUrl());
         return 0;
+    }
+
+    /** Only suppress the changelog when every changed file has a complete, benign patch. */
+    static boolean isEmptyCSPU(GHCommit.File[] files) {
+        if (files == null) {
+            return false;
+        }
+        for (GHCommit.File file : files) {
+            if (!file.getFileName().endsWith("suite.py") ||
+                !UpstreamMark.isBenignSuitePyPatch(file.getPatch())) {
+                return false;
+            }
+            // GitHub may omit or truncate patches. Do not infer an empty release from partial data.
+            final long additions = file.getPatch().lines().filter(line -> line.startsWith("+")).count();
+            final long deletions = file.getPatch().lines().filter(line -> line.startsWith("-")).count();
+            if (additions != file.getLinesAdded() || deletions != file.getLinesDeleted()) {
+                return false;
+            }
+        }
+        return true;
     }
 
     private void collectLocalArtifacts(List<File> files, String jdkMajor, String fullVersion, File downloadDir) {
