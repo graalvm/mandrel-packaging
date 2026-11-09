@@ -69,7 +69,7 @@ class MandrelConfig {
     static final Map<String, String> QUARKUS_VERSIONS = Map.of(
             // which mandrel : which quarkus
             "23.1", "3.27",
-            "25.0", "3.39"
+            "25.0", "3.40"
     );
 }
 
@@ -125,6 +125,151 @@ class TagMandrel implements Callable<Integer> {
 class SuiteOpsUtils {
     private static final Pattern VERSION_PATTERN = Pattern.compile("^([ \\t]{1,4})\"version\"(\\s*:\\s*)\"([^\"]+)\"(.*)$");
     private static final Pattern RELEASE_PATTERN = Pattern.compile("^([ \\t]{1,4})\"release\"(\\s*:\\s*)(True|False)(.*)$");
+
+    /**
+     * Removes a prefix from a version string if present.
+     * @param version the version string
+     * @param prefix the prefix to remove (e.g., "mandrel-", "graal-", "vm-")
+     * @return version without prefix
+     */
+    static String stripVersionPrefix(String version, String prefix) {
+        return version != null && version.startsWith(prefix) ? version.substring(prefix.length()) : version;
+    }
+
+    /**
+     * Removes a suffix from a version string if present.
+     * @param version the version string
+     * @param suffix the suffix to remove (e.g., "-Final")
+     * @return version without suffix
+     */
+    static String stripVersionSuffix(String version, String suffix) {
+        return version != null && version.endsWith(suffix) ? version.substring(0, version.length() - suffix.length()) : version;
+    }
+
+    /**
+     * Decrements a version string based on release type.
+     * <p>
+     * For CSPU: Decrements the last digit (e.g., 25.0.4.1 → 25.0.4.0 or 25.0.4.1.1 → 25.0.4.1.0).
+     * If last digit is 1, removes the segment entirely (e.g., 25.0.4.1 → 25.0.4).
+     * <p>
+     * For CPU: Not typically used for decrementing CPU versions, but would decrement the 3rd segment.
+     *
+     * @param version the version string (e.g., "25.0.4.1" or "25.0.4.1.1")
+     * @param cspu whether this is a CSPU release
+     * @return decremented version string
+     */
+    static String decrementVersion(String version, boolean cspu) {
+        final String[] parts = version.split("\\.");
+        if (cspu) {
+            final int last = Integer.parseInt(parts[parts.length - 1]);
+            if (last > 1) {
+                parts[parts.length - 1] = String.valueOf(last - 1);
+                return String.join(".", parts);
+            } else {
+                // Last digit is 1, remove the segment (e.g., 25.0.4.1 → 25.0.4)
+                return version.substring(0, version.lastIndexOf('.'));
+            }
+        } else {
+            // CPU: decrement 3rd digit (not commonly used for decrement, but included for completeness)
+            if (parts.length >= 3) {
+                parts[2] = String.valueOf(Integer.parseInt(parts[2]) - 1);
+            }
+            return String.join(".", parts);
+        }
+    }
+
+    /**
+     * Increments a version string for DOWNSTREAM (Mandrel) releases.
+     * <p>
+     * For CSPU: Increments the last digit (e.g., 25.0.4.0 → 25.0.4.1 or 25.0.4.1 → 25.0.4.2).
+     * Supports version strings of any length (4, 5, or more digits).
+     * <p>
+     * For CPU: Increments the 3rd digit and resets the 4th digit to 0 if it exists
+     * (e.g., 25.0.4.0 → 25.0.5.0 or 25.0.4 → 25.0.5). Does NOT add a 4th digit if one doesn't exist.
+     *
+     * @param version the version string (e.g., "25.0.4.0" or "25.0.4.1")
+     * @param cspu whether this is a CSPU release
+     * @return incremented version string
+     */
+    static String incrementVersionDownstream(String version, boolean cspu) {
+        final String[] parts = version.split("\\.");
+        if (cspu) {
+            // CSPU: increment the last digit regardless of version length
+            parts[parts.length - 1] = String.valueOf(Integer.parseInt(parts[parts.length - 1]) + 1);
+        } else {
+            // CPU: increment 3rd digit and reset 4th digit to 0 if it exists
+            if (parts.length >= 3) {
+                parts[2] = String.valueOf(Integer.parseInt(parts[2]) + 1);
+                if (parts.length >= 4) {
+                    parts[3] = "0";
+                }
+            }
+        }
+        return String.join(".", parts);
+    }
+
+    /**
+     * Increments a version string for UPSTREAM (GraalVM) releases.
+     * <p>
+     * For CSPU: Appends .1 (e.g., 25.0.4 → 25.0.4.1 or 25.0.4.1 → 25.0.4.1.1).
+     * This creates 4-digit, 5-digit, or even longer version strings as CSPU releases accumulate.
+     * <p>
+     * For CPU: Increments the 3rd digit (e.g., 25.0.4 → 25.0.5 or 25.0.4.1.1 → 25.0.5).
+     * Removes any CSPU segments (4th digit onwards) for the next CPU cycle.
+     *
+     * @param version the version string (e.g., "25.0.4" or "25.0.4.1.1")
+     * @param cspu whether this is a CSPU release
+     * @return incremented version string
+     */
+    static String incrementVersionUpstream(String version, boolean cspu) {
+        final String[] parts = version.split("\\.");
+        if (cspu) {
+            // CSPU: append .1 (grows the version string)
+            return version + ".1";
+        } else {
+            // CPU: increment 3rd digit and remove any CSPU segments
+            if (parts.length >= 3) {
+                parts[2] = String.valueOf(Integer.parseInt(parts[2]) + 1);
+                // Return only first 3 segments for CPU
+                return parts[0] + "." + parts[1] + "." + parts[2];
+            }
+            return version;
+        }
+    }
+
+    /**
+     * Extracts EXPLICITLY STATED JDK version from release text (name or body).
+     * Supports version strings with any number of digits (e.g., 21.0.12, 25.0.5.0, 25.0.5.0.3).
+     * <p>
+     * IMPORTANT: This does NOT infer JDK versions from Mandrel/GraalVM versions!
+     * Mandrel 23.1.x uses JDK 21.0.x (not 23.1.x), Mandrel 25.0.x uses JDK 25.0.x.
+     * <p>
+     * Looks for patterns:
+     * - "jdk X.Y.Z" (case-insensitive, e.g., "GraalVM Community Edition jdk 25.0.5.0.3")
+     * - "OpenJDK used: X.Y.Z" (e.g., from Mandrel release body: "OpenJDK used: 21.0.12+7-LTS")
+     * <p>
+     * Examples:
+     * - "GraalVM Community Edition jdk 25.0.5" → "25.0.5"
+     * - "GraalVM Community Edition jdk 25.0.5.0.3" → "25.0.5.0.3"
+     * - "OpenJDK used: 21.0.12+7-LTS" → "21.0.12" (Mandrel release body)
+     * - "Mandrel 23.1.12.0-Final" → null (no explicit JDK version stated)
+     *
+     * @param releaseName the release name or body text
+     * @return the extracted JDK version, or null if not found
+     */
+    static String extractJdkVersionFromReleaseName(String releaseName) {
+        // Pattern supports any number of digits: 21.0.12 or 25.0.5 or 25.0.5.0 or 25.0.5.0.3
+        final Matcher m = Pattern.compile("jdk (\\d+(?:\\.\\d+)+)").matcher(releaseName);
+        if (m.find()) {
+            return m.group(1);
+        }
+        // Also try "OpenJDK used:" pattern from Mandrel release body
+        final Matcher m2 = Pattern.compile("OpenJDK used:\\s*(\\d+(?:\\.\\d+)+)").matcher(releaseName);
+        if (m2.find()) {
+            return m2.group(1);
+        }
+        return null;
+    }
 
     static void setup() {
         if (System.console() != null) {
@@ -537,15 +682,7 @@ class UpstreamMark implements Callable<Integer> {
         if (!cspu) {
             return false;
         }
-        final String[] parts = version.split("\\.");
-        final int last = Integer.parseInt(parts[parts.length - 1]);
-        final String baseTag;
-        if (last > 1) {
-            parts[parts.length - 1] = String.valueOf(last - 1);
-            baseTag = "vm-" + String.join(".", parts);
-        } else {
-            baseTag = "vm-" + version.substring(0, version.lastIndexOf('.'));
-        }
+        final String baseTag = "vm-" + SuiteOpsUtils.decrementVersion(version, cspu);
         final ObjectId baseId = git.getRepository().resolve("refs/tags/" + baseTag);
         if (baseId != null) {
             try (RevWalk walk = new RevWalk(git.getRepository())) {
@@ -607,10 +744,8 @@ class UpstreamFinalize implements Callable<Integer> {
     public Integer call() throws Exception {
         SuiteOpsUtils.setup();
         if (nextVersion == null) {
-            final String[] parts = version.split("\\.");
-            // CSPU version bumping is always about the last digit.
-            parts[parts.length - 1] = String.valueOf(Integer.parseInt(parts[parts.length - 1]) + 1);
-            nextVersion = String.join(".", parts);
+            // Upstream uses append-style CSPU versioning (25.0.4 → 25.0.4.1 → 25.0.4.1.1)
+            nextVersion = SuiteOpsUtils.incrementVersionUpstream(version, cspu);
             System.out.println("Auto-calculated next version: " + nextVersion);
         }
         try (Git git = Git.open(repoDir)) {
@@ -730,22 +865,16 @@ class DownstreamSyncMark implements Callable<Integer> {
             git.checkout().setName(baseBranch).call();
             boolean emptyCspu = false;
             if (cspu) {
-                final String[] parts = upstreamTag.split("\\.");
-                final int last = Integer.parseInt(parts[parts.length - 1]);
-                final String baseTag;
-                if (last > 1) {
-                    parts[parts.length - 1] = String.valueOf(last - 1);
-                    baseTag = String.join(".", parts);
-                } else {
-                    baseTag = upstreamTag.substring(0, upstreamTag.lastIndexOf('.'));
-                }
+                final String rawUpstreamVersion = SuiteOpsUtils.stripVersionPrefix(upstreamTag, "vm-");
+                final String baseTagVersion = SuiteOpsUtils.decrementVersion(rawUpstreamVersion, cspu);
+                final String baseTag = "vm-" + baseTagVersion; // Re-add vm- prefix for tag fetching
                 git.fetch().setRemote(upstreamUrl).setRefSpecs(new RefSpec("+refs/tags/" + baseTag + ":refs/tags/" + baseTag)).call();
                 final ObjectId baseId = git.getRepository().resolve("refs/tags/" + baseTag);
                 git.fetch().setRemote(upstreamUrl).setRefSpecs(new RefSpec("+refs/tags/" + upstreamTag + ":refs/tags/" + upstreamTag)).call();
                 final ObjectId tagId = git.getRepository().resolve("refs/tags/" + upstreamTag);
                 emptyCspu = SuiteOpsUtils.isEmptyCSPU(git, cspu, baseId, tagId);
             }
-            final String rawUpstreamVersion = upstreamTag.replace("vm-", "");
+            final String rawUpstreamVersion = SuiteOpsUtils.stripVersionPrefix(upstreamTag, "vm-");
             final String mandrelVersion = cspu ? rawUpstreamVersion : rawUpstreamVersion + "." + suffix;
             git.checkout().setCreateBranch(true).setName(branchName).setStartPoint(baseBranch).call();
             git.fetch().setRemote(upstreamUrl)
@@ -817,22 +946,15 @@ class DownstreamFinalize implements Callable<Integer> {
     public Integer call() throws Exception {
         SuiteOpsUtils.setup();
         if (nextVersion == null) {
-            final String cleanVersion = version.replace("mandrel-", "").replace("-Final", "");
-            final String[] parts = cleanVersion.split("\\.");
-            // CSPU: We increment the last digit
-            if (cspu) {
-                parts[parts.length - 1] = String.valueOf(Integer.parseInt(parts[parts.length - 1]) + 1);
-            } else {
-                parts[2] = String.valueOf(Integer.parseInt(parts[2]) + 1);
-                if (parts.length >= 4) {
-                    parts[3] = "0";
-                }
-            }
+            String cleanVersion = SuiteOpsUtils.stripVersionPrefix(version, "mandrel-");
+            cleanVersion = SuiteOpsUtils.stripVersionSuffix(cleanVersion, "-Final");
+            // Downstream uses increment-style CSPU versioning (25.0.4.0 → 25.0.4.1 → 25.0.4.2)
+            final String incrementedVersion = SuiteOpsUtils.incrementVersionDownstream(cleanVersion, cspu);
             // Used in milestones names too, we want -Final for milestones names.
-            nextVersion = String.join(".", parts) + "-Final";
+            nextVersion = incrementedVersion + "-Final";
             System.out.println("Auto-calculated next version: " + nextVersion);
         }
-        final String currentMilestoneTitle = version.replace("mandrel-", "");
+        final String currentMilestoneTitle = SuiteOpsUtils.stripVersionPrefix(version, "mandrel-");
         try (Git git = Git.open(repoDir)) {
             git.checkout().setName(baseBranch).call();
             git.pull().setRemote(upstreamRemote).setRemoteBranchName(baseBranch).call();
@@ -904,7 +1026,7 @@ class PublishRelease implements Callable<Integer> {
         if (!templateFile.exists() || !templateFile.isFile()) {
             throw new RuntimeException("Release template file not found at: " + templateFile.getAbsolutePath());
         }
-        final String fullVersion = version.replace("mandrel-", "");
+        final String fullVersion = SuiteOpsUtils.stripVersionPrefix(version, "mandrel-");
         final String[] parts = fullVersion.split("\\.");
         final int major = Integer.parseInt(parts[0]);
         final int minor = Integer.parseInt(parts[1]);
@@ -996,7 +1118,9 @@ class PublishRelease implements Callable<Integer> {
         if (cspu) {
             cspuHeader = "This is a Critical Security Patch Update (CSPU).\n";
             if (emptyCspu) {
-                cspuHeader += "It brings updated JDK " + exactJdkVersion + ", but is otherwise identical to " + prevVersion.replace("mandrel-", "").replace("-Final", "") + ".\n\n";
+                String prevVersionClean = SuiteOpsUtils.stripVersionPrefix(prevVersion, "mandrel-");
+                prevVersionClean = SuiteOpsUtils.stripVersionSuffix(prevVersionClean, "-Final");
+                cspuHeader += "It brings updated JDK " + exactJdkVersion + ", but is otherwise identical to " + prevVersionClean + ".\n\n";
             } else {
                 cspuHeader += "\n";
             }
@@ -1190,13 +1314,13 @@ class UpdateQuarkusImages implements Callable<Integer> {
                         System.err.println("WARNING: Could not find GitHub release for tag " + versionTag);
                         continue;
                     }
-                    final Matcher m = Pattern.compile("jdk (\\d+\\.\\d+\\.\\d+(?:\\.\\d+)?)").matcher(release.getName());
-                    if (!m.find()) {
-                        throw new RuntimeException("ABORT: Could not infer JDK version from GraalVM release name: " + release.getName());
+                    // Extract JDK version supporting 5+ digits (e.g., 25.0.5.0.3)
+                    final String newJdkVersion = SuiteOpsUtils.extractJdkVersionFromReleaseName(release.getName());
+                    if (newJdkVersion == null) {
+                        throw new RuntimeException("ABORT: Could not extract JDK version from GraalVM release name: " + release.getName());
                     }
-                    final String newJdkVersion = m.group(1);
                     extractedJdkVersionsForTitle.add(newJdkVersion);
-                    System.out.println("Inferred new JDK version: " + newJdkVersion);
+                    System.out.println("Extracted JDK version: " + newJdkVersion);
                     String amdSha = null;
                     String armSha = null;
                     String extractedGraalvmVersion = null;
@@ -1228,8 +1352,8 @@ class UpdateQuarkusImages implements Callable<Integer> {
                     }
                     System.out.println("Loaded amd64 sha256: " + amdSha);
                     System.out.println("Loaded aarch64 sha256: " + armSha);
-                    final String prevVersionTagClean = prevVersionTag.replace("graal-", "");
-                    final String versionTagClean = versionTag.replace("graal-", "");
+                    final String prevVersionTagClean = SuiteOpsUtils.stripVersionPrefix(prevVersionTag, "graal-");
+                    final String versionTagClean = SuiteOpsUtils.stripVersionPrefix(versionTag, "graal-");
                     final List<File> targetYamlFiles = List.of(
                             new File(repoDir, "quarkus-native-s2i/graalvm.yaml"),
                             new File(repoDir, "quarkus-graalvm-builder-image/graalvm.yaml")
@@ -1282,8 +1406,8 @@ class UpdateQuarkusImages implements Callable<Integer> {
                 }
                 // Mandrel Logic
                 final List<String> lines = Files.readAllLines(mandrelYamlFile.toPath(), StandardCharsets.UTF_8);
-                final String fullVersion = versionTag.replace("mandrel-", "");
-                final String prevFullVersion = prevVersionTag.replace("mandrel-", "");
+                final String fullVersion = SuiteOpsUtils.stripVersionPrefix(versionTag, "mandrel-");
+                final String prevFullVersion = SuiteOpsUtils.stripVersionPrefix(prevVersionTag, "mandrel-");
                 final String releaseName = (cspu && !fullVersion.contains("-Final")) ? "Mandrel " + fullVersion + " CSPU" : "Mandrel " + fullVersion;
                 System.out.println("\nProcessing updates for Mandrel " + versionTag + " (replacing " + prevVersionTag + ")");
                 System.out.println("Querying GitHub API for release " + versionTag + "...");
@@ -1301,13 +1425,13 @@ class UpdateQuarkusImages implements Callable<Integer> {
                             "It likely means it's still a DRAFT. Script can continue, but Quarkus Images CI would fail, " +
                             "so you should release the draft now.");
                 } else {
-                    final Matcher m = Pattern.compile("OpenJDK used: (\\d+\\.\\d+\\.\\d+(?:\\.\\d+)?)").matcher(release.getBody());
-                    if (!m.find()) {
-                        throw new RuntimeException("ABORT: Could not infer JDK version from release body of " + versionTag);
+                    // Extract JDK version supporting 5+ digits (e.g., 21.0.12, 25.0.5.0.3)
+                    final String newJdkVersion = SuiteOpsUtils.extractJdkVersionFromReleaseName(release.getBody());
+                    if (newJdkVersion == null) {
+                        throw new RuntimeException("ABORT: Could not extract JDK version from release body of " + versionTag);
                     }
-                    final String newJdkVersion = m.group(1);
                     extractedJdkVersionsForTitle.add(newJdkVersion);
-                    System.out.println("Inferred new JDK version: " + newJdkVersion);
+                    System.out.println("Extracted JDK version: " + newJdkVersion);
                     final String jdkMajor = newJdkVersion.split("\\.")[0];
                     final String amdSha = getSha(downloadDir, jdkMajor, fullVersion, "amd64");
                     final String armSha = getSha(downloadDir, jdkMajor, fullVersion, "aarch64");
