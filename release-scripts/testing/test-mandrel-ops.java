@@ -311,6 +311,8 @@ class TestMandrelOps {
             git.commit().setSign(false).setMessage("Bump upstream version to 23.1.99 and add feature-C").call();
             git.push().setForce(true).setRemote("origin").add(workBranch).call();
             GHPullRequest pr = github.getRepository(UPSTREAM_REPO_21U).createPullRequest("Bump version and feature", workBranch, upstreamBase21u, "Trigger conflict", true, false);
+            // Wait for GitHub to process the PR and make it mergeable
+            waitForPRMergeable(pr);
             pr.merge("Merge pull request #" + pr.getNumber() + " from " + GH_ORG + "/" + workBranch + "\n\nBump version and feature");
         }
 
@@ -581,9 +583,32 @@ class TestMandrelOps {
             git.push().setForce(true).setRemote("origin").add(workBranch).call();
             final GHRepository repo = github.getRepository(repoName);
             final GHPullRequest pr = repo.createPullRequest("Add multi-commit feature " + branchPrefix, workBranch, baseBranch, "Feature body", true, false);
+            // Wait for GitHub to process the PR and make it mergeable
+            waitForPRMergeable(pr);
             pr.merge("Merge pull request #" + pr.getNumber() + " from " + GH_ORG + "/" + workBranch + "\n\nAdd multi-commit feature " + branchPrefix);
             return new PrInfo(sinceSha, pr.getNumber());
         }
+    }
+
+    private static void waitForPRMergeable(GHPullRequest pr) throws Exception {
+        // GitHub needs time to compute mergeable status after PR creation
+        // Poll with exponential backoff up to 30 seconds
+        final int maxAttempts = 10;
+        final int initialDelayMs = 500;
+        for (int attempt = 1; attempt <= maxAttempts; attempt++) {
+            pr.refresh();
+            // getMergeable() returns null if GitHub hasn't computed it yet
+            final Boolean mergeable = pr.getMergeable();
+            if (mergeable != null) {
+                if (mergeable) {
+                    return; // PR is ready to merge
+                }
+                throw new RuntimeException("PR #" + pr.getNumber() + " is not mergeable. Conflicts or checks blocking merge.");
+            }
+            final long delayMs = initialDelayMs * attempt;
+            Thread.sleep(delayMs);
+        }
+        throw new RuntimeException("Timeout waiting for PR #" + pr.getNumber() + " mergeable status after " + maxAttempts + " attempts");
     }
 
     private static void setupFakeRepos(GitHub github) throws Exception {
