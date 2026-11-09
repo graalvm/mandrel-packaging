@@ -158,6 +158,25 @@ class SuiteOpsUtils {
         return dest;
     }
 
+    /**
+     * Determines if a CSPU is Empty by comparing two explicit commit references.
+     * <p>
+     * An "empty" CSPU contains only JDK updates with no substantive code changes in the Mandrel codebase itself.
+     * This is detected by checking if the only differences between the base and target commits are in suite.py files
+     * (which contain version metadata). Empty CSPUs skip certain workflow steps like milestone creation and
+     * Mark/Unmark suite PRs.
+     * <p>
+     * This is the generic utility variant that works with any two commit ObjectIds. It is used in downstream
+     * workflows (e.g., DownstreamSyncMark) where the base and target commits are already known from fetched tags.
+     * See also {@link UpstreamMark#isEmptyCSPU(Git, boolean, String)} for the upstream-specific variant.
+     *
+     * @param git    the Git repository
+     * @param cspu   whether this is a CSPU release (if false, always returns false)
+     * @param base   the base commit ObjectId to compare from
+     * @param target the target commit ObjectId to compare to
+     * @return true if this is an empty CSPU (only suite.py changes), false otherwise
+     * @throws Exception if git operations fail
+     */
     static boolean isEmptyCSPU(final Git git, final boolean cspu, final ObjectId base, final ObjectId target) throws Exception {
         if (!cspu || base == null || target == null) {
             return false;
@@ -492,6 +511,28 @@ class UpstreamMark implements Callable<Integer> {
         return 0;
     }
 
+    /**
+     * Determines if a CSPU is Empty by comparing the current HEAD against
+     * a derived previous version tag.
+     * <p>
+     * An "empty" CSPU contains only JDK updates with no substantive code changes in the Mandrel codebase itself.
+     * This is detected by checking if the only differences between versions are in suite.py files (which contain
+     * version metadata). Empty CSPUs skip certain workflow steps like milestone creation and Mark/Unmark suite PRs.
+     * <p>
+     * This is the upstream-specific variant used in UpstreamMark and UpstreamFinalize workflows. It automatically
+     * calculates the previous version tag by decrementing the version number (e.g., 25.0.4.1 → vm-25.0.4.0 or
+     * 25.0.4.0 → vm-25.0.4) and compares that tag against HEAD. If the base tag doesn't exist, it conservatively
+     * returns true (assumes empty).
+     * <p>
+     * See also {@link SuiteOpsUtils#isEmptyCSPU(Git, boolean, ObjectId, ObjectId)} for the generic variant that
+     * works with explicit commit references.
+     *
+     * @param git     the Git repository
+     * @param cspu    whether this is a CSPU release (if false, always returns false)
+     * @param version the current version string (e.g., "25.0.4.1")
+     * @return true if this is an empty CSPU (only suite.py changes), false otherwise
+     * @throws Exception if git operations fail
+     */
     public static boolean isEmptyCSPU(final Git git, final boolean cspu, final String version) throws Exception {
         if (!cspu) {
             return false;
