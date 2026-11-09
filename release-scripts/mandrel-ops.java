@@ -337,12 +337,18 @@ class SuiteOpsUtils {
     }
 
     /**
-     * Boldly assumes that compiler module keeps existing
-     * and that we have a consistent repo with all the suite.py requiring "release" : True/False
-     * having the *same* "version".
+     * Reads the current version from sdk/mx.sdk/suite.py.
+     * <p>
+     * The version is defined in sdk/mx.sdk/suite.py across all GraalVM repositories:
+     * - graalvm-community-jdk21u, jdk25u: direct version definition
+     * - oracle/graal master: version defined here, compiler uses "version_from": "sdk"
+     *
+     * @param repoDir the repository directory
+     * @return the version string (e.g., "25.0.5" or "23.1.12")
+     * @throws RuntimeException if version cannot be found
      */
     static String getCurrentVersion(File repoDir) throws IOException {
-        final File suitePy = new File(repoDir, "compiler/mx.compiler/suite.py");
+        final File suitePy = new File(repoDir, "sdk/mx.sdk/suite.py");
         if (suitePy.exists()) {
             final List<String> lines = Files.readAllLines(suitePy.toPath());
             for (String l : lines) {

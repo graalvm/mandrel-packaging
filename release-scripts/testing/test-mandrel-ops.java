@@ -301,7 +301,7 @@ class TestMandrelOps {
             final String workBranch = "suite-conflict-test-" + System.currentTimeMillis();
             git.checkout().setCreateBranch(true).setName(workBranch).setStartPoint(upstreamBase21u).call();
             // suite.py to trigger the conflict
-            final File suitePy = new File(WORK_DIR, "test-fake-graalvm-community-jdk21u/compiler/mx.compiler/suite.py");
+            final File suitePy = new File(WORK_DIR, "test-fake-graalvm-community-jdk21u/sdk/mx.sdk/suite.py");
             final String content = Files.readString(suitePy.toPath()).replace("23.1.13", "23.1.99");
             Files.writeString(suitePy.toPath(), content, StandardCharsets.UTF_8);
             git.add().addFilepattern("compiler/mx.compiler/suite.py").call();
@@ -475,7 +475,7 @@ class TestMandrelOps {
             git.pull().setRemote("origin").call();
 
             // Create vm-25.0.5 tag first
-            final File suite = new File(WORK_DIR, "test-fake-graalvm-community-jdk25u/compiler/mx.compiler/suite.py");
+            final File suite = new File(WORK_DIR, "test-fake-graalvm-community-jdk25u/sdk/mx.sdk/suite.py");
             Files.writeString(suite.toPath(),
                 "suite = {\n" +
                 "  \"version\" : \"25.0.5\",\n" +
@@ -692,7 +692,7 @@ class TestMandrelOps {
         final File local = new File(WORK_DIR, repoName);
         try (Git git = Git.init().setDirectory(local).setInitialBranch("master").call()) {
             configureGitUser(git);
-            final File suiteDir = new File(local, "compiler/mx.compiler");
+            final File suiteDir = new File(local, "sdk/mx.sdk");
             suiteDir.mkdirs();
             final File suite = new File(suiteDir, "suite.py");
             final File wasmDir = new File(local, "wasm/mx.wasm");
@@ -721,7 +721,7 @@ class TestMandrelOps {
         final File local = new File(WORK_DIR, repoName);
         try (Git git = Git.init().setDirectory(local).setInitialBranch("master").call()) {
             configureGitUser(git);
-            final File suiteDir = new File(local, "compiler/mx.compiler");
+            final File suiteDir = new File(local, "sdk/mx.sdk");
             suiteDir.mkdirs();
             final File suite = new File(suiteDir, "suite.py");
             Files.writeString(suite.toPath(), "suite = {\n  \"version\" : \"25.0.4\",\n  \"release\" : True,\n}", StandardCharsets.UTF_8);
@@ -750,7 +750,7 @@ class TestMandrelOps {
         final File local = new File(WORK_DIR, repoName);
         try (Git git = Git.init().setDirectory(local).setInitialBranch("mandrel/23.1").call()) {
             configureGitUser(git);
-            final File suiteDir = new File(local, "compiler/mx.compiler");
+            final File suiteDir = new File(local, "sdk/mx.sdk");
             suiteDir.mkdirs();
             final File suite = new File(suiteDir, "suite.py");
             final File wasmDir = new File(local, "wasm/mx.wasm");
@@ -869,7 +869,7 @@ class TestMandrelOps {
     }
 
     private static void verifySuitePy(File repoDir, String expectedVersion, boolean expectedRelease) throws Exception {
-        final File suitePy = new File(repoDir, "compiler/mx.compiler/suite.py");
+        final File suitePy = new File(repoDir, "sdk/mx.sdk/suite.py");
         final String content = Files.readString(suitePy.toPath());
         if (!content.contains("\"version\" : \"" + expectedVersion + "\"")) {
             throw new RuntimeException("Verification failed: Expected version " + expectedVersion + " in suite.py");
