@@ -123,8 +123,8 @@ class TagMandrel implements Callable<Integer> {
 }
 
 class SuiteOpsUtils {
-    private static final Pattern VERSION_PATTERN = Pattern.compile("^([ \\t]{1,4})\"version\"(\\s*:\\s*)\"([^\"]+)\"(.*)$");
-    private static final Pattern RELEASE_PATTERN = Pattern.compile("^([ \\t]{1,4})\"release\"(\\s*:\\s*)(True|False)(.*)$");
+    static final Pattern VERSION_PATTERN = Pattern.compile("^([ \\t]{1,4})\"version\"(\\s*:\\s*)\"([^\"]+)\"(.*)$");
+    static final Pattern RELEASE_PATTERN = Pattern.compile("^([ \\t]{1,4})\"release\"(\\s*:\\s*)(True|False)(.*)$");
 
     /**
      * Removes a prefix from a version string if present.
@@ -307,9 +307,12 @@ class SuiteOpsUtils {
      * Determines if a CSPU is Empty by comparing two explicit commit references.
      * <p>
      * An "empty" CSPU contains only JDK updates with no substantive code changes in the Mandrel codebase itself.
-     * This is detected by checking if the only differences between the base and target commits are in suite.py files
-     * (which contain version metadata). Empty CSPUs skip certain workflow steps like milestone creation and
-     * Mark/Unmark suite PRs.
+     * This is detected by checking if:
+     * 1. The only changed files are suite.py files
+     * 2. The changes in those suite.py files are ONLY to "version" and "release" lines
+     * <p>
+     * Any other changes (e.g., dependency updates like ASM_9.7.1 → ASM_9.8) make this a non-empty CSPU.
+     * Empty CSPUs skip certain workflow steps like milestone creation and Mark/Unmark suite PRs.
      * <p>
      * This is the generic utility variant that works with any two commit ObjectIds. It is used in downstream
      * workflows (e.g., DownstreamSyncMark) where the base and target commits are already known from fetched tags.
@@ -319,7 +322,7 @@ class SuiteOpsUtils {
      * @param cspu   whether this is a CSPU release (if false, always returns false)
      * @param base   the base commit ObjectId to compare from
      * @param target the target commit ObjectId to compare to
-     * @return true if this is an empty CSPU (only suite.py changes), false otherwise
+     * @return true if this is an empty CSPU (only benign suite.py version/release changes), false otherwise
      * @throws Exception if git operations fail
      */
     static boolean isEmptyCSPU(final Git git, final boolean cspu, final ObjectId base, final ObjectId target) throws Exception {
@@ -634,10 +637,10 @@ class UpstreamMark implements Callable<Integer> {
             SuiteOpsUtils.modifySuitesReleaseState(repoDir, emptyCspu ? null : true, version);
             final String titleAndCommit = emptyCspu ? "Bump version for CSPU " + version + " [skip ci]" : "Mark suite files for " + version + " release [skip ci]";
             if (!git.status().call().hasUncommittedChanges()) {
-                System.out.println("WARN: No changes to commit. Suites already configured.");
-            } else {
-                git.commit().setAll(true).setMessage(titleAndCommit).setSign(true).call();
+                throw new RuntimeException("No changes to commit. Suites already configured for version " + version + ". " +
+                        "This likely means upstream-mark was already run for this version, or the version was manually set.");
             }
+            git.commit().setAll(true).setMessage(titleAndCommit).setSign(true).call();
             if (!dryRun) {
                 SuiteOpsUtils.pushToFork(git, forkName, branchName);
                 final GitHub github = SuiteOpsUtils.connectToGitHub();
@@ -661,8 +664,12 @@ class UpstreamMark implements Callable<Integer> {
      * a derived previous version tag.
      * <p>
      * An "empty" CSPU contains only JDK updates with no substantive code changes in the Mandrel codebase itself.
-     * This is detected by checking if the only differences between versions are in suite.py files (which contain
-     * version metadata). Empty CSPUs skip certain workflow steps like milestone creation and Mark/Unmark suite PRs.
+     * This is detected by checking if:
+     * 1. The only changed files are suite.py files
+     * 2. The changes in those suite.py files are ONLY to "version" and "release" lines
+     * <p>
+     * Any other changes (e.g., dependency updates like ASM_9.7.1 → ASM_9.8) make this a non-empty CSPU.
+     * Empty CSPUs skip certain workflow steps like milestone creation and Mark/Unmark suite PRs.
      * <p>
      * This is the upstream-specific variant used in UpstreamMark and UpstreamFinalize workflows. It automatically
      * calculates the previous version tag by decrementing the version number (e.g., 25.0.4.1 → vm-25.0.4.0 or
@@ -675,7 +682,7 @@ class UpstreamMark implements Callable<Integer> {
      * @param git     the Git repository
      * @param cspu    whether this is a CSPU release (if false, always returns false)
      * @param version the current version string (e.g., "25.0.4.1")
-     * @return true if this is an empty CSPU (only suite.py changes), false otherwise
+     * @return true if this is an empty CSPU (only benign suite.py version/release changes), false otherwise
      * @throws Exception if git operations fail
      */
     public static boolean isEmptyCSPU(final Git git, final boolean cspu, final String version) throws Exception {
@@ -694,6 +701,22 @@ class UpstreamMark implements Callable<Integer> {
         return true;
     }
 
+    /**
+     * Checks if the diff between two commits contains only benign suite.py changes.
+     * <p>
+     * An "empty" CSPU has changes ONLY to suite.py files, and those changes are ONLY
+     * to "version" and "release" lines. Any other changes (e.g., dependency updates)
+     * make this a non-empty release.
+     * <p>
+     * This uses the same logic as {@link #resolveSuiteConflict}: only changes that
+     * match VERSION_PATTERN or RELEASE_PATTERN are considered benign.
+     *
+     * @param git the Git repository
+     * @param baseCommit the base commit to compare from
+     * @param headCommit the head commit to compare to
+     * @return true if all changes are benign suite.py version/release changes, false otherwise
+     * @throws IOException if git operations fail
+     */
     public static boolean walkTheDiff(Git git, RevCommit baseCommit, RevCommit headCommit) throws IOException {
         try (DiffFormatter diffFormatter = new DiffFormatter(DisabledOutputStream.INSTANCE)) {
             diffFormatter.setRepository(git.getRepository());
@@ -702,7 +725,80 @@ class UpstreamMark implements Callable<Integer> {
                 if (DiffEntry.DEV_NULL.equals(path)) {
                     path = entry.getOldPath();
                 }
+                // First check: only suite.py files
                 if (!path.endsWith("suite.py")) {
+                    return false;
+                }
+                // Second check: only version/release changes in suite.py
+                if (!isBenignSuitePyChange(git, entry)) {
+                    return false;
+                }
+            }
+        }
+        return true;
+    }
+
+    /**
+     * Checks if a suite.py file diff contains only benign version/release changes.
+     * <p>
+     * Parses the actual diff line-by-line and verifies that all added/removed lines are one of:
+     * - VERSION_PATTERN matches (version changes)
+     * - RELEASE_PATTERN matches (release True/False changes)
+     * - Empty/whitespace only
+     * - Structural syntax only (braces, brackets, commas: {, }, [, ], ,)
+     * <p>
+     * Any other changes (e.g., to dependencies like "ASM_9.7.1" → "ASM_9.8") are considered non-benign.
+     *
+     * @param git the Git repository
+     * @param entry the DiffEntry for the suite.py file
+     * @return true if all changes are to version/release lines only, false otherwise
+     * @throws IOException if diff formatting fails
+     */
+    private static boolean isBenignSuitePyChange(Git git, DiffEntry entry) throws IOException {
+        try (java.io.ByteArrayOutputStream out = new java.io.ByteArrayOutputStream();
+             final DiffFormatter diffFormatter = new DiffFormatter(out)) {
+            diffFormatter.setRepository(git.getRepository());
+            diffFormatter.setContext(0); // Only changed lines, no context
+            diffFormatter.format(entry);
+
+            final String diffText = out.toString(StandardCharsets.UTF_8);
+            final String[] lines = diffText.split("\n");
+
+            for (String line : lines) {
+                // Skip diff metadata lines
+                if (line.startsWith("diff ") || line.startsWith("index ") ||
+                    line.startsWith("--- ") || line.startsWith("+++ ") ||
+                    line.startsWith("@@ ")) {
+                    continue;
+                }
+
+                // Only examine added/removed lines (starts with + or -)
+                if (!line.startsWith("+") && !line.startsWith("-")) {
+                    continue;
+                }
+
+                // Remove the +/- prefix to get actual line content
+                final String content = line.substring(1);
+                final String trimmed = content.trim();
+
+                // Empty lines are benign (whitespace changes)
+                if (trimmed.isEmpty()) {
+                    continue;
+                }
+
+                // Structural/syntax characters are benign (braces, brackets, commas)
+                if (trimmed.matches("^[\\{\\}\\[\\],]+$")) {
+                    continue;
+                }
+
+                // Check if this line matches version or release pattern
+                final boolean isVersionLine = SuiteOpsUtils.VERSION_PATTERN.matcher(content).matches();
+                final boolean isReleaseLine = SuiteOpsUtils.RELEASE_PATTERN.matcher(content).matches();
+
+                if (!isVersionLine && !isReleaseLine) {
+                    // This is a change to something other than version/release
+                    // (e.g., dependency update, new library, etc.)
+                    System.out.println("Non-benign change detected in suite.py: " + trimmed);
                     return false;
                 }
             }

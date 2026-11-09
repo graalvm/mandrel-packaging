@@ -465,6 +465,69 @@ class TestMandrelOps {
                 "-u", "origin");
         verifyTagExists(github, PACKAGING_REPO, "mandrel-23.1.12.0-Final");
 
+        //  TEST: Non-benign suite.py changes (ASM dependency update) should NOT be marked as empty
+        System.out.println("\n[TEST] Testing non-benign suite.py changes (ASM dependency update) are NOT marked as empty...");
+        System.out.println("   Creating cspu-25.0.5 branches...");
+
+        // Setup upstream cspu-25.0.5 branch
+        try (Git git = Git.open(new File(WORK_DIR, "test-fake-graalvm-community-jdk25u"))) {
+            git.checkout().setName("master").call();
+            git.pull().setRemote("origin").call();
+
+            // Create vm-25.0.5 tag first
+            final File suite = new File(WORK_DIR, "test-fake-graalvm-community-jdk25u/compiler/mx.compiler/suite.py");
+            Files.writeString(suite.toPath(),
+                "suite = {\n" +
+                "  \"version\" : \"25.0.5\",\n" +
+                "  \"release\" : True,\n" +
+                "  \"ASM_9.7.1\" : {\n" +
+                "    \"digest\" : \"sha512:4767b01603dad5c79cc1e2b5f3722f72b1059d928f184f446ba11badeb1b381b\",\n" +
+                "  },\n" +
+                "}\n",
+                StandardCharsets.UTF_8);
+            git.add().addFilepattern(".").call();
+            git.commit().setSign(false).setMessage("Release 25.0.5").call();
+            git.tag().setName("vm-25.0.5").setSigned(false).setForceUpdate(true).call();
+
+            // Create cspu-25.0.5 branch and add ONLY the ASM update (upstream-mark will bump the version)
+            git.checkout().setCreateBranch(true).setName("cspu-25.0.5").setStartPoint("vm-25.0.5").call();
+            Files.writeString(suite.toPath(),
+                "suite = {\n" +
+                "  \"version\" : \"25.0.5\",\n" +  // Keep same version as tag - upstream-mark will bump it
+                "  \"release\" : True,\n" +
+                "  \"ASM_9.8\" : {\n" +  // Non-benign change: ASM version update
+                "    \"digest\" : \"sha512:cbd250b9c698a48a835e655f5f5262952cc6dd1a434ec0bc3429a9de41f2ce08\",\n" +
+                "  },\n" +
+                "}\n",
+                StandardCharsets.UTF_8);
+            git.add().addFilepattern(".").call();
+            git.commit().setSign(false).setMessage("Update ASM dependency to 9.8").call();
+            git.push().setForce(true).setRemote("origin").setPushAll().setPushTags().call();
+        }
+
+        // Test upstream-mark with this non-benign change
+        System.out.println("   Testing upstream-mark detects non-benign suite.py change...");
+        runOps("upstream-mark",
+                "--cspu",
+                "--dir", new File(WORK_DIR, "test-fake-graalvm-community-jdk25u").getAbsolutePath(),
+                "--fork", UPSTREAM_REPO_25U,
+                "--repo", UPSTREAM_REPO_25U,
+                "--base-branch", "cspu-25.0.5",
+                "--version", "25.0.5.1",
+                "--test-run");
+
+        final GHPullRequest asmPr = github.getRepository(UPSTREAM_REPO_25U).getPullRequests(GHIssueState.OPEN).getFirst();
+        if (asmPr.getTitle().startsWith("Bump version")) {
+            throw new RuntimeException("ASM dependency update was falsely marked as Empty CSPU!");
+        }
+        if (!asmPr.getTitle().startsWith("Mark suite files")) {
+            throw new RuntimeException("Expected 'Mark suite files' PR title for non-empty CSPU, got: " + asmPr.getTitle());
+        }
+        System.out.println("   [OK] Non-benign suite.py changes (ASM update) correctly marked as non-empty CSPU");
+
+        // Clean up the PR
+        asmPr.close();
+
         System.out.println("\n[TEST] End-to-end workflow completed successfully.");
         System.out.println("\nLocal repositories have been left in " + WORK_DIR.getAbsolutePath());
     }
