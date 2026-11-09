@@ -12,6 +12,12 @@ This script orchestrates the cascading release workflow from the upstream `graal
 ### CSPU (Critical Security Patch Update) Note
 Always append the `--cspu` flag for CSPU releases. If the CSPU contains only JDK updates (empty diff compared to previous release), the script automatically bypasses Mark/Unmark suite PRs and milestone creation, merely bumping the version directly.
 
+**Empty CSPU Detection:** A CSPU is considered "empty" if:
+1. The only changed files are `suite.py` files
+2. The changes in those files are ONLY to `"version"` and `"release"` lines
+
+Any other changes (e.g., dependency updates like `ASM_9.7.1` → `ASM_9.8`) make it a non-empty CSPU that follows the full release workflow.
+
 ## Overview
 1. **Initiate Upstream Release:** Run `upstream-mark`, see [Step 1](#step-1), to set `release: True` on the GraalVM Community repository. Wait for the generated PR to be reviewed and merged.
 
@@ -328,8 +334,8 @@ It is not exhaustive. The main goal of the testing infra is to be able to locall
 ```
 $ GPG_PASSPHRASE="changeit" ./signer.exp ./testing/test-mandrel-ops.java
 spawn ./testing/test-mandrel-ops.java
+[jbang] Building jar for test-mandrel-ops.java...
 Starting Integration Test for Mandrel Release Ops...
-NOTE: This test suite validates version manipulation utilities support 4 and 5+ digit versions.
 
 [SETUP] Wiping local workspace and forcing pristine remote state...
    Found existing remote repository: test-fake-graalvm-community-jdk21u. Scrubbing it...
@@ -347,7 +353,7 @@ GPG Key (fingerprint d72501ba9a2a624b000f38858cdbce4379381fc4)
 Passphrase: 
 Pushing branch to fork git@github.com:Karm/test-fake-graalvm-community-jdk21u.git
 
-PR created: https://github.com/Karm/test-fake-graalvm-community-jdk21u/pull/132
+PR created: https://github.com/Karm/test-fake-graalvm-community-jdk21u/pull/147
 Merging PR: Mark suite files for 23.1.12 release [skip ci]
    [OK] Verified suite.py (version=23.1.12, release=True)
 
@@ -370,7 +376,7 @@ Created milestone: 23.1.13
 GPG Key (fingerprint d72501ba9a2a624b000f38858cdbce4379381fc4)
 Passphrase: 
 Pushing branch to fork git@github.com:Karm/test-fake-graalvm-community-jdk21u.git
-PR created: https://github.com/Karm/test-fake-graalvm-community-jdk21u/pull/133
+PR created: https://github.com/Karm/test-fake-graalvm-community-jdk21u/pull/148
 Merging PR: Unmark suite files and bump version to 23.1.13 [skip ci]
    [OK] Verified suite.py (version=23.1.13, release=False)
    [OK] Verified tag exists remotely: vm-23.1.12
@@ -383,7 +389,7 @@ GPG Key (fingerprint d72501ba9a2a624b000f38858cdbce4379381fc4)
 Passphrase: 
 Pushing branch to fork git@github.com:Karm/test-fake-mandrel.git
 
-PR created: https://github.com/Karm/test-fake-mandrel/pull/121
+PR created: https://github.com/Karm/test-fake-mandrel/pull/138
 Merging PR: Mark suites for 23.1.12.0-Final release [skip ci]
    [OK] Verified suite.py (version=23.1.12.0, release=True)
    [OK] Verified wasm suite.py (version=23.1.12.0, no release attribute)
@@ -432,7 +438,7 @@ Uploading asset: mandrel-java21-windows-amd64-23.1.12.0-Final.zip.sha256
 Uploading asset: mandrel-java21-macos-aarch64-23.1.12.0-Final.tar.gz
 Uploading asset: mandrel-java21-macos-aarch64-23.1.12.0-Final.tar.gz.sha1
 Uploading asset: mandrel-java21-macos-aarch64-23.1.12.0-Final.tar.gz.sha256
-Draft release created successfully: https://github.com/Karm/test-fake-mandrel/releases/tag/untagged-ab08bdfaeed40cb4d2bd
+Draft release created successfully: https://github.com/Karm/test-fake-mandrel/releases/tag/untagged-d2f5099185f1895e7389
 
 [TEST] Publishing the draft release so Step 6 can find it
    [OK] Successfully published draft release: Mandrel 23.1.12.0-Final
@@ -460,7 +466,7 @@ Passphrase:
 Pushing branch to fork git@github.com:Karm/test-fake-quarkus-images.git
 
 Opening PR on Karm/test-fake-quarkus-images...
-PR created: https://github.com/Karm/test-fake-quarkus-images/pull/37
+PR created: https://github.com/Karm/test-fake-quarkus-images/pull/42
 Merging PR: April 2026 CPU, JDK 25.0.4.1, 21.0.12
    [OK] Verified mandrel.yaml contains 23.1.12.0-Final and its URL
    [OK] Verified quarkus-native-s2i/graalvm.yaml contains graal-25.3.4.1 and its URL
@@ -470,7 +476,7 @@ Merging PR: April 2026 CPU, JDK 25.0.4.1, 21.0.12
 
 Fetching master from https://github.com/Karm/test-fake-graalvm-community-jdk21u.git
 No --since provided. Calculating the merge base between downstream and upstream...
-Calculated merge base: 58030a97d7170b9c5bf97683ef0e9a6417c60942 (Merge pull request #132 from Karm/release-prep-1794230807702)
+Calculated merge base: 7f38b65bd7039e557cc160e8f101bcc7a58588ea (Merge pull request #147 from Karm/release-prep-1794241398792)
 Merging upstream branch into current branch.
 Resolved conflict in: /tmp/mandrel-test-workspace/test-fake-mandrel/compiler/mx.compiler/suite.py
 Resolved conflict in: /tmp/mandrel-test-workspace/test-fake-mandrel/wasm/mx.wasm/suite.py
@@ -478,7 +484,7 @@ GPG Key (fingerprint d72501ba9a2a624b000f38858cdbce4379381fc4)
 Passphrase: 
 Pushing branch to fork git@github.com:Karm/test-fake-mandrel.git
 Assigning Sync PR to milestone: 23.1.13.0-Final
-PR created: https://github.com/Karm/test-fake-mandrel/pull/122
+PR created: https://github.com/Karm/test-fake-mandrel/pull/139
    [OK] Verified Sync PR body contains upstream PR links.
 Merging PR: Merge upstream test-fake-graalvm-community-jdk21u/master into mandrel/23.1 (2026-11-09)
    [OK] Verified suite.py (version=23.1.13.0, release=False)
@@ -489,13 +495,13 @@ Merging PR: Merge upstream test-fake-graalvm-community-jdk21u/master into mandre
 [TEST] Executing Step 8: sync-upstream (Second sync with explicit --since)
 
 Fetching master from https://github.com/Karm/test-fake-graalvm-community-jdk21u.git
-Using explicitly provided --since commit: 370877d2196f59b3d179568964bf62fc2ac27c99
+Using explicitly provided --since commit: 5441a591d2b02557a3e4b319c0be39c19df443df
 Merging upstream branch into current branch.
 GPG Key (fingerprint d72501ba9a2a624b000f38858cdbce4379381fc4)
 Passphrase: 
 Pushing branch to fork git@github.com:Karm/test-fake-mandrel.git
 Assigning Sync PR to milestone: 23.1.13.0-Final
-PR created: https://github.com/Karm/test-fake-mandrel/pull/123
+PR created: https://github.com/Karm/test-fake-mandrel/pull/140
    [OK] Verified Second Sync PR body correctly respects the explicit --since bound.
 Merging PR: Merge upstream test-fake-graalvm-community-jdk21u/master into mandrel/23.1 (2026-11-09)
 
@@ -505,40 +511,40 @@ Merging PR: Merge upstream test-fake-graalvm-community-jdk21u/master into mandre
 
 Fetching master from https://github.com/Karm/test-fake-graalvm-community-jdk21u.git
 No --since provided. Calculating the merge base between downstream and upstream...
-Calculated merge base: b0794eed82d3110028c0c54953f37fff501a602b (Merge pull request #134 from Karm/feature-A-1794231131572)
+Calculated merge base: 59780d412a0c5c5c60c9f741770df1b4569497ce (Merge pull request #149 from Karm/feature-A-1794241735301)
 Merging upstream branch into current branch.
 GPG Key (fingerprint d72501ba9a2a624b000f38858cdbce4379381fc4)
 Passphrase: 
 Pushing branch to fork git@github.com:Karm/test-fake-mandrel.git
 Assigning Sync PR to milestone: 23.1.13.0-Final
-PR created: https://github.com/Karm/test-fake-mandrel/pull/124
+PR created: https://github.com/Karm/test-fake-mandrel/pull/141
    [OK] Verified Third Sync PR body correctly auto-calculated the merge-base bound.
 Merging PR: Merge upstream test-fake-graalvm-community-jdk21u/master into mandrel/23.1 (2026-11-09)
 
 [TEST] Executing Step 10: Testing Cherry-pick bail out
 Fetching master from https://github.com/Karm/test-fake-graalvm-community-jdk21u.git
 No --since provided. Calculating the merge base between downstream and upstream...
-Calculated merge base: 65500d67fc8266a11d4a6b91455561aa00299ac5 (Merge pull request #135 from Karm/feature-B-1794231164136)
+Calculated merge base: 091dbaeb235e1da90fd32acee6cc00f1e27cfafe (Merge pull request #150 from Karm/feature-B-1794241764830)
    [OK] Script correctly bailed out with expected error.
 
 [TEST] Executing Step 11: Testing Squash bail out
 Fetching master from https://github.com/Karm/test-fake-graalvm-community-jdk21u.git
 No --since provided. Calculating the merge base between downstream and upstream...
-Calculated merge base: 65500d67fc8266a11d4a6b91455561aa00299ac5 (Merge pull request #135 from Karm/feature-B-1794231164136)
+Calculated merge base: 091dbaeb235e1da90fd32acee6cc00f1e27cfafe (Merge pull request #150 from Karm/feature-B-1794241764830)
    [OK] Script correctly bailed out with expected error.
 
 [TEST] Executing Step 12: Testing auto-resolve of suite.py without --next-version
 
 Fetching master from https://github.com/Karm/test-fake-graalvm-community-jdk21u.git
 No --since provided. Calculating the merge base between downstream and upstream...
-Calculated merge base: 65500d67fc8266a11d4a6b91455561aa00299ac5 (Merge pull request #135 from Karm/feature-B-1794231164136)
+Calculated merge base: 091dbaeb235e1da90fd32acee6cc00f1e27cfafe (Merge pull request #150 from Karm/feature-B-1794241764830)
 Merging upstream branch into current branch.
 Resolved conflict in: /tmp/mandrel-test-workspace/test-fake-mandrel/compiler/mx.compiler/suite.py
 GPG Key (fingerprint d72501ba9a2a624b000f38858cdbce4379381fc4)
 Passphrase: 
 Pushing branch to fork git@github.com:Karm/test-fake-mandrel.git
 Assigning Sync PR to milestone: 23.1.13.0-Final
-PR created: https://github.com/Karm/test-fake-mandrel/pull/125
+PR created: https://github.com/Karm/test-fake-mandrel/pull/142
 Merging PR: Merge upstream test-fake-graalvm-community-jdk21u/master into mandrel/23.1 (2026-11-09)
    [OK] Verified suite.py (version=23.1.13.0, release=False)
    [OK] Verified suite.py conflict auto-resolved correctly, preserving 23.1.13.0
@@ -548,7 +554,7 @@ GPG Key (fingerprint d72501ba9a2a624b000f38858cdbce4379381fc4)
 Passphrase: 
 Pushing branch to fork git@github.com:Karm/test-fake-graalvm-community-jdk25u.git
 
-PR created: https://github.com/Karm/test-fake-graalvm-community-jdk25u/pull/15
+PR created: https://github.com/Karm/test-fake-graalvm-community-jdk25u/pull/21
 Merging PR: Bump version for CSPU 25.0.4.1 [skip ci]
    [OK] Verified suite.py (version=25.0.4.1, release=True)
 
@@ -575,7 +581,7 @@ GPG Key (fingerprint d72501ba9a2a624b000f38858cdbce4379381fc4)
 Passphrase: 
 Pushing branch to fork git@github.com:Karm/test-fake-mandrel.git
 
-PR created: https://github.com/Karm/test-fake-mandrel/pull/126
+PR created: https://github.com/Karm/test-fake-mandrel/pull/143
 Merging PR: [Backport] Bump version for CSPU 25.0.4.1 [skip ci]
    [OK] Verified suite.py (version=25.0.4.1, release=True)
 
@@ -596,18 +602,18 @@ Inferred Quarkus version 3.40 from Mandrel version 25.0.4.1-Final
 Resolving Jenkins artifacts and fetching MANDREL.md...
 Verified uniform OpenJDK version across all platforms: 25.0.4.1+1-LTS
 Downloading 12 artifact files...
-Downloading mandrel-java25-linux-amd64-25.0.4.1-Final.tar.gz...
-Downloading mandrel-java25-linux-amd64-25.0.4.1-Final.tar.gz.sha1...
-Downloading mandrel-java25-linux-amd64-25.0.4.1-Final.tar.gz.sha256...
-Downloading mandrel-java25-linux-aarch64-25.0.4.1-Final.tar.gz...
-Downloading mandrel-java25-linux-aarch64-25.0.4.1-Final.tar.gz.sha1...
-Downloading mandrel-java25-linux-aarch64-25.0.4.1-Final.tar.gz.sha256...
-Downloading mandrel-java25-windows-amd64-25.0.4.1-Final.zip...
-Downloading mandrel-java25-windows-amd64-25.0.4.1-Final.zip.sha1...
-Downloading mandrel-java25-windows-amd64-25.0.4.1-Final.zip.sha256...
-Downloading mandrel-java25-macos-aarch64-25.0.4.1-Final.tar.gz...
-Downloading mandrel-java25-macos-aarch64-25.0.4.1-Final.tar.gz.sha1...
-Downloading mandrel-java25-macos-aarch64-25.0.4.1-Final.tar.gz.sha256...
+File mandrel-java25-linux-amd64-25.0.4.1-Final.tar.gz already exists locally. Skipping download.
+File mandrel-java25-linux-amd64-25.0.4.1-Final.tar.gz.sha1 already exists locally. Skipping download.
+File mandrel-java25-linux-amd64-25.0.4.1-Final.tar.gz.sha256 already exists locally. Skipping download.
+File mandrel-java25-linux-aarch64-25.0.4.1-Final.tar.gz already exists locally. Skipping download.
+File mandrel-java25-linux-aarch64-25.0.4.1-Final.tar.gz.sha1 already exists locally. Skipping download.
+File mandrel-java25-linux-aarch64-25.0.4.1-Final.tar.gz.sha256 already exists locally. Skipping download.
+File mandrel-java25-windows-amd64-25.0.4.1-Final.zip already exists locally. Skipping download.
+File mandrel-java25-windows-amd64-25.0.4.1-Final.zip.sha1 already exists locally. Skipping download.
+File mandrel-java25-windows-amd64-25.0.4.1-Final.zip.sha256 already exists locally. Skipping download.
+File mandrel-java25-macos-aarch64-25.0.4.1-Final.tar.gz already exists locally. Skipping download.
+File mandrel-java25-macos-aarch64-25.0.4.1-Final.tar.gz.sha1 already exists locally. Skipping download.
+File mandrel-java25-macos-aarch64-25.0.4.1-Final.tar.gz.sha256 already exists locally. Skipping download.
 Creating draft GitHub release for mandrel-25.0.4.1-Final...
 Uploading asset: mandrel-java25-linux-amd64-25.0.4.1-Final.tar.gz
 Uploading asset: mandrel-java25-linux-amd64-25.0.4.1-Final.tar.gz.sha1
@@ -621,7 +627,7 @@ Uploading asset: mandrel-java25-windows-amd64-25.0.4.1-Final.zip.sha256
 Uploading asset: mandrel-java25-macos-aarch64-25.0.4.1-Final.tar.gz
 Uploading asset: mandrel-java25-macos-aarch64-25.0.4.1-Final.tar.gz.sha1
 Uploading asset: mandrel-java25-macos-aarch64-25.0.4.1-Final.tar.gz.sha256
-Draft release created successfully: https://github.com/Karm/test-fake-mandrel/releases/tag/untagged-2d25e044a66efc22e1fe
+Draft release created successfully: https://github.com/Karm/test-fake-mandrel/releases/tag/untagged-2d7c11f1c2485b9cbbc1
 
 [TEST] Publishing the draft release so Step 6 can find it
    [OK] Successfully published draft release: Mandrel 25.0.4.1-Final CSPU
@@ -649,7 +655,7 @@ Passphrase:
 Pushing branch to fork git@github.com:Karm/test-fake-quarkus-images.git
 
 Opening PR on Karm/test-fake-quarkus-images...
-PR created: https://github.com/Karm/test-fake-quarkus-images/pull/38
+PR created: https://github.com/Karm/test-fake-quarkus-images/pull/43
 Merging PR: April 2026 CSPU, JDK 25.0.4.1
    [OK] Verified mandrel.yaml contains 25.0.4.1-Final and its URL
    [OK] Verified quarkus-native-s2i/graalvm.yaml contains graal-25.3.4.1 and its URL
@@ -665,7 +671,7 @@ GPG Key (fingerprint d72501ba9a2a624b000f38858cdbce4379381fc4)
 Passphrase: 
 Pushing branch to fork git@github.com:Karm/test-fake-graalvm-community-jdk25u.git
 
-PR created: https://github.com/Karm/test-fake-graalvm-community-jdk25u/pull/16
+PR created: https://github.com/Karm/test-fake-graalvm-community-jdk25u/pull/22
    [OK] Verified Non-Empty CSPU PR uses traditional title.
 Merging PR: Mark suite files for 25.0.4.2 release [skip ci]
 
@@ -676,6 +682,17 @@ Passphrase:
 Pushing refs/tags/mandrel-23.1.12.0-Final to origin
    [OK] Pushed refs/tags/mandrel-23.1.12.0-Final (OK)
    [OK] Verified tag exists remotely: mandrel-23.1.12.0-Final
+
+[TEST] Testing non-benign suite.py changes (ASM dependency update) are NOT marked as empty...
+   Creating cspu-25.0.5 branches...
+   Testing upstream-mark detects non-benign suite.py change...
+Non-benign change detected in suite.py: "ASM_9.7.1" : {
+GPG Key (fingerprint d72501ba9a2a624b000f38858cdbce4379381fc4)
+Passphrase: 
+Pushing branch to fork git@github.com:Karm/test-fake-graalvm-community-jdk25u.git
+
+PR created: https://github.com/Karm/test-fake-graalvm-community-jdk25u/pull/23
+   [OK] Non-benign suite.py changes (ASM update) correctly marked as non-empty CSPU
 
 [TEST] End-to-end workflow completed successfully.
 
