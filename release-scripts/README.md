@@ -188,7 +188,7 @@ Downloads the release artifacts from Jenkins skipping already downloaded files, 
 *Note: The Quarkus version for the release text is automatically inferred from the Mandrel version. Alternatively, it can be overridden using the `-q` or `--quarkus-version` option. It's used in the Quickstarts section, https://code.quarkus.io/*
 
 
-*Note: Using `--cspu` prompts the script to compare versions via the GitHub API. If it identifies an empty diff (only `suite.py` updates), it injects specialized CSPU headers and replaces the changelog with an empty-diff notice.*
+*Note: Using `--cspu` prompts the script to compare versions via the GitHub API. If all changes are benign `suite.py` version/release updates, it injects specialized CSPU headers and replaces the changelog with an empty-diff notice. Dependency updates retain the normal changelog. Missing or incomplete patches are conservatively treated as non-empty.*
 
 
 *Note: **Skip Jenkins downloads** by providing `-J` or `--jdk-version` with the exact OpenJDK version (e.g., `25.0.5+9-LTS`). When this option is provided, the script uses only local artifacts from `--download-dir` and skips all Jenkins fetching. Jenkins build numbers (`--linux-build`, etc.) are ignored in this mode. Use this when Jenkins is unavailable or when you already have artifacts locally.*
@@ -329,13 +329,16 @@ The `mandrel-packaging` repo does not use milestones or `suite.py` files. It onl
 
 # Testing
 
-The tag verification regression tests run locally without GitHub access or a signing key:
+The tag verification regression and CSPU release-classification tests run locally without GitHub access or a signing key:
 
 ```bash
 jbang testing/test-tag-verification.java
+jbang testing/test-cspu-release.java
 ```
 
-They verify that annotated and lightweight tags targeting HEAD are accepted, and tags targeting a different commit are rejected.
+These tests:
+* verify that annotated and lightweight tags targeting HEAD are accepted, and tags targeting a different commit are rejected.
+* cover benign version/release changes, dependency updates, other changed files, and missing or incomplete GitHub patches, as well as the shared local Git detector.
 
 ## End-to-end tests
 
