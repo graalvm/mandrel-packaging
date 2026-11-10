@@ -114,6 +114,16 @@ Fetches the newly created upstream tag into the downstream `mandrel` repo. Autom
 
 *Note: Using `--cspu` prevents the `.0` suffix from being forcefully appended, correctly mirroring upstream's `.1` suffix format.*
 
+For CSPU releases, `--base-branch` may be omitted: `vm-X.Y.Z...` implies
+`mandrel/X.Y-cspu-X.Y.Z` (for example, both `vm-25.0.5.1` and
+`vm-25.0.5.0.3` imply `mandrel/25.0-cspu-25.0.5`). If the branch exists
+only downstream, it is fetched. If it is missing, it is created from the latest
+CPU tag in the same `X.Y` release train, comparing version components numerically
+and excluding CSPU tags, then pushed to `--repo` before the PR is opened.
+This requires permission to create branches in the downstream repository.
+With `--dry-run`, the branch is created locally but is not pushed.
+For non-CSPU releases, `--base-branch` remains required.
+
 **Example for standard 23.1 (23.1.11.0):**
 ```bash
 ./mandrel-ops.java downstream-sync-mark \
@@ -338,6 +348,13 @@ The test script, [test-mandrel-ops.java](./testing/test-mandrel-ops.java) that c
 It runs stage by stage and really verifies that the script works. From signed tags to milestones opening and closing, including suite.py `release: true/false` conflicts resolutions, downloading real artifacts from Jenkins, publishing a GitHub Release, uploading those artifatcs to it etc. The only corner it cuts is assigning Reviewers. That is skipped for test runs.
 
 It is not exhaustive. The main goal of the testing infra is to be able to locally verify that a change to the release script [mandrel-ops.java](./mandrel-ops.java) didn't outright blow everything up to smithereens.
+
+### Local CSPU branch regression tests
+
+Run `jbang testing/test-cspu-branch.java` from this directory to test CSPU branch
+naming, CPU tag selection, branch creation/fetching, and dry-run behavior using
+temporary local Git repositories. These tests do not contact GitHub or require
+signing keys.
 
 ## Example of a test flow
 

@@ -962,7 +962,7 @@ class DownstreamSyncMark implements Callable<Integer> {
     File repoDir;
     @Option(names = { "-f", "--fork" }, required = true)
     String forkName;
-    @Option(names = { "-b", "--base-branch" }, required = true)
+    @Option(names = { "-b", "--base-branch" }, description = "Base branch (inferred from upstream tag for CSPU releases)")
     String baseBranch; // e.g. mandrel/23.1
     @Option(names = { "-r", "--repo" }, required = true)
     String downstreamRepo; // e.g. graalvm/mandrel
@@ -983,7 +983,16 @@ class DownstreamSyncMark implements Callable<Integer> {
     public Integer call() throws Exception {
         SuiteOpsUtils.setup();
         final String branchName = "release-prep-" + System.currentTimeMillis();
+        if (baseBranch == null) {
+            if (!cspu) {
+                throw new IllegalArgumentException("--base-branch is required for non-CSPU releases");
+            }
+            baseBranch = cspuBranchName(upstreamTag);
+        }
         try (Git git = Git.open(repoDir)) {
+            if (cspu) {
+                ensureCspuBranch(git, "git@github.com:" + downstreamRepo + ".git");
+            }
             git.checkout().setName(baseBranch).call();
             boolean emptyCspu = false;
             if (cspu) {
@@ -1035,6 +1044,64 @@ class DownstreamSyncMark implements Callable<Integer> {
                     SuiteOpsUtils.setupPRReviewers(github, pr, false);
                 }
                 System.out.println("PR created: " + pr.getHtmlUrl());
+            }
+        }
+        return 0;
+    }
+
+    static String cspuBranchName(String upstreamTag) {
+        final String[] version = cspuVersion(upstreamTag);
+        return "mandrel/" + version[0] + "." + version[1] + "-cspu-" + String.join(".", version);
+    }
+
+    private static String[] cspuVersion(String upstreamTag) {
+        final Matcher matcher = Pattern.compile("^vm-(\\d+)\\.(\\d+)\\.(\\d+)(?:\\.\\d+)*$").matcher(upstreamTag);
+        if (!matcher.matches()) {
+            throw new IllegalArgumentException("Invalid CSPU upstream tag: " + upstreamTag);
+        }
+        return new String[] { matcher.group(1), matcher.group(2), matcher.group(3) };
+    }
+
+    // Kept separate from release preparation so this can be tested with local remotes.
+    void ensureCspuBranch(Git git, String downstreamUrl) throws Exception {
+        final String refName = "refs/heads/" + baseBranch;
+        final boolean remoteExists = Git.lsRemoteRepository().setRemote(downstreamUrl).setHeads(true).call()
+                .stream().anyMatch(ref -> ref.getName().equals(refName));
+        if (remoteExists) {
+            if (git.getRepository().exactRef(refName) == null) {
+                git.fetch().setRemote(downstreamUrl).setRefSpecs(new RefSpec(refName + ":" + refName)).call();
+            }
+            return;
+        }
+        if (git.getRepository().exactRef(refName) == null) {
+            final String[] version = cspuVersion(upstreamTag);
+            final Pattern cpuTag = Pattern.compile("^refs/tags/mandrel-" + Pattern.quote(version[0] + "." + version[1])
+                    + "\\.\\d+\\.0(?:\\.\\d+)*-Final$");
+            // Only consider downstream tags, not unrelated local or upstream tags.
+            final String latestTag = Git.lsRemoteRepository().setRemote(downstreamUrl).setTags(true).call().stream()
+                    .map(Ref::getName).filter(name -> cpuTag.matcher(name).matches())
+                    .max(DownstreamSyncMark::compareCpuTags)
+                    .orElseThrow(() -> new IllegalStateException("No downstream CPU tag found for " + version[0] + "." + version[1]));
+            git.fetch().setRemote(downstreamUrl).setRefSpecs(new RefSpec(latestTag + ":" + latestTag)).call();
+            git.branchCreate().setName(baseBranch).setStartPoint(latestTag).call();
+            System.out.println("Created CSPU branch " + baseBranch + " from " + latestTag);
+        }
+        if (dryRun) {
+            System.out.println("[DRY RUN] Would push CSPU base branch " + baseBranch + " to " + downstreamUrl);
+        } else {
+            SuiteOpsUtils.pushRef(git, downstreamUrl, refName);
+        }
+    }
+
+    private static int compareCpuTags(String left, String right) {
+        final String prefix = "refs/tags/mandrel-";
+        final String[] a = left.substring(prefix.length(), left.length() - "-Final".length()).split("\\.");
+        final String[] b = right.substring(prefix.length(), right.length() - "-Final".length()).split("\\.");
+        for (int i = 0; i < Math.max(a.length, b.length); i++) {
+            final int comparison = Integer.compare(i < a.length ? Integer.parseInt(a[i]) : 0,
+                    i < b.length ? Integer.parseInt(b[i]) : 0);
+            if (comparison != 0) {
+                return comparison;
             }
         }
         return 0;
