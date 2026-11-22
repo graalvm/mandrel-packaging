@@ -53,14 +53,12 @@ class TestMandrelOps {
     static final File WORK_DIR = new File("/tmp/mandrel-test-workspace");
     // Saves time when running TS many times.
     static final File ARTIFACTS_DIR = new File("/tmp/mandrel-test-workspace-artifacts");
-    // Jenkins Build Artifact IDs for 23.1.12.0
-    static final int LINUX_BUILD_23_1_12_0 = 346;
-    static final int WINDOWS_BUILD_23_1_12_0 = 232;
-    static final int MACOS_BUILD_23_1_12_0 = 270;
-    // Jenkins Build Artifact IDs for 25.0.4.1
-    static final int LINUX_BUILD_25_0_4_1 = 143;    // https://ci.modcluster.io/job/mandrel-25-0-linux-amd64-build-matrix/143/
-    static final int WINDOWS_BUILD_25_0_4_1 = 105;  // https://ci.modcluster.io/job/mandrel-25-0-windows-amd64-build-matrix/105/
-    static final int MACOS_BUILD_25_0_4_1 = 162;    // https://ci.modcluster.io/job/mandrel-25-0-macos-aarch64-build-matrix/162/
+    // Real archive server (https://ci.modcluster.io/) job build numbers for Mandrel 25.0.5.1-Final.
+    // Jobs: mandrel-25-0-jdk25-{el8-aarch64,el8-amd64,w2k22-amd64,macos-aarch64}-build-ga
+    static final long LINUX_AARCH64_BUILD_25_0_5_1 = 1795211664103L;
+    static final long LINUX_AMD64_BUILD_25_0_5_1 = 1795214295844L;
+    static final long WINDOWS_AMD64_BUILD_25_0_5_1 = 1795184091675L;
+    static final long MACOS_AARCH64_BUILD_25_0_5_1 = 1795217831059L;
 
     static class PrInfo {
         final String sinceSha;
@@ -140,40 +138,6 @@ class TestMandrelOps {
                 "--upstream-remote", "origin");
         verifyTagExists(github, DOWNSTREAM_REPO, "mandrel-23.1.12.0-Final");
         verifyMilestoneClosed(github, DOWNSTREAM_REPO, "23.1.12.0-Final");
-
-        // STEP 5: Publish Release
-        System.out.println("\n[TEST] Executing Step 5: publish-release");
-        runOps("publish-release",
-                "--repo", DOWNSTREAM_REPO,
-                "--version", "mandrel-23.1.12.0-Final",
-                "--prev-version", "mandrel-23.1.11.0-Final",
-                "--upstream-repo", UPSTREAM_REPO_21U,
-                "--upstream-tag", "vm-23.1.12",
-                "--linux-build", String.valueOf(LINUX_BUILD_23_1_12_0),
-                "--windows-build", String.valueOf(WINDOWS_BUILD_23_1_12_0),
-                "--macos-build", String.valueOf(MACOS_BUILD_23_1_12_0),
-                "--download-dir", ARTIFACTS_DIR.getAbsolutePath(),
-                "-T", realTemplatePath);
-
-        System.out.println("\n[TEST] Publishing the draft release so Step 6 can find it");
-        publishDraftRelease(github, DOWNSTREAM_REPO, "Mandrel 23.1.12.0-Final");
-
-        // STEP 6: Update Quarkus Images
-        System.out.println("\n[TEST] Executing Step 6: update-quarkus-images");
-        runOps("update-quarkus-images",
-                "--dir", new File(WORK_DIR, "test-fake-quarkus-images").getAbsolutePath(),
-                "--month", "April",
-                "--version", "mandrel-23.1.12.0-Final,graal-25.3.4.1",
-                "--prev-version", "mandrel-23.1.11.0-Final,graal-25.2.4",
-                "--download-dir", ARTIFACTS_DIR.getAbsolutePath(),
-                "--fork", QUARKUS_REPO,
-                "--upstream-repo", QUARKUS_REPO,
-                "--base-branch", quarkusBase,
-                "--mandrel-repo", DOWNSTREAM_REPO,
-                "--test-run");
-        mergeLatestPR(github, QUARKUS_REPO, quarkusBase);
-        verifyQuarkusYaml(new File(WORK_DIR, "test-fake-quarkus-images"), "23.1.12.0-Final");
-        verifyGraalvmYaml(new File(WORK_DIR, "test-fake-quarkus-images"), "graal-25.3.4.1", "25.0.4.1");
 
         // STEP 7: Sync Upstream (Post-Release)
         System.out.println("\n[TEST] Executing Step 7: sync-upstream");
@@ -329,7 +293,7 @@ class TestMandrelOps {
         verifySuitePy(new File(WORK_DIR, "test-fake-mandrel"), "23.1.13.0", false);
         System.out.println("   [OK] Verified suite.py conflict auto-resolved correctly, preserving 23.1.13.0");
 
-        //  CSPU EMPTY FLOW TESTS (25.0.4.0 -> 25.0.4.1)
+        //  CSPU EMPTY FLOW TESTS (25.0.5.0 -> 25.0.5.1)
         // ..."empty" as in no GraalVM patches in this CSPU, just the OpenJDK rebuild
         System.out.println("\n[TEST] Executing CSPU Step 1: upstream-mark (Empty Diff)");
         runOps("upstream-mark",
@@ -337,11 +301,11 @@ class TestMandrelOps {
                 "--dir", new File(WORK_DIR, "test-fake-graalvm-community-jdk25u").getAbsolutePath(),
                 "--fork", UPSTREAM_REPO_25U,
                 "--repo", UPSTREAM_REPO_25U,
-                "--base-branch", "cspu-25.0.4",
-                "--version", "25.0.4.1",
+                "--base-branch", "cspu-25.0.5",
+                "--version", "25.0.5.1",
                 "--test-run");
-        mergeLatestPR(github, UPSTREAM_REPO_25U, "cspu-25.0.4");
-        verifySuitePy(new File(WORK_DIR, "test-fake-graalvm-community-jdk25u"), "25.0.4.1", true);
+        mergeLatestPR(github, UPSTREAM_REPO_25U, "cspu-25.0.5");
+        verifySuitePy(new File(WORK_DIR, "test-fake-graalvm-community-jdk25u"), "25.0.5.1", true);
 
         System.out.println("\n[TEST] Executing CSPU Step 2: upstream-finalize (Empty Diff)");
         runOps("upstream-finalize",
@@ -349,15 +313,15 @@ class TestMandrelOps {
                 "--dir", new File(WORK_DIR, "test-fake-graalvm-community-jdk25u").getAbsolutePath(),
                 "--fork", UPSTREAM_REPO_25U,
                 "--repo", UPSTREAM_REPO_25U,
-                "--base-branch", "cspu-25.0.4",
-                "--version", "25.0.4.1",
-                "--jdk-version", "25.0.4.1",
+                "--base-branch", "cspu-25.0.5",
+                "--version", "25.0.5.1",
+                "--jdk-version", "25.0.5.1",
                 "--upstream-remote", "origin",
                 "--test-run");
         if (!github.getRepository(UPSTREAM_REPO_25U).getPullRequests(GHIssueState.OPEN).isEmpty()) {
             throw new RuntimeException("Empty CSPU shouldn't open an unmark PR.");
         }
-        verifyTagExists(github, UPSTREAM_REPO_25U, "vm-25.0.4.1");
+        verifyTagExists(github, UPSTREAM_REPO_25U, "vm-25.0.5.1");
 
         System.out.println("\n[TEST] Executing CSPU Step 3: downstream-sync-mark (Empty Diff)");
         runOps("downstream-sync-mark",
@@ -365,47 +329,48 @@ class TestMandrelOps {
                 "--dir", new File(WORK_DIR, "test-fake-mandrel").getAbsolutePath(),
                 "--fork", DOWNSTREAM_REPO,
                 "--repo", DOWNSTREAM_REPO,
-                "--base-branch", "mandrel/25.0-cspu-25.0.4",
+                "--base-branch", "mandrel/25.0-cspu-25.0.5",
                 "--upstream-url", "https://github.com/" + UPSTREAM_REPO_25U + ".git",
-                "--upstream-tag", "vm-25.0.4.1",
+                "--upstream-tag", "vm-25.0.5.1",
                 "--test-run");
-        mergeLatestPR(github, DOWNSTREAM_REPO, "mandrel/25.0-cspu-25.0.4");
-        verifySuitePy(new File(WORK_DIR, "test-fake-mandrel"), "25.0.4.1", true);
+        mergeLatestPR(github, DOWNSTREAM_REPO, "mandrel/25.0-cspu-25.0.5");
+        verifySuitePy(new File(WORK_DIR, "test-fake-mandrel"), "25.0.5.1", true);
 
         System.out.println("\n[TEST] Executing CSPU Step 4: downstream-finalize (Empty Diff)");
         runOps("downstream-finalize",
                 "--cspu",
                 "--dir", new File(WORK_DIR, "test-fake-mandrel").getAbsolutePath(),
                 "--repo", DOWNSTREAM_REPO,
-                "--base-branch", "mandrel/25.0-cspu-25.0.4",
-                "--version", "mandrel-25.0.4.1-Final",
+                "--base-branch", "mandrel/25.0-cspu-25.0.5",
+                "--version", "mandrel-25.0.5.1-Final",
                 "--upstream-remote", "origin");
-        verifyTagExists(github, DOWNSTREAM_REPO, "mandrel-25.0.4.1-Final");
+        verifyTagExists(github, DOWNSTREAM_REPO, "mandrel-25.0.5.1-Final");
 
         System.out.println("\n[TEST] Executing CSPU Step 5: publish-release (Empty Diff)");
         runOps("publish-release",
                 "--cspu",
                 "--repo", DOWNSTREAM_REPO,
-                "--version", "mandrel-25.0.4.1-Final",
-                "--prev-version", "mandrel-25.0.4.0-Final",
+                "--version", "mandrel-25.0.5.1-Final",
+                "--prev-version", "mandrel-25.0.5.0-Final",
                 "--upstream-repo", UPSTREAM_REPO_25U,
-                "--upstream-tag", "vm-25.0.4.1",
-                "--linux-build", String.valueOf(LINUX_BUILD_25_0_4_1),
-                "--windows-build", String.valueOf(WINDOWS_BUILD_25_0_4_1),
-                "--macos-build", String.valueOf(MACOS_BUILD_25_0_4_1),
+                "--upstream-tag", "vm-25.0.5.1",
+                "--linux-aarch64-job-build-number", String.valueOf(LINUX_AARCH64_BUILD_25_0_5_1),
+                "--linux-amd64-job-build-number", String.valueOf(LINUX_AMD64_BUILD_25_0_5_1),
+                "--windows-amd64-job-build-number", String.valueOf(WINDOWS_AMD64_BUILD_25_0_5_1),
+                "--macos-aarch64-job-build-number", String.valueOf(MACOS_AARCH64_BUILD_25_0_5_1),
                 "--download-dir", ARTIFACTS_DIR.getAbsolutePath(),
                 "-T", realTemplatePath);
 
         System.out.println("\n[TEST] Publishing the draft release so Step 6 can find it");
-        publishDraftRelease(github, DOWNSTREAM_REPO, "Mandrel 25.0.4.1-Final CSPU");
+        publishDraftRelease(github, DOWNSTREAM_REPO, "Mandrel 25.0.5.1-Final CSPU");
 
         System.out.println("\n[TEST] Executing CSPU Step 6: update-quarkus-images (Empty Diff)");
         runOps("update-quarkus-images",
                 "--cspu",
                 "--dir", new File(WORK_DIR, "test-fake-quarkus-images").getAbsolutePath(),
                 "--month", "April",
-                "--version", "mandrel-25.0.4.1-Final,graal-25.3.4.1",
-                "--prev-version", "mandrel-25.0.4.0-Final,graal-25.2.4",
+                "--version", "mandrel-25.0.5.1-Final,graal-25.3.4.1",
+                "--prev-version", "mandrel-25.0.5.0-Final,graal-25.2.4",
                 "--download-dir", ARTIFACTS_DIR.getAbsolutePath(),
                 "--fork", QUARKUS_REPO,
                 "--upstream-repo", QUARKUS_REPO,
@@ -413,14 +378,14 @@ class TestMandrelOps {
                 "--mandrel-repo", DOWNSTREAM_REPO,
                 "--test-run");
         mergeLatestPR(github, QUARKUS_REPO, quarkusBase);
-        verifyQuarkusYaml(new File(WORK_DIR, "test-fake-quarkus-images"), "25.0.4.1-Final");
+        verifyQuarkusYaml(new File(WORK_DIR, "test-fake-quarkus-images"), "25.0.5.1-Final");
         verifyGraalvmYaml(new File(WORK_DIR, "test-fake-quarkus-images"), "graal-25.3.4.1", "25.0.4.1");
 
-        final GHRelease cspuRel = github.getRepository(DOWNSTREAM_REPO).getReleaseByTagName("mandrel-25.0.4.1-Final");
+        final GHRelease cspuRel = github.getRepository(DOWNSTREAM_REPO).getReleaseByTagName("mandrel-25.0.5.1-Final");
         if (!cspuRel.getBody().contains("This is a Critical Security Patch Update (CSPU).")) {
             throw new RuntimeException("CSPU flag did not inject CSPU_HEADER properly.");
         }
-        if (!cspuRel.getBody().contains("otherwise identical to 25.0.4.0")) {
+        if (!cspuRel.getBody().contains("otherwise identical to 25.0.5.0")) {
             throw new RuntimeException("Empty CSPU diff detector failed to output empty diff sentence.");
         }
         if (!cspuRel.getBody().contains("empty changelog")) {
@@ -430,17 +395,17 @@ class TestMandrelOps {
 
         //  NON-EMPTY CSPU FLOW TESTS
         // i.e. There are some patches for this CSPU besides just OpenJDK rebuild.
-        System.out.println("\n[TEST] Preparing isolated branches for CSPU 25.0.4.2 (Non-Empty)...");
-        prepareCspuBranches("test-fake-graalvm-community-jdk25u", "vm-25.0.4.1", "cspu-25.0.4.1");
-        prepareCspuBranches("test-fake-mandrel", "mandrel-25.0.4.1-Final", "mandrel/25.0-cspu-25.0.4.1");
+        System.out.println("\n[TEST] Preparing isolated branches for CSPU 25.0.5.2 (Non-Empty)...");
+        prepareCspuBranches("test-fake-graalvm-community-jdk25u", "vm-25.0.5.1", "cspu-25.0.5.1");
+        prepareCspuBranches("test-fake-mandrel", "mandrel-25.0.5.1-Final", "mandrel/25.0-cspu-25.0.5.1");
 
         System.out.println("\n[TEST] Injecting code changes to trigger non-empty CSPU logic...");
         try (Git git = Git.open(new File(WORK_DIR, "test-fake-graalvm-community-jdk25u"))) {
-            git.checkout().setName("cspu-25.0.4.1").call();
+            git.checkout().setName("cspu-25.0.5.1").call();
             Files.writeString(new File(WORK_DIR, "test-fake-graalvm-community-jdk25u/cve-fix.txt").toPath(), "Very secret CVE Fixed", StandardCharsets.UTF_8);
             git.add().addFilepattern("cve-fix.txt").call();
             git.commit().setSign(false).setMessage("Fix major CVE").call();
-            git.push().setForce(true).setRemote("origin").add("cspu-25.0.4.1").call();
+            git.push().setForce(true).setRemote("origin").add("cspu-25.0.5.1").call();
         }
 
         System.out.println("\n[TEST] Executing CSPU Step 1: upstream-mark (Non-Empty)");
@@ -449,15 +414,15 @@ class TestMandrelOps {
                 "--dir", new File(WORK_DIR, "test-fake-graalvm-community-jdk25u").getAbsolutePath(),
                 "--fork", UPSTREAM_REPO_25U,
                 "--repo", UPSTREAM_REPO_25U,
-                "--base-branch", "cspu-25.0.4.1",
-                "--version", "25.0.4.2",
+                "--base-branch", "cspu-25.0.5.1",
+                "--version", "25.0.5.2",
                 "--test-run");
         final GHPullRequest markPr = github.getRepository(UPSTREAM_REPO_25U).getPullRequests(GHIssueState.OPEN).getFirst();
         if (markPr.getTitle().startsWith("Bump version")) {
             throw new RuntimeException("Non-Empty CSPU falsely triggered the Empty PR title flow.");
         }
         System.out.println("   [OK] Verified Non-Empty CSPU PR uses traditional title.");
-        mergeLatestPR(github, UPSTREAM_REPO_25U, "cspu-25.0.4.1");
+        mergeLatestPR(github, UPSTREAM_REPO_25U, "cspu-25.0.5.1");
 
         System.out.println("\n[TEST] Executing Auxiliary Step: tag-mandrel");
         runOps("tag-mandrel",
@@ -469,18 +434,18 @@ class TestMandrelOps {
 
         //  TEST: Non-benign suite.py changes (ASM dependency update) should NOT be marked as empty
         System.out.println("\n[TEST] Testing non-benign suite.py changes (ASM dependency update) are NOT marked as empty...");
-        System.out.println("   Creating cspu-25.0.5 branches...");
+        System.out.println("   Creating cspu-25.0.6 branches...");
 
-        // Setup upstream cspu-25.0.5 branch
+        // Setup upstream cspu-25.0.6 branch
         try (Git git = Git.open(new File(WORK_DIR, "test-fake-graalvm-community-jdk25u"))) {
             git.checkout().setName("master").call();
             git.pull().setRemote("origin").call();
 
-            // Create vm-25.0.5 tag first
+            // Create vm-25.0.6 tag first
             final File suite = new File(WORK_DIR, "test-fake-graalvm-community-jdk25u/sdk/mx.sdk/suite.py");
             Files.writeString(suite.toPath(),
                 "suite = {\n" +
-                "  \"version\" : \"25.0.5\",\n" +
+                "  \"version\" : \"25.0.6\",\n" +
                 "  \"release\" : True,\n" +
                 "  \"ASM_9.7.1\" : {\n" +
                 "    \"digest\" : \"sha512:4767b01603dad5c79cc1e2b5f3722f72b1059d928f184f446ba11badeb1b381b\",\n" +
@@ -488,14 +453,14 @@ class TestMandrelOps {
                 "}\n",
                 StandardCharsets.UTF_8);
             git.add().addFilepattern(".").call();
-            git.commit().setSign(false).setMessage("Release 25.0.5").call();
-            git.tag().setName("vm-25.0.5").setSigned(false).setForceUpdate(true).call();
+            git.commit().setSign(false).setMessage("Release 25.0.6").call();
+            git.tag().setName("vm-25.0.6").setSigned(false).setForceUpdate(true).call();
 
-            // Create cspu-25.0.5 branch and add ONLY the ASM update (upstream-mark will bump the version)
-            git.checkout().setCreateBranch(true).setName("cspu-25.0.5").setStartPoint("vm-25.0.5").call();
+            // Create cspu-25.0.6 branch and add ONLY the ASM update (upstream-mark will bump the version)
+            git.checkout().setCreateBranch(true).setName("cspu-25.0.6").setStartPoint("vm-25.0.6").call();
             Files.writeString(suite.toPath(),
                 "suite = {\n" +
-                "  \"version\" : \"25.0.5\",\n" +  // Keep same version as tag - upstream-mark will bump it
+                "  \"version\" : \"25.0.6\",\n" +  // Keep same version as tag - upstream-mark will bump it
                 "  \"release\" : True,\n" +
                 "  \"ASM_9.8\" : {\n" +  // Non-benign change: ASM version update
                 "    \"digest\" : \"sha512:cbd250b9c698a48a835e655f5f5262952cc6dd1a434ec0bc3429a9de41f2ce08\",\n" +
@@ -514,8 +479,8 @@ class TestMandrelOps {
                 "--dir", new File(WORK_DIR, "test-fake-graalvm-community-jdk25u").getAbsolutePath(),
                 "--fork", UPSTREAM_REPO_25U,
                 "--repo", UPSTREAM_REPO_25U,
-                "--base-branch", "cspu-25.0.5",
-                "--version", "25.0.5.1",
+                "--base-branch", "cspu-25.0.6",
+                "--version", "25.0.6.1",
                 "--test-run");
 
         final GHPullRequest asmPr = github.getRepository(UPSTREAM_REPO_25U).getPullRequests(GHIssueState.OPEN).getFirst();
@@ -749,23 +714,23 @@ class TestMandrelOps {
             final File suiteDir = new File(local, "sdk/mx.sdk");
             suiteDir.mkdirs();
             final File suite = new File(suiteDir, "suite.py");
-            Files.writeString(suite.toPath(), "suite = {\n  \"version\" : \"25.0.4\",\n  \"release\" : True,\n}", StandardCharsets.UTF_8);
+            Files.writeString(suite.toPath(), "suite = {\n  \"version\" : \"25.0.5\",\n  \"release\" : True,\n}", StandardCharsets.UTF_8);
             git.add().addFilepattern(".").call();
-            git.commit().setSign(false).setMessage("Release 25.0.4").call();
-            git.tag().setName("vm-25.0.4").setSigned(false).setForceUpdate(true).call();
-            git.tag().setName("jdk-25.0.4").setSigned(false).setForceUpdate(true).call();
+            git.commit().setSign(false).setMessage("Release 25.0.5").call();
+            git.tag().setName("vm-25.0.5").setSigned(false).setForceUpdate(true).call();
+            git.tag().setName("jdk-25.0.5").setSigned(false).setForceUpdate(true).call();
             git.tag().setName("initial-pristine-state").setSigned(false).setForceUpdate(true).call();
-            git.checkout().setCreateBranch(true).setName("cspu-25.0.4").setStartPoint("HEAD").call();
-            Files.writeString(suite.toPath(), "suite = {\n  \"version\" : \"25.0.4.1\",\n  \"release\" : True,\n}", StandardCharsets.UTF_8);
+            git.checkout().setCreateBranch(true).setName("cspu-25.0.5").setStartPoint("HEAD").call();
+            Files.writeString(suite.toPath(), "suite = {\n  \"version\" : \"25.0.5.1\",\n  \"release\" : True,\n}", StandardCharsets.UTF_8);
             git.add().addFilepattern(".").call();
-            git.commit().setSign(false).setMessage("Bump version for CSPU 25.0.4.1 [skip ci]").call();
+            git.commit().setSign(false).setMessage("Bump version for CSPU 25.0.5.1 [skip ci]").call();
             git.checkout().setName("master").call();
-            Files.writeString(suite.toPath(), "suite = {\n  \"version\" : \"25.0.5\",\n  \"release\" : False,\n}", StandardCharsets.UTF_8);
+            Files.writeString(suite.toPath(), "suite = {\n  \"version\" : \"25.0.6\",\n  \"release\" : False,\n}", StandardCharsets.UTF_8);
             git.add().addFilepattern(".").call();
-            git.commit().setSign(false).setMessage("Bump version to 25.0.5").call();
+            git.commit().setSign(false).setMessage("Bump version to 25.0.6").call();
             git.remoteAdd().setName("origin").setUri(new URIish("git@github.com:" + GH_ORG + "/" + repoName + ".git")).call();
             git.push().setForce(true).setPushAll().setPushTags().call();
-            repo.createMilestone("25.0.5", "Dummy milestone");
+            repo.createMilestone("25.0.6", "Dummy milestone");
         }
     }
 
@@ -796,22 +761,22 @@ class TestMandrelOps {
             repo.createRelease("mandrel-23.1.11.0-Final").name("Mandrel 23.1.11.0").body("OpenJDK used: 21.0.11\n").create();
             // 25.0 Branch
             git.checkout().setCreateBranch(true).setName("mandrel/25.0").setStartPoint("HEAD").call();
-            Files.writeString(suite.toPath(), "suite = {\n  \"version\" : \"25.0.4.0\",\n  \"release\" : True,\n}", StandardCharsets.UTF_8);
-            Files.writeString(wasmSuite.toPath(), "suite = {\n  \"version\" : \"25.0.4.0\",\n}", StandardCharsets.UTF_8);
-            git.add().addFilepattern(".").call();
-            git.commit().setSign(false).setMessage("Release 25.0.4.0").call();
-            git.tag().setName("mandrel-25.0.4.0-Final").setSigned(false).setForceUpdate(true).call();
-            git.checkout().setCreateBranch(true).setName("mandrel/25.0-cspu-25.0.4").setStartPoint("HEAD").call();
-            Files.writeString(suite.toPath(), "suite = {\n  \"version\" : \"25.0.4.1\",\n  \"release\" : True,\n}", StandardCharsets.UTF_8);
-            git.add().addFilepattern(".").call();
-            git.commit().setSign(false).setMessage("[Backport] Bump version for CSPU 25.0.4.1 [skip ci]").call();
-            git.checkout().setName("mandrel/25.0").call();
-            Files.writeString(suite.toPath(), "suite = {\n  \"version\" : \"25.0.5.0\",\n  \"release\" : False,\n}", StandardCharsets.UTF_8);
+            Files.writeString(suite.toPath(), "suite = {\n  \"version\" : \"25.0.5.0\",\n  \"release\" : True,\n}", StandardCharsets.UTF_8);
             Files.writeString(wasmSuite.toPath(), "suite = {\n  \"version\" : \"25.0.5.0\",\n}", StandardCharsets.UTF_8);
             git.add().addFilepattern(".").call();
-            git.commit().setSign(false).setMessage("Bump to 25.0.5.0").call();
-            repo.createMilestone("25.0.5.0-Final", "Dummy milestone");
-            repo.createRelease("mandrel-25.0.4.0-Final").name("Mandrel 25.0.4.0").body("OpenJDK used: 25.0.4\n").create();
+            git.commit().setSign(false).setMessage("Release 25.0.5.0").call();
+            git.tag().setName("mandrel-25.0.5.0-Final").setSigned(false).setForceUpdate(true).call();
+            git.checkout().setCreateBranch(true).setName("mandrel/25.0-cspu-25.0.5").setStartPoint("HEAD").call();
+            Files.writeString(suite.toPath(), "suite = {\n  \"version\" : \"25.0.5.1\",\n  \"release\" : True,\n}", StandardCharsets.UTF_8);
+            git.add().addFilepattern(".").call();
+            git.commit().setSign(false).setMessage("[Backport] Bump version for CSPU 25.0.5.1 [skip ci]").call();
+            git.checkout().setName("mandrel/25.0").call();
+            Files.writeString(suite.toPath(), "suite = {\n  \"version\" : \"25.0.6.0\",\n  \"release\" : False,\n}", StandardCharsets.UTF_8);
+            Files.writeString(wasmSuite.toPath(), "suite = {\n  \"version\" : \"25.0.6.0\",\n}", StandardCharsets.UTF_8);
+            git.add().addFilepattern(".").call();
+            git.commit().setSign(false).setMessage("Bump to 25.0.6.0").call();
+            repo.createMilestone("25.0.6.0-Final", "Dummy milestone");
+            repo.createRelease("mandrel-25.0.5.0-Final").name("Mandrel 25.0.5.0").body("OpenJDK used: 25.0.5\n").create();
             // Check out 23.1 so the overarching test execution cleanly evaluates 23.1.12 flow first
             git.checkout().setName("mandrel/23.1").call();
             git.remoteAdd().setName("origin").setUri(new URIish("git@github.com:" + GH_ORG + "/" + repoName + ".git")).call();
@@ -855,10 +820,10 @@ class TestMandrelOps {
                             arch: amd64
                           - sha: fakesha67890
                             arch: arm64
-                      # https://github.com/graalvm/mandrel/releases/tag/mandrel-25.0.4.0-Final
-                      - graalvm-version: 25.0.4.0-Final
+                      # https://github.com/graalvm/mandrel/releases/tag/mandrel-25.0.5.0-Final
+                      - graalvm-version: 25.0.5.0-Final
                         java-version: 25
-                        tags: 25.0-java25, jdk-25.0.4
+                        tags: 25.0-java25, jdk-25.0.5
                         variants:
                           - sha: fakesha12345
                             arch: amd64

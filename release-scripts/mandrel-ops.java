@@ -1170,7 +1170,7 @@ class DownstreamFinalize implements Callable<Integer> {
  * STEP 5: PUBLISH RELEASE
  * See README.md
  */
-@Command(name = "publish-release", description = "Downloads Jenkins artifacts and creates a draft GitHub release")
+@Command(name = "publish-release", description = "Downloads archive server artifacts and creates a draft GitHub release")
 class PublishRelease implements Callable<Integer> {
     @Option(names = { "-r", "--repo" }, required = true, description = "Downstream repo (e.g., graalvm/mandrel)")
     String repoName;
@@ -1188,14 +1188,16 @@ class PublishRelease implements Callable<Integer> {
     String jdkMajorOpt;
     @Option(names = { "-q", "--quarkus-version" }, description = "Quarkus platform version (e.g., 3.27). Inferred from Mandrel version if omitted.")
     String quarkusVersionOpt;
-    @Option(names = { "-J", "--jdk-version" }, description = "Exact OpenJDK version (e.g., 25.0.5+9-LTS). When provided, skips Jenkins download and uses local artifacts only.")
+    @Option(names = { "-J", "--jdk-version" }, description = "Exact OpenJDK version (e.g., 25.0.5+9-LTS). When provided, skips the archive server download and uses local artifacts only.")
     String jdkVersionOpt;
-    @Option(names = { "--linux-build" }, defaultValue = "-1")
-    int linuxBuild;
-    @Option(names = { "--windows-build" }, defaultValue = "-1")
-    int windowsBuild;
-    @Option(names = { "--macos-build" }, defaultValue = "-1")
-    int macosBuild;
+    @Option(names = { "--linux-aarch64-job-build-number" }, defaultValue = "-1")
+    long linuxAarch64Build;
+    @Option(names = { "--linux-amd64-job-build-number" }, defaultValue = "-1")
+    long linuxAmd64Build;
+    @Option(names = { "--windows-amd64-job-build-number" }, defaultValue = "-1")
+    long windowsAmd64Build;
+    @Option(names = { "--macos-aarch64-job-build-number" }, defaultValue = "-1")
+    long macosAarch64Build;
     @Option(names = { "-O", "--download-dir" }, defaultValue = "./artifacts")
     File downloadDir;
     @Option(names = { "-T",
@@ -1218,7 +1220,6 @@ class PublishRelease implements Callable<Integer> {
         final String[] parts = fullVersion.split("\\.");
         final int major = Integer.parseInt(parts[0]);
         final int minor = Integer.parseInt(parts[1]);
-        final String jobPrefix = "mandrel-" + major + "-" + minor;
         String jdkMajor = jdkMajorOpt;
         if (jdkMajor == null || jdkMajor.isBlank()) {
             final Matcher m = Pattern.compile("jdk(\\d+)u?").matcher(upstreamRepo);
@@ -1229,6 +1230,8 @@ class PublishRelease implements Callable<Integer> {
                 throw new RuntimeException("ABORT: Could not infer JDK major version from upstream-repo '" + upstreamRepo + "'. Please provide --jdk-major explicitly.");
             }
         }
+        // Stable archive server job name prefix, e.g. mandrel-25-0-jdk25 or mandrel-23-1-jdk21.
+        final String jobPrefix = "mandrel-" + major + "-" + minor + "-jdk" + jdkMajor;
         // We directly print Q version in the release Markdown to prevent it from
         // pulling incompatible Q releases later in future.
         String quarkusVersion = quarkusVersionOpt;
@@ -1246,10 +1249,10 @@ class PublishRelease implements Callable<Integer> {
         final List<File> downloadedFiles = new ArrayList<>();
 
         if (jdkVersionOpt != null && !jdkVersionOpt.isBlank()) {
-            // Skip Jenkins download, use local artifacts only
+            // Skip the archive server download, use local artifacts only
             exactJdkVersion = jdkVersionOpt;
             System.out.println("Using provided OpenJDK version: " + exactJdkVersion);
-            System.out.println("Skipping Jenkins download, collecting local artifacts from: " + downloadDir.getAbsolutePath());
+            System.out.println("Skipping archive server download, collecting local artifacts from: " + downloadDir.getAbsolutePath());
 
             // Collect local artifact files (all platforms - build numbers are ignored)
             collectLocalArtifacts(downloadedFiles, jdkMajor, fullVersion, downloadDir);
@@ -1260,16 +1263,15 @@ class PublishRelease implements Callable<Integer> {
             }
             System.out.println("Found " + downloadedFiles.size() + " local artifact files to upload.");
         } else {
-            // Original behavior: fetch from Jenkins
-            System.out.println("Resolving Jenkins artifacts and fetching MANDREL.md...");
-            resolvePlatform(targetUrls, discoveredJdkVersions, jobPrefix, linuxBuild, "linux", "el8", jdkMajor, fullVersion,
-                    "amd64");
-            resolvePlatform(targetUrls, discoveredJdkVersions, jobPrefix, linuxBuild, "linux", "el8_aarch64", jdkMajor, fullVersion,
-                    "aarch64");
-            resolvePlatform(targetUrls, discoveredJdkVersions, jobPrefix, windowsBuild, "windows", "w2k19", jdkMajor, fullVersion,
-                    "amd64");
-            resolvePlatform(targetUrls, discoveredJdkVersions, jobPrefix, macosBuild, "macos", "macos_aarch64", jdkMajor,
-                    fullVersion, "aarch64");
+            System.out.println("Resolving archive server artifacts and fetching MANDREL.md...");
+            resolvePlatform(targetUrls, discoveredJdkVersions, jobPrefix, linuxAarch64Build, "linux", "aarch64",
+                    jdkMajor, fullVersion);
+            resolvePlatform(targetUrls, discoveredJdkVersions, jobPrefix, linuxAmd64Build, "linux", "amd64",
+                    jdkMajor, fullVersion);
+            resolvePlatform(targetUrls, discoveredJdkVersions, jobPrefix, windowsAmd64Build, "windows", "amd64",
+                    jdkMajor, fullVersion);
+            resolvePlatform(targetUrls, discoveredJdkVersions, jobPrefix, macosAarch64Build, "macos", "aarch64",
+                    jdkMajor, fullVersion);
             if (discoveredJdkVersions.isEmpty()) {
                 throw new RuntimeException("ABORT: No OpenJDK version could be determined from MANDREL.md files.");
             }
@@ -1401,19 +1403,33 @@ class PublishRelease implements Callable<Integer> {
         }
     }
 
-    private void resolvePlatform(List<String> urls, Set<String> jdkVersions, String jobPrefix, int buildNum, String platform,
-            String label, String jdkMajor, String fullVersion, String archExt) throws IOException, InterruptedException {
+    /**
+     * Resolves the artifact URLs for a single platform/arch build on the archive server.
+     * <p>
+     * The server serves one archive directory per job build, named by a stable job name and the build number, e.g.
+     * {@code https://ci.modcluster.io/mandrel-25-0-jdk25-el8-amd64-build-ga/builds/<buildNum>/archive/}. There are no
+     * matrix axes, so each (platform, arch) maps to its own job. The job's OS flavour is fixed per platform
+     * (linux -> el8, windows -> w2k22, macos -> macos) and {@code arch} is the CPU ISA (aarch64 / amd64).
+     */
+    private void resolvePlatform(List<String> urls, Set<String> jdkVersions, String jobPrefix, long buildNum,
+            String platform, String arch, String jdkMajor, String fullVersion)
+            throws IOException, InterruptedException {
         if (buildNum <= 0) {
             return;
         }
-        final String baseUrl = "https://ci.modcluster.io/job/";
-        final String baseArtifactDir = baseUrl + jobPrefix + "-" + platform + "-build-matrix/" + buildNum + "/JDK_RELEASE=ga,JDK_VERSION=" + jdkMajor + ",LABEL=" + label + "/artifact";
-        final String mandrelMdUrl = baseArtifactDir + "/MANDREL.md";
-        final String discoveredJdk = fetchJdkVersion(mandrelMdUrl);
+        final String jobOs = switch (platform) {
+            case "linux" -> "el8";
+            case "windows" -> "w2k22";
+            case "macos" -> "macos";
+            default -> throw new IllegalArgumentException("Unknown platform: " + platform);
+        };
+        final String archiveDir = "https://ci.modcluster.io/" + jobPrefix + "-" + jobOs + "-" + arch
+                + "-build-ga/builds/" + buildNum + "/archive";
+        final String discoveredJdk = fetchJdkVersion(archiveDir + "/MANDREL.md");
         jdkVersions.add(discoveredJdk);
         final String ext = platform.equals("windows") ? ".zip" : ".tar.gz";
-        final String filename = "mandrel-java" + jdkMajor + "-" + platform + "-" + archExt + "-" + fullVersion + ext;
-        final String fileBase = baseArtifactDir + "/" + filename;
+        final String filename = "mandrel-java" + jdkMajor + "-" + platform + "-" + arch + "-" + fullVersion + ext;
+        final String fileBase = archiveDir + "/" + filename;
         urls.add(fileBase);
         urls.add(fileBase + ".sha1");
         urls.add(fileBase + ".sha256");
