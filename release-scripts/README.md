@@ -340,6 +340,22 @@ The `mandrel-packaging` repo does not use milestones or `suite.py` files. It onl
   -u upstream
 ```
 
+## Known issues
+
+### SSH authentication can time out with YubiKey FIDO keys
+
+When pushing over SSH (for example, in [`update-quarkus-images`](#step-6)), JGit's built-in SSH client can time out with `Session is being closed` even after you touch the YubiKey.
+This has been observed with an `ED25519-SK` key provided by an SSH agent.
+
+Verify that native OpenSSH can authenticate by running `ssh -T git@github.com` and checking for GitHub's successful authentication message.
+Then set `GIT_SSH` in the same shell before running `mandrel-ops` with your usual arguments:
+
+```bash
+export GIT_SSH="$(command -v ssh)"
+```
+
+This makes JGit use OpenSSH for the push without changing the key or its touch requirement.
+
 # Testing
 
 The tag verification regression and CSPU release-classification tests run locally without GitHub access or a signing key:
