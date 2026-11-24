@@ -294,6 +294,7 @@ class SuiteOpsUtils {
             System.out.println("File " + fileName + " already exists locally. Skipping download.");
             return dest;
         }
+        Files.createDirectories(dest.toPath().getParent());
         System.out.println("Downloading " + fileName + "...");
         final HttpRequest request = HttpRequest.newBuilder().uri(uri).GET().build();
         try (HttpClient client = HttpClient.newBuilder().followRedirects(HttpClient.Redirect.NORMAL).build()) {

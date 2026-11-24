@@ -342,16 +342,18 @@ The `mandrel-packaging` repo does not use milestones or `suite.py` files. It onl
 
 # Testing
 
-The tag verification regression and CSPU release-classification tests run locally without GitHub access or a signing key:
+The tag verification, CSPU release-classification, and checksum download regression tests run locally without GitHub access or a signing key:
 
 ```bash
 jbang testing/test-tag-verification.java
 jbang testing/test-cspu-release.java
+jbang testing/test-download.java
 ```
 
 These tests:
 * verify that annotated and lightweight tags targeting HEAD are accepted, and tags targeting a different commit are rejected.
 * cover benign version/release changes, dependency updates, other changed files, and missing or incomplete GitHub patches, as well as the shared local Git detector.
+* verify that a checksum can be downloaded when the artifacts directory does not exist.
 
 ## End-to-end tests
 
